@@ -1,4 +1,4 @@
-// Universal Pest Control — Booking Model
+// Universal Pest Control — Booking Model (Phase 5)
 const { query } = require('../config/database');
 
 function formatBooking(b) {
@@ -16,6 +16,9 @@ function formatBooking(b) {
     technicianId: b.technician_id,
     technicianName: b.technician_name || null,
     technicianPhone: b.technician_phone || null,
+    technicianEmail: b.technician_email || null,
+    technicianProfileImage: b.technician_profile_image || null,
+    technicianAvailability: b.technician_availability || null,
     customerName: b.customer_name,
     phone: b.phone,
     propertyType: b.property_type,
@@ -27,7 +30,14 @@ function formatBooking(b) {
     instructions: b.instructions || b.notes || null,
     notes: b.notes || null,
     amount: Number(b.amount || 0),
-    status: b.status,
+    status: (b.status || 'PENDING').toUpperCase(),
+    assignedAt: b.assigned_at,
+    acceptedAt: b.accepted_at,
+    onTheWayAt: b.on_the_way_at,
+    arrivedAt: b.arrived_at,
+    startedAt: b.started_at,
+    completedAt: b.completed_at,
+    cancelledAt: b.cancelled_at,
     isArchived: Boolean(b.is_archived),
     createdAt: b.created_at,
     updatedAt: b.updated_at
@@ -84,7 +94,12 @@ const bookingModel = {
 
     const calcOffset = offset ? Number(offset) : Math.max(0, (Number(page) - 1) * Number(limit));
     const selectSql = `
-      SELECT b.*, t.name AS technician_name, t.phone AS technician_phone
+      SELECT b.*, 
+        t.name AS technician_name, 
+        t.phone AS technician_phone,
+        t.email AS technician_email,
+        t.profile_image AS technician_profile_image,
+        t.availability AS technician_availability
       ${baseSql}
       ORDER BY b.scheduled_date DESC, b.created_at DESC
       LIMIT ? OFFSET ?
@@ -107,7 +122,12 @@ const bookingModel = {
 
   async findById(id) {
     const rows = await query(
-      `SELECT b.*, t.name AS technician_name, t.phone AS technician_phone
+      `SELECT b.*, 
+        t.name AS technician_name, 
+        t.phone AS technician_phone,
+        t.email AS technician_email,
+        t.profile_image AS technician_profile_image,
+        t.availability AS technician_availability
        FROM bookings b
        LEFT JOIN technicians t ON b.technician_id = t.id
        WHERE b.id = ? OR b.booking_code = ?
@@ -127,6 +147,7 @@ const bookingModel = {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
+    const initialStatus = (data.status ? String(data.status).toUpperCase() : 'PENDING');
     const params = [
       bookingCode,
       data.lead_id || data.leadId || null,
@@ -143,7 +164,7 @@ const bookingModel = {
       data.city || 'Pune',
       data.instructions || data.notes || null,
       data.amount !== undefined ? Number(data.amount) : 0.00,
-      (data.status ? String(data.status).toUpperCase() : 'PENDING'),
+      initialStatus,
       data.notes || data.instructions || null
     ];
 
@@ -152,6 +173,9 @@ const bookingModel = {
   },
 
   async update(id, data) {
+    const existing = await this.findById(id);
+    if (!existing) return null;
+
     const fields = [];
     const params = [];
 
@@ -168,7 +192,6 @@ const bookingModel = {
       city: data.city,
       instructions: data.instructions,
       amount: data.amount !== undefined ? Number(data.amount) : undefined,
-      status: data.status ? String(data.status).toUpperCase() : undefined,
       notes: data.notes
     };
 
@@ -179,6 +202,29 @@ const bookingModel = {
       }
     }
 
+    // Status & milestone timestamps
+    if (data.status) {
+      const newStatus = String(data.status).toUpperCase();
+      fields.push('`status` = ?');
+      params.push(newStatus);
+
+      if (newStatus === 'ASSIGNED') {
+        fields.push('`assigned_at` = COALESCE(`assigned_at`, CURRENT_TIMESTAMP)');
+      } else if (newStatus === 'ACCEPTED') {
+        fields.push('`accepted_at` = COALESCE(`accepted_at`, CURRENT_TIMESTAMP)');
+      } else if (newStatus === 'ON_THE_WAY') {
+        fields.push('`on_the_way_at` = COALESCE(`on_the_way_at`, CURRENT_TIMESTAMP)');
+      } else if (newStatus === 'ARRIVED') {
+        fields.push('`arrived_at` = COALESCE(`arrived_at`, CURRENT_TIMESTAMP)');
+      } else if (newStatus === 'IN_PROGRESS') {
+        fields.push('`started_at` = COALESCE(`started_at`, CURRENT_TIMESTAMP)');
+      } else if (newStatus === 'COMPLETED') {
+        fields.push('`completed_at` = COALESCE(`completed_at`, CURRENT_TIMESTAMP)');
+      } else if (newStatus === 'CANCELLED') {
+        fields.push('`cancelled_at` = COALESCE(`cancelled_at`, CURRENT_TIMESTAMP)');
+      }
+    }
+
     if (fields.length === 0) return this.findById(id);
 
     params.push(id, id);
@@ -186,9 +232,205 @@ const bookingModel = {
     return this.findById(id);
   },
 
-  async archive(id) {
-    await query(`UPDATE bookings SET is_archived = TRUE, status = 'CANCELLED' WHERE id = ? OR booking_code = ?`, [id, id]);
+  async assignTechnician(id, technicianId) {
+    const booking = await this.findById(id);
+    if (!booking) return null;
+
+    const [techRows] = await query(`SELECT * FROM technicians WHERE id = ? LIMIT 1`, [technicianId]);
+    if (techRows.length === 0) {
+      throw new Error(`Technician with ID ${technicianId} not found.`);
+    }
+
+    await query(
+      `UPDATE bookings 
+       SET technician_id = ?, status = 'ASSIGNED', assigned_at = CURRENT_TIMESTAMP 
+       WHERE id = ? OR booking_code = ?`,
+      [technicianId, id, id]
+    );
+
     return this.findById(id);
+  },
+
+  async updateJobStatus(bookingId, status, notes = null) {
+    const booking = await this.findById(bookingId);
+    if (!booking) return null;
+
+    const normalized = String(status).toUpperCase();
+    const valid = ['ASSIGNED', 'ACCEPTED', 'ON_THE_WAY', 'ARRIVED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'];
+    if (!valid.includes(normalized)) {
+      throw new Error(`Invalid job status: ${status}. Must be one of: ${valid.join(', ')}`);
+    }
+
+    const updates = ['status = ?'];
+    const params = [normalized];
+
+    if (notes) {
+      updates.push('notes = CONCAT(COALESCE(notes, ""), "\n[", CURRENT_TIMESTAMP, " - Status: ", ?, "]: ", ?)');
+      params.push(normalized, notes);
+    }
+
+    if (normalized === 'ASSIGNED') {
+      updates.push('assigned_at = COALESCE(assigned_at, CURRENT_TIMESTAMP)');
+    } else if (normalized === 'ACCEPTED') {
+      updates.push('accepted_at = COALESCE(accepted_at, CURRENT_TIMESTAMP)');
+    } else if (normalized === 'ON_THE_WAY') {
+      updates.push('on_the_way_at = COALESCE(on_the_way_at, CURRENT_TIMESTAMP)');
+      if (booking.technicianId) {
+        await query(`UPDATE technicians SET availability = 'ON_JOB' WHERE id = ?`, [booking.technicianId]);
+      }
+    } else if (normalized === 'ARRIVED') {
+      updates.push('arrived_at = COALESCE(arrived_at, CURRENT_TIMESTAMP)');
+      if (booking.technicianId) {
+        await query(`UPDATE technicians SET availability = 'ON_JOB' WHERE id = ?`, [booking.technicianId]);
+      }
+    } else if (normalized === 'IN_PROGRESS') {
+      updates.push('started_at = COALESCE(started_at, CURRENT_TIMESTAMP)');
+      if (booking.technicianId) {
+        await query(`UPDATE technicians SET availability = 'ON_JOB' WHERE id = ?`, [booking.technicianId]);
+      }
+    } else if (normalized === 'COMPLETED') {
+      updates.push('completed_at = COALESCE(completed_at, CURRENT_TIMESTAMP)');
+      if (booking.technicianId) {
+        await query(
+          `UPDATE technicians 
+           SET jobs_completed = jobs_completed + 1, availability = 'AVAILABLE' 
+           WHERE id = ?`,
+          [booking.technicianId]
+        );
+      }
+    } else if (normalized === 'CANCELLED') {
+      updates.push('cancelled_at = COALESCE(cancelled_at, CURRENT_TIMESTAMP)');
+      if (booking.technicianId) {
+        await query(`UPDATE technicians SET availability = 'AVAILABLE' WHERE id = ?`, [booking.technicianId]);
+      }
+    }
+
+    params.push(bookingId, bookingId);
+    await query(`UPDATE bookings SET ${updates.join(', ')} WHERE id = ? OR booking_code = ?`, params);
+
+    return this.findById(bookingId);
+  },
+
+  async archive(id) {
+    await query(
+      `UPDATE bookings SET is_archived = TRUE, status = 'CANCELLED', cancelled_at = CURRENT_TIMESTAMP WHERE id = ? OR booking_code = ?`,
+      [id, id]
+    );
+    return this.findById(id);
+  },
+
+  async getTrackingData(idOrCode) {
+    let rows = await query(
+      `SELECT b.*, 
+        t.id AS tech_id,
+        t.name AS technician_name, 
+        t.phone AS technician_phone,
+        t.email AS technician_email,
+        t.profile_image AS technician_profile_image,
+        t.skills AS technician_skills,
+        t.rating AS technician_rating
+       FROM bookings b
+       LEFT JOIN technicians t ON b.technician_id = t.id
+       WHERE b.id = ? OR b.booking_code = ? OR b.phone = ?
+       ORDER BY b.id DESC
+       LIMIT 1`,
+      [idOrCode, idOrCode, idOrCode]
+    );
+
+    if (rows.length === 0) return null;
+    const b = rows[0];
+
+    const currentStatus = (b.status || 'PENDING').toUpperCase();
+
+    let technicianObj = null;
+    if (b.technician_name) {
+      let skillsArr = [];
+      try {
+        skillsArr = typeof b.technician_skills === 'string' ? JSON.parse(b.technician_skills) : b.technician_skills || [];
+      } catch (e) {
+        skillsArr = [];
+      }
+      technicianObj = {
+        id: b.tech_id,
+        name: b.technician_name,
+        phone: b.technician_phone,
+        email: b.technician_email,
+        profileImage: b.technician_profile_image || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&w=400&q=80',
+        skills: Array.isArray(skillsArr) ? skillsArr : [],
+        rating: Number(b.technician_rating || 4.9)
+      };
+    }
+
+    // Prepare milestones matching Customer Status requirements:
+    // Technician Assigned -> On The Way -> Arrived -> Service Started -> Completed
+    const stages = [
+      {
+        key: 'CONFIRMED',
+        label: 'Booking Confirmed',
+        description: 'Service appointment locked with Universal Pest Control.',
+        completed: true,
+        active: currentStatus === 'CONFIRMED' || currentStatus === 'PENDING',
+        timestamp: b.created_at
+      },
+      {
+        key: 'ASSIGNED',
+        label: 'Technician Assigned',
+        description: technicianObj ? `${technicianObj.name} assigned to your service.` : 'Dispatching certified pest technician.',
+        completed: Boolean(b.assigned_at || b.technician_id),
+        active: currentStatus === 'ASSIGNED' || currentStatus === 'ACCEPTED',
+        timestamp: b.assigned_at,
+        technician: technicianObj
+      },
+      {
+        key: 'ON_THE_WAY',
+        label: 'On The Way',
+        description: 'Technician is en route with professional treatment equipment.',
+        completed: Boolean(b.on_the_way_at || ['ON_THE_WAY', 'ARRIVED', 'IN_PROGRESS', 'COMPLETED'].includes(currentStatus)),
+        active: currentStatus === 'ON_THE_WAY',
+        timestamp: b.on_the_way_at
+      },
+      {
+        key: 'ARRIVED',
+        label: 'Arrived at Location',
+        description: 'Technician arrived at your premises for inspection and application.',
+        completed: Boolean(b.arrived_at || ['ARRIVED', 'IN_PROGRESS', 'COMPLETED'].includes(currentStatus)),
+        active: currentStatus === 'ARRIVED',
+        timestamp: b.arrived_at
+      },
+      {
+        key: 'IN_PROGRESS',
+        label: 'Service Started',
+        description: 'Scientific odorless treatment in progress.',
+        completed: Boolean(b.started_at || ['IN_PROGRESS', 'COMPLETED'].includes(currentStatus)),
+        active: currentStatus === 'IN_PROGRESS',
+        timestamp: b.started_at
+      },
+      {
+        key: 'COMPLETED',
+        label: 'Completed & Certified',
+        description: 'Treatment successfully executed with digital warranty certificate.',
+        completed: Boolean(b.completed_at || currentStatus === 'COMPLETED'),
+        active: currentStatus === 'COMPLETED',
+        timestamp: b.completed_at
+      }
+    ];
+
+    return {
+      bookingCode: b.booking_code,
+      customerName: b.customer_name,
+      phone: b.phone,
+      serviceName: b.service_name,
+      propertyType: b.property_type,
+      scheduledDate: b.scheduled_date,
+      timeSlot: b.time_slot,
+      address: b.address,
+      city: b.city,
+      currentStatus,
+      technician: technicianObj,
+      stages,
+      amount: Number(b.amount || 0),
+      isCancelled: currentStatus === 'CANCELLED'
+    };
   }
 };
 

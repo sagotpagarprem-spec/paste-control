@@ -139,14 +139,20 @@ CREATE TABLE IF NOT EXISTS `technicians` (
   `user_id` INT NULL,
   `name` VARCHAR(100) NOT NULL,
   `phone` VARCHAR(20) NOT NULL,
+  `email` VARCHAR(150) NULL,
   `specialization` VARCHAR(100) NULL,
-  `status` ENUM('Available', 'On Job', 'Off Duty') NOT NULL DEFAULT 'Available',
+  `skills` JSON NULL,
+  `service_areas` JSON NULL,
+  `availability` VARCHAR(50) NOT NULL DEFAULT 'AVAILABLE',
+  `status` VARCHAR(30) NOT NULL DEFAULT 'ACTIVE',
+  `profile_image` VARCHAR(255) NULL,
   `rating` DECIMAL(2, 1) NOT NULL DEFAULT 4.9,
   `jobs_completed` INT NOT NULL DEFAULT 0,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT `fk_tech_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-  INDEX `idx_tech_status` (`status`)
+  INDEX `idx_tech_status` (`status`),
+  INDEX `idx_tech_availability` (`availability`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------
@@ -251,6 +257,13 @@ CREATE TABLE IF NOT EXISTS `bookings` (
   `amount` DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
   `status` VARCHAR(50) NOT NULL DEFAULT 'PENDING',
   `notes` TEXT NULL,
+  `assigned_at` TIMESTAMP NULL DEFAULT NULL,
+  `accepted_at` TIMESTAMP NULL DEFAULT NULL,
+  `on_the_way_at` TIMESTAMP NULL DEFAULT NULL,
+  `arrived_at` TIMESTAMP NULL DEFAULT NULL,
+  `started_at` TIMESTAMP NULL DEFAULT NULL,
+  `completed_at` TIMESTAMP NULL DEFAULT NULL,
+  `cancelled_at` TIMESTAMP NULL DEFAULT NULL,
   `is_archived` BOOLEAN NOT NULL DEFAULT FALSE,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

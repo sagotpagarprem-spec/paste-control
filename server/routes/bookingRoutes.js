@@ -11,12 +11,19 @@ const { validate, validateBookingCreate } = require('../validators/validate');
 // POST /api/bookings
 router.post('/', publicLeadLimiter, validate(validateBookingCreate), bookingController.createBooking);
 
+// Public Customer Tracking Endpoint
+// GET /api/bookings/:idOrCode/tracking
+router.get('/:idOrCode/tracking', bookingController.getTracking);
+
 // Protected Admin/Staff Endpoints
 // GET /api/bookings
 router.get('/', authenticateToken, requirePermission('bookings:read'), bookingController.getBookings);
 
 // GET /api/bookings/:id
 router.get('/:id', authenticateToken, requirePermission('bookings:read'), bookingController.getBookingById);
+
+// POST /api/bookings/:id/assign (Assign Technician)
+router.post('/:id/assign', authenticateToken, requirePermission('technicians:manage'), bookingController.assignTechnician);
 
 // PUT /api/bookings/:id
 router.put('/:id', authenticateToken, requirePermission('bookings:manage'), bookingController.updateBooking);

@@ -130,6 +130,7 @@ function switchAdminSection(viewKey) {
 
   // Trigger real backend hydrations on view change
   if (viewKey === 'bookings') renderAdminBookings();
+  if (viewKey === 'technicians') renderAdminTechnicians();
   if (viewKey === 'followups') renderAdminFollowups();
   if (viewKey === 'customers') renderAdminCustomers();
   if (viewKey === 'leads' || viewKey === 'crm') { renderCrmKanban(); renderCrmTable(); }
@@ -1011,26 +1012,256 @@ function triggerWhatsAppChat(phone, name) {
   showToast(`WhatsApp thread opened for ${name}`, 'info');
 }
 
-/* 8. TECHNICIAN DISPATCH */
+/* 8. TECHNICIAN MANAGEMENT & DISPATCH (PHASE 5) */
+let adminTechniciansCache = [];
+
 function initTechnicianDispatch() {
-  const completeBtns = document.querySelectorAll('.btn-complete-job');
-  completeBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const jobCard = btn.closest('.tech-job-card');
-      if (jobCard) {
-        btn.textContent = '✅ Service Completed';
-        btn.classList.remove('btn-primary');
-        btn.classList.add('btn-white');
-        jobCard.style.opacity = '0.7';
-        showToast('Technician completed job. Audit report generated!', 'success');
-      }
+  const searchInput = document.getElementById('techSearchInput');
+  const filterStatus = document.getElementById('techFilterStatus');
+  const filterAvail = document.getElementById('techFilterAvailability');
+
+  if (searchInput) {
+    let tTimer;
+    searchInput.addEventListener('input', () => {
+      clearTimeout(tTimer);
+      tTimer = setTimeout(() => renderAdminTechnicians(), 300);
     });
-  });
+  }
+
+  if (filterStatus) filterStatus.addEventListener('change', () => renderAdminTechnicians());
+  if (filterAvail) filterAvail.addEventListener('change', () => renderAdminTechnicians());
+}
+
+async function renderAdminTechnicians() {
+  const container = document.getElementById('techniciansRosterGrid');
+  if (!container) return;
+
+  const searchInput = document.getElementById('techSearchInput');
+  const filterStatus = document.getElementById('techFilterStatus');
+  const filterAvail = document.getElementById('techFilterAvailability');
+
+  const search = searchInput ? searchInput.value.trim() : '';
+  const status = filterStatus && filterStatus.value !== 'ALL' ? filterStatus.value : '';
+  const availability = filterAvail && filterAvail.value !== 'ALL' ? filterAvail.value : '';
+
+  try {
+    let techs = [];
+    if (window.upcApi && window.upcApi.technicians) {
+      const res = await window.upcApi.technicians.getAll({ search, status, availability });
+      techs = res.data || [];
+      adminTechniciansCache = techs;
+    }
+
+    // Update KPI Counters
+    const totalEl = document.getElementById('techTotalCount');
+    const activeEl = document.getElementById('techActiveCount');
+    const availEl = document.getElementById('techAvailableCount');
+    const leaveEl = document.getElementById('techLeaveCount');
+
+    if (totalEl) totalEl.textContent = techs.length;
+    if (activeEl) activeEl.textContent = techs.filter(t => t.status === 'ACTIVE').length;
+    if (availEl) availEl.textContent = techs.filter(t => t.availability === 'AVAILABLE').length;
+    if (leaveEl) leaveEl.textContent = techs.filter(t => t.status === 'ON_LEAVE').length;
+
+    if (techs.length === 0) {
+      container.innerHTML = `
+        <div style="grid-column: 1 / -1; background:#FFFFFF; padding:3rem; border-radius:12px; text-align:center; color:#64748B; border:1px solid var(--border-subtle);">
+          No field technicians found matching search or filter criteria.
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = techs.map(t => {
+      const statusBadge = t.status === 'ACTIVE' ? 'badge-success' : (t.status === 'ON_LEAVE' ? 'badge-warning' : 'badge-danger');
+      const availBadge = t.availability === 'AVAILABLE' ? 'badge-success' : (t.availability === 'ON_JOB' ? 'badge-primary' : 'badge-neutral');
+      const skillsHtml = (t.skills || []).map(s => `
+        <span style="font-size:0.72rem; background:#F1F5F9; color:#334155; padding:0.2rem 0.5rem; border-radius:4px; font-weight:600;">
+          ${escapeHtml(s)}
+        </span>
+      `).join(' ');
+
+      const areasHtml = (t.serviceAreas || []).map(a => `
+        <span style="font-size:0.72rem; background:#ECFDF5; color:#065F46; padding:0.2rem 0.5rem; border-radius:4px; font-weight:600;">
+          📍 ${escapeHtml(a)}
+        </span>
+      `).join(' ');
+
+      return `
+        <div class="tech-card" style="background:#FFFFFF; border-radius:12px; border:1px solid var(--border-subtle); padding:1.5rem; box-shadow:0 1px 3px rgba(0,0,0,0.05); display:flex; flex-direction:column; justify-content:space-between;">
+          <div>
+            <!-- Header Row -->
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1rem;">
+              <div style="display:flex; gap:0.85rem; align-items:center;">
+                <img src="${escapeHtml(t.profileImage || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&w=120&q=80')}"
+                     alt="${escapeHtml(t.name)}"
+                     style="width:52px; height:52px; border-radius:50%; object-fit:cover; border:2px solid #E2E8F0;">
+                <div>
+                  <h3 style="font-size:1.1rem; margin:0; color:#0F172A; font-weight:700;">${escapeHtml(t.name)}</h3>
+                  <div style="font-size:0.8rem; color:#64748B;">${escapeHtml(t.specialization || 'Field Specialist')}</div>
+                </div>
+              </div>
+              <div style="text-align:right;">
+                <span class="badge ${statusBadge}">${t.status}</span><br>
+                <span class="badge ${availBadge}" style="margin-top:0.35rem;">${t.availability}</span>
+              </div>
+            </div>
+
+            <!-- Contact Row -->
+            <div style="font-size:0.825rem; color:#475569; margin-bottom:0.85rem; display:flex; flex-direction:column; gap:0.25rem;">
+              <div>📞 <a href="tel:${escapeHtml(t.phone)}" style="color:#0284C7; text-decoration:none; font-weight:600;">${escapeHtml(t.phone)}</a></div>
+              <div>✉️ <span style="color:#64748B;">${escapeHtml(t.email || 'No email provided')}</span></div>
+            </div>
+
+            <!-- Skills -->
+            <div style="margin-bottom:0.75rem;">
+              <div style="font-size:0.7rem; text-transform:uppercase; color:#94A3B8; font-weight:700; margin-bottom:0.35rem;">Skills & Certifications:</div>
+              <div style="display:flex; flex-wrap:wrap; gap:0.35rem;">
+                ${skillsHtml || '<span style="font-size:0.75rem; color:#94A3B8;">None specified</span>'}
+              </div>
+            </div>
+
+            <!-- Service Areas -->
+            <div style="margin-bottom:1rem;">
+              <div style="font-size:0.7rem; text-transform:uppercase; color:#94A3B8; font-weight:700; margin-bottom:0.35rem;">Coverage Areas:</div>
+              <div style="display:flex; flex-wrap:wrap; gap:0.35rem;">
+                ${areasHtml || '<span style="font-size:0.75rem; color:#94A3B8;">All Pune Areas</span>'}
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Footer -->
+          <div style="border-top:1px solid #F1F5F9; padding-top:1rem; margin-top:0.5rem; display:flex; justify-content:space-between; align-items:center;">
+            <div style="font-size:0.78rem; color:#64748B;">
+              ⭐ <strong>${t.rating || '4.9'}</strong> (${t.jobsCompleted || 0} jobs)
+            </div>
+            <div style="display:flex; gap:0.4rem;">
+              <button class="btn btn-sm btn-white" onclick='openModalEditTech(${JSON.stringify(t).replace(/'/g, "&#39;")})'>✏️ Edit</button>
+              <button class="btn btn-sm btn-outline" onclick="changeTechStatus(${t.id}, '${t.status === 'ACTIVE' ? 'ON_LEAVE' : 'ACTIVE'}')">
+                ${t.status === 'ACTIVE' ? 'Pause' : 'Activate'}
+              </button>
+              <button class="btn btn-sm btn-white" style="color:#DC2626;" onclick="deleteTechLive(${t.id})">✕</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  } catch (err) {
+    console.error('Failed to load technicians:', err);
+    container.innerHTML = `<div style="grid-column:1/-1; text-align:center; color:#DC2626; padding:2rem;">Failed to load technicians: ${err.message}</div>`;
+  }
+}
+
+function openModalCreateTech() {
+  document.getElementById('modalTechTitle').textContent = '➕ Add New Field Technician';
+  document.getElementById('techFormId').value = '';
+  document.getElementById('techFormName').value = '';
+  document.getElementById('techFormPhone').value = '';
+  document.getElementById('techFormEmail').value = '';
+  document.getElementById('techFormStatus').value = 'ACTIVE';
+  document.getElementById('techFormAvailability').value = 'AVAILABLE';
+  document.getElementById('techFormSpec').value = '';
+  document.getElementById('techFormSkills').value = '';
+  document.getElementById('techFormAreas').value = '';
+  document.getElementById('techFormImage').value = '';
+
+  const modal = document.getElementById('modalTechnician');
+  if (modal) modal.style.display = 'flex';
+}
+
+function openModalEditTech(tech) {
+  document.getElementById('modalTechTitle').textContent = `✏️ Edit Technician: ${tech.name}`;
+  document.getElementById('techFormId').value = tech.id;
+  document.getElementById('techFormName').value = tech.name || '';
+  document.getElementById('techFormPhone').value = tech.phone || '';
+  document.getElementById('techFormEmail').value = tech.email || '';
+  document.getElementById('techFormStatus').value = tech.status || 'ACTIVE';
+  document.getElementById('techFormAvailability').value = tech.availability || 'AVAILABLE';
+  document.getElementById('techFormSpec').value = tech.specialization || '';
+  document.getElementById('techFormSkills').value = Array.isArray(tech.skills) ? tech.skills.join(', ') : (tech.skills || '');
+  document.getElementById('techFormAreas').value = Array.isArray(tech.serviceAreas) ? tech.serviceAreas.join(', ') : (tech.serviceAreas || '');
+  document.getElementById('techFormImage').value = tech.profileImage || '';
+
+  const modal = document.getElementById('modalTechnician');
+  if (modal) modal.style.display = 'flex';
+}
+
+function closeModalTech() {
+  const modal = document.getElementById('modalTechnician');
+  if (modal) modal.style.display = 'none';
+}
+
+async function saveTechnicianFromModal() {
+  const id = document.getElementById('techFormId').value;
+  const name = document.getElementById('techFormName').value.trim();
+  const phone = document.getElementById('techFormPhone').value.trim();
+  const email = document.getElementById('techFormEmail').value.trim();
+  const status = document.getElementById('techFormStatus').value;
+  const availability = document.getElementById('techFormAvailability').value;
+  const specialization = document.getElementById('techFormSpec').value.trim();
+  const rawSkills = document.getElementById('techFormSkills').value.trim();
+  const rawAreas = document.getElementById('techFormAreas').value.trim();
+  const profileImage = document.getElementById('techFormImage').value.trim();
+
+  if (!name || !phone) {
+    showToast('Name and phone number are required', 'error');
+    return;
+  }
+
+  const skills = rawSkills ? rawSkills.split(',').map(s => s.trim()).filter(Boolean) : [];
+  const serviceAreas = rawAreas ? rawAreas.split(',').map(a => a.trim()).filter(Boolean) : [];
+
+  const payload = {
+    name,
+    phone,
+    email: email || null,
+    status,
+    availability,
+    specialization: specialization || null,
+    skills,
+    serviceAreas,
+    profileImage: profileImage || null
+  };
+
+  try {
+    if (id) {
+      await window.upcApi.technicians.update(id, payload);
+      showToast(`Technician ${name} updated successfully`, 'success');
+    } else {
+      await window.upcApi.technicians.create(payload);
+      showToast(`Technician ${name} created successfully`, 'success');
+    }
+    closeModalTech();
+    renderAdminTechnicians();
+  } catch (err) {
+    showToast(err.message || 'Failed to save technician profile', 'error');
+  }
+}
+
+async function changeTechStatus(techId, newStatus) {
+  try {
+    await window.upcApi.technicians.updateStatus(techId, newStatus);
+    showToast(`Status updated to ${newStatus}`, 'success');
+    renderAdminTechnicians();
+  } catch (err) {
+    showToast(err.message || 'Failed to update technician status', 'error');
+  }
+}
+
+async function deleteTechLive(techId) {
+  if (!confirm('Are you sure you want to deactivate this field technician?')) return;
+  try {
+    await window.upcApi.technicians.delete(techId);
+    showToast('Technician deactivated', 'info');
+    renderAdminTechnicians();
+  } catch (err) {
+    showToast(err.message || 'Failed to deactivate technician', 'error');
+  }
 }
 
 /* 9. SERVICE BOOKINGS MANAGEMENT */
 const BOOKING_STATUSES = [
-  'PENDING', 'CONFIRMED', 'ASSIGNED', 'ON_THE_WAY', 'ARRIVED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'
+  'PENDING', 'CONFIRMED', 'ASSIGNED', 'ACCEPTED', 'ON_THE_WAY', 'ARRIVED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'
 ];
 
 async function renderAdminBookings() {
@@ -1056,9 +1287,14 @@ async function renderAdminBookings() {
         paginationInfo.textContent = `Showing ${bookings.length} of ${total} bookings`;
       }
       try {
-        const staffRes = await window.upcApi.users.getStaff();
-        staff = staffRes.data || [];
-      } catch (e) {}
+        const techRes = await window.upcApi.technicians.getAll();
+        staff = techRes.data || [];
+      } catch (e) {
+        try {
+          const staffRes = await window.upcApi.users.getStaff();
+          staff = staffRes.data || [];
+        } catch (e2) {}
+      }
     }
 
     if (bookings.length === 0) {
@@ -1090,18 +1326,18 @@ async function renderAdminBookings() {
           <td>${b.scheduledDate || b.date || '-'}</td>
           <td><span style="font-size:0.8rem; background:#F1F5F9; padding:0.2rem 0.5rem; border-radius:4px;">${escapeHtml(b.timeSlot || '-')}</span></td>
           <td>
-            <select class="form-control" style="padding:0.25rem 0.5rem; font-size:0.8rem; width:135px;"
+            <select class="form-control" style="padding:0.25rem 0.5rem; font-size:0.8rem; width:145px;"
               onchange="assignBookingTechnician(${b.id}, this.value)">
               <option value="">Unassigned</option>
               ${staff.map(s => `
                 <option value="${s.id}" ${(b.technicianId == s.id || b.technician_id == s.id) ? 'selected' : ''}>
-                  ${escapeHtml(s.name)}
+                  ${escapeHtml(s.name)} (${s.status || 'Active'})
                 </option>
               `).join('')}
             </select>
           </td>
           <td>
-            <select class="form-control" style="padding:0.25rem 0.5rem; font-size:0.8rem; font-weight:700; width:130px;"
+            <select class="form-control" style="padding:0.25rem 0.5rem; font-size:0.8rem; font-weight:700; width:135px;"
               onchange="updateBookingStatusLive(${b.id}, this.value)">
               ${BOOKING_STATUSES.map(st => `
                 <option value="${st}" ${String(b.status).toUpperCase() === st ? 'selected' : ''}>${st}</option>
@@ -1126,7 +1362,7 @@ async function renderAdminBookings() {
 function getBookingStatusBadgeClass(status) {
   const s = String(status || '').toUpperCase();
   if (s === 'CONFIRMED') return 'badge-success';
-  if (s === 'ASSIGNED' || s === 'IN_PROGRESS' || s === 'ON_THE_WAY') return 'badge-primary';
+  if (s === 'ASSIGNED' || s === 'ACCEPTED' || s === 'IN_PROGRESS' || s === 'ON_THE_WAY' || s === 'ARRIVED') return 'badge-primary';
   if (s === 'PENDING') return 'badge-warning';
   if (s === 'COMPLETED') return 'badge-success';
   if (s === 'CANCELLED') return 'badge-danger';
@@ -1148,8 +1384,13 @@ async function updateBookingStatusLive(bookingId, newStatus) {
 async function assignBookingTechnician(bookingId, techId) {
   try {
     if (window.upcApi && window.upcApi.bookings) {
-      await window.upcApi.bookings.update(bookingId, { technicianId: techId ? Number(techId) : null });
-      showToast('Technician assigned successfully', 'success');
+      if (techId) {
+        await window.upcApi.bookings.assign(bookingId, Number(techId));
+        showToast('Technician assigned & dispatched successfully', 'success');
+      } else {
+        await window.upcApi.bookings.update(bookingId, { technicianId: null, status: 'PENDING' });
+        showToast('Booking set to unassigned', 'info');
+      }
       renderAdminBookings();
     }
   } catch (err) {
@@ -2604,4 +2845,14 @@ window.renderAdminCmsOffers = renderAdminCmsOffers;
 window.renderAdminCmsReviews = renderAdminCmsReviews;
 window.renderAdminCmsBlogs = renderAdminCmsBlogs;
 window.renderAdminCmsAreas = renderAdminCmsAreas;
+
+// Global Technician Window Exports (Phase 5)
+window.renderAdminTechnicians = renderAdminTechnicians;
+window.openModalCreateTech = openModalCreateTech;
+window.openModalEditTech = openModalEditTech;
+window.closeModalTech = closeModalTech;
+window.saveTechnicianFromModal = saveTechnicianFromModal;
+window.changeTechStatus = changeTechStatus;
+window.deleteTechLive = deleteTechLive;
+window.assignBookingTechnician = assignBookingTechnician;
 

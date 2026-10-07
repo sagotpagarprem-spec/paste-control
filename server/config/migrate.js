@@ -1113,6 +1113,161 @@ Draft article detailing preventive measures for residential housing societies du
       }
     }
 
+    // Step 17: Phase 5 Technician & Dispatch System Migrations
+    logger.info('Checking Phase 5 technician and booking dispatch columns...');
+
+    // 17a. Technicians Table Columns
+    const techColsToAdd = [
+      { name: 'email', def: 'VARCHAR(150) NULL' },
+      { name: 'skills', def: 'JSON NULL' },
+      { name: 'service_areas', def: 'JSON NULL' },
+      { name: 'availability', def: "VARCHAR(50) NOT NULL DEFAULT 'AVAILABLE'" },
+      { name: 'profile_image', def: 'VARCHAR(255) NULL' }
+    ];
+
+    for (const col of techColsToAdd) {
+      try {
+        const [exists] = await conn.query(
+          `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS 
+           WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'technicians' AND COLUMN_NAME = ?`,
+          [database, col.name]
+        );
+        if (exists.length === 0) {
+          await conn.query(`ALTER TABLE \`technicians\` ADD COLUMN \`${col.name}\` ${col.def}`);
+          logger.info(`Added column ${col.name} to technicians table.`);
+        }
+      } catch (err) {
+        logger.warn(`Could not add column ${col.name} to technicians: ${err.message}`);
+      }
+    }
+
+    // Safely widen/alter status on technicians from ENUM to VARCHAR(30)
+    try {
+      await conn.query(`ALTER TABLE \`technicians\` MODIFY COLUMN \`status\` VARCHAR(30) NOT NULL DEFAULT 'ACTIVE'`);
+      // Normalize legacy statuses
+      await conn.query(`UPDATE \`technicians\` SET \`availability\` = 'ON_JOB' WHERE \`status\` = 'On Job'`);
+      await conn.query(`UPDATE \`technicians\` SET \`availability\` = 'OFF_DUTY' WHERE \`status\` = 'Off Duty'`);
+      await conn.query(`UPDATE \`technicians\` SET \`status\` = 'ACTIVE' WHERE \`status\` IN ('Available', 'On Job', 'Off Duty')`);
+    } catch (err) {
+      logger.warn(`Could not modify technicians status column: ${err.message}`);
+    }
+
+    // 17b. Bookings Table Milestone Timestamps
+    const bookingColsToAdd = [
+      { name: 'assigned_at', def: 'TIMESTAMP NULL DEFAULT NULL' },
+      { name: 'accepted_at', def: 'TIMESTAMP NULL DEFAULT NULL' },
+      { name: 'on_the_way_at', def: 'TIMESTAMP NULL DEFAULT NULL' },
+      { name: 'arrived_at', def: 'TIMESTAMP NULL DEFAULT NULL' },
+      { name: 'started_at', def: 'TIMESTAMP NULL DEFAULT NULL' },
+      { name: 'completed_at', def: 'TIMESTAMP NULL DEFAULT NULL' },
+      { name: 'cancelled_at', def: 'TIMESTAMP NULL DEFAULT NULL' }
+    ];
+
+    for (const col of bookingColsToAdd) {
+      try {
+        const [exists] = await conn.query(
+          `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS 
+           WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'bookings' AND COLUMN_NAME = ?`,
+          [database, col.name]
+        );
+        if (exists.length === 0) {
+          await conn.query(`ALTER TABLE \`bookings\` ADD COLUMN \`${col.name}\` ${col.def}`);
+          logger.info(`Added milestone column ${col.name} to bookings table.`);
+        }
+      } catch (err) {
+        logger.warn(`Could not add column ${col.name} to bookings: ${err.message}`);
+      }
+    }
+
+    // 17c. Seed / Enrich Technicians
+    const sampleTechnicians = [
+      {
+        name: 'Vikram Shinde',
+        phone: '+91 98230 44129',
+        email: 'vikram.shinde@universalpest.in',
+        skills: JSON.stringify(['Termite Radar Inspection', 'Pre-Construction Barrier', 'Wood Borer Drill-Fill']),
+        serviceAreas: JSON.stringify(['Kothrud', 'Baner & Balewadi', 'Aundh & Pashan', 'Bavdhan']),
+        availability: 'AVAILABLE',
+        status: 'ACTIVE',
+        profileImage: 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&w=400&q=80',
+        rating: 4.9,
+        jobsCompleted: 420
+      },
+      {
+        name: 'Amit Kulkarni',
+        phone: '+91 98901 88320',
+        email: 'amit.kulkarni@universalpest.in',
+        skills: JSON.stringify(['Commercial HACCP Audit', 'Restaurant & Cafe IPM', 'German Cockroach Herbal Gel']),
+        serviceAreas: JSON.stringify(['Koregaon Park & Kalyani Nagar', 'Kharadi EON', 'Viman Nagar', 'Magarpatta']),
+        availability: 'AVAILABLE',
+        status: 'ACTIVE',
+        profileImage: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
+        rating: 4.8,
+        jobsCompleted: 310
+      },
+      {
+        name: 'Pooja Patil',
+        phone: '+91 97654 22091',
+        email: 'pooja.patil@universalpest.in',
+        skills: JSON.stringify(['Residential Herbal Gel', 'Pet & Child Safe Disinfection', 'Ant Nest Elimination']),
+        serviceAreas: JSON.stringify(['Wakad & Pimple Saudagar', 'Hinjawadi Infotech Park', 'Ravet', 'Baner']),
+        availability: 'ON_JOB',
+        status: 'ACTIVE',
+        profileImage: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80',
+        rating: 4.9,
+        jobsCompleted: 285
+      },
+      {
+        name: 'Rahul Shinde',
+        phone: '+91 99220 11984',
+        email: 'rahul.shinde@universalpest.in',
+        skills: JSON.stringify(['Thermal Bedbug Eradication', 'Cryo Heat Treatment', 'Steam Sanitization']),
+        serviceAreas: JSON.stringify(['Shivajinagar', 'Deccan Gymkhana', 'Swargate', 'Kothrud']),
+        availability: 'AVAILABLE',
+        status: 'ACTIVE',
+        profileImage: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80',
+        rating: 4.7,
+        jobsCompleted: 195
+      },
+      {
+        name: 'Sachin Deshmukh',
+        phone: '+91 98811 77203',
+        email: 'sachin.deshmukh@universalpest.in',
+        skills: JSON.stringify(['Rodent Bait Stations & Ultrasonic', 'Bird Netting & Spikes', 'Mosquito Fogging']),
+        serviceAreas: JSON.stringify(['Hinjawadi Infotech Park', 'Wakad', 'Tathawade', 'Pimpri']),
+        availability: 'OFF_DUTY',
+        status: 'ON_LEAVE',
+        profileImage: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=400&q=80',
+        rating: 4.8,
+        jobsCompleted: 240
+      }
+    ];
+
+    for (const t of sampleTechnicians) {
+      const [existingTech] = await conn.query(`SELECT id FROM technicians WHERE phone = ? LIMIT 1`, [t.phone]);
+      if (existingTech.length > 0) {
+        await conn.query(
+          `UPDATE technicians SET 
+            email = COALESCE(email, ?),
+            skills = COALESCE(skills, ?),
+            service_areas = COALESCE(service_areas, ?),
+            availability = ?,
+            status = ?,
+            profile_image = COALESCE(profile_image, ?),
+            rating = ?,
+            jobs_completed = ?
+           WHERE id = ?`,
+          [t.email, t.skills, t.serviceAreas, t.availability, t.status, t.profileImage, t.rating, t.jobsCompleted, existingTech[0].id]
+        );
+      } else {
+        await conn.query(
+          `INSERT INTO technicians (name, phone, email, skills, service_areas, availability, status, profile_image, rating, jobs_completed)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [t.name, t.phone, t.email, t.skills, t.serviceAreas, t.availability, t.status, t.profileImage, t.rating, t.jobsCompleted]
+        );
+      }
+    }
+
     logger.info('Database migration and seeding completed successfully!');
   } finally {
     await conn.end();

@@ -187,9 +187,79 @@ class UPCApiClient {
       });
     },
 
+    assign: async (id, technicianId) => {
+      return await this.request(`/bookings/${id}/assign`, {
+        method: 'POST',
+        body: { technicianId }
+      });
+    },
+
+    getTracking: async (idOrCode) => {
+      return await this.request(`/bookings/${idOrCode}/tracking`, {
+        method: 'GET'
+      });
+    },
+
     delete: async (id) => {
       return await this.request(`/bookings/${id}`, {
         method: 'DELETE'
+      });
+    }
+  };
+
+  // Technicians & Dispatch API (Phase 5)
+  technicians = {
+    getAll: async (params = {}) => {
+      const query = new URLSearchParams(params).toString();
+      return await this.request(`/technicians${query ? `?${query}` : ''}`, { method: 'GET' });
+    },
+
+    getById: async (id) => {
+      return await this.request(`/technicians/${id}`, { method: 'GET' });
+    },
+
+    create: async (data) => {
+      return await this.request('/technicians', {
+        method: 'POST',
+        body: data
+      });
+    },
+
+    update: async (id, data) => {
+      return await this.request(`/technicians/${id}`, {
+        method: 'PUT',
+        body: data
+      });
+    },
+
+    updateStatus: async (id, status) => {
+      return await this.request(`/technicians/${id}/status`, {
+        method: 'PUT',
+        body: { status }
+      });
+    },
+
+    updateAvailability: async (id, availability) => {
+      return await this.request(`/technicians/${id}/availability`, {
+        method: 'PUT',
+        body: { availability }
+      });
+    },
+
+    delete: async (id) => {
+      return await this.request(`/technicians/${id}`, {
+        method: 'DELETE'
+      });
+    },
+
+    getJobs: async (id) => {
+      return await this.request(`/technicians/${id}/jobs`, { method: 'GET' });
+    },
+
+    updateJobStatus: async (technicianId, bookingId, status, notes = '') => {
+      return await this.request(`/technicians/${technicianId}/jobs/${bookingId}/status`, {
+        method: 'PUT',
+        body: { status, notes }
       });
     }
   };

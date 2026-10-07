@@ -523,71 +523,67 @@
 
         <!-- ==================== SECTION 4: TECHNICIAN DISPATCH VIEW ==================== -->
         <section id="admin-sec-technicians" class="admin-view-section" style="display:none;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
             <div>
-              <h2 style="font-size:1.75rem; margin-bottom:0.25rem;">Technician Field Dispatch Interface</h2>
-              <p style="color:#64748B; font-size:0.875rem; margin:0;">Mobile-first field screen used by service technicians on the ground.</p>
+              <h2 style="font-size:1.75rem; margin-bottom:0.25rem;">Technicians & Fleet Dispatch</h2>
+              <p style="color:#64748B; font-size:0.875rem; margin:0;">Manage certified pest control technicians, assignments, skills, service areas, and availability.</p>
             </div>
-            <span class="badge badge-primary">GPS Fleet Active</span>
+            <div style="display:flex; gap:0.75rem;">
+              <a href="technician.html" target="_blank" class="btn btn-outline" style="display:inline-flex; align-items:center; gap:0.5rem;">
+                📱 Open Field App
+              </a>
+              <button class="btn btn-primary" onclick="openModalCreateTech()">
+                ➕ Add Technician
+              </button>
+            </div>
           </div>
 
-          <div class="technician-jobs-grid">
-            <!-- Job 1 -->
-            <div class="tech-job-card">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
-                <span class="badge badge-warning">IN PROGRESS</span>
-                <span style="font-size:0.8rem; color:#64748B;">Slot: 11:00 AM</span>
-              </div>
-              <h3 style="font-size:1.15rem; margin-bottom:0.25rem;">Dr. Rajiv Malhotra</h3>
-              <p style="color:#064E3B; font-weight:700; font-size:0.9rem; margin-bottom:0.5rem;">🪵 Termite Radar Detection & Barrier</p>
-              <p style="font-size:0.825rem; color:#64748B; margin-bottom:1rem;">
-                📍 Bungalow 14, Lane 7, Koregaon Park, Pune
-              </p>
-
-              <div style="background:#F8FAFC; padding:0.75rem; border-radius:8px; margin-bottom:1rem;">
-                <strong style="font-size:0.78rem; text-transform:uppercase; color:#64748B;">Technician Checklist:</strong>
-                <ul class="tech-checklist">
-                  <li class="tech-check-item"><input type="checkbox" checked> Ultrasonic radar scan baseboards</li>
-                  <li class="tech-check-item"><input type="checkbox" checked> 45-degree angle 12mm drill holes</li>
-                  <li class="tech-check-item"><input type="checkbox"> Premise termiticide pressurized injection</li>
-                  <li class="tech-check-item"><input type="checkbox"> Color-matched wax sealing & cleanup</li>
-                </ul>
-              </div>
-
-              <div style="display:flex; gap:0.5rem;">
-                <a href="tel:+919823044129" class="btn btn-white btn-sm" style="flex:1;">📞 Call</a>
-                <button class="btn btn-outline btn-sm" style="flex:1;" onclick="showToast('Launching Google Maps Navigation...', 'info')">🗺️ GPS</button>
-                <button class="btn btn-primary btn-sm btn-complete-job" style="flex:1.5;">Finish Job</button>
-              </div>
+          <!-- KPI Metrics Row -->
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
+            <div class="stat-card" style="background:#FFFFFF; padding:1.25rem; border-radius:12px; border:1px solid var(--border-subtle);">
+              <span style="font-size:0.8rem; color:#64748B; font-weight:600; text-transform:uppercase;">Total Technicians</span>
+              <div style="font-size:1.75rem; font-weight:800; color:#0F172A; margin-top:0.25rem;" id="techTotalCount">5</div>
             </div>
-
-            <!-- Job 2 -->
-            <div class="tech-job-card">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
-                <span class="badge badge-info">UPCOMING</span>
-                <span style="font-size:0.8rem; color:#64748B;">Slot: 03:00 PM</span>
-              </div>
-              <h3 style="font-size:1.15rem; margin-bottom:0.25rem;">Chef Ananya Deshmukh</h3>
-              <p style="color:#064E3B; font-weight:700; font-size:0.9rem; margin-bottom:0.5rem;">🍽️ Commercial Kitchen AMC & Baiting</p>
-              <p style="font-size:0.825rem; color:#64748B; margin-bottom:1rem;">
-                📍 Bistro Olive, Baner High Street, Pune
-              </p>
-
-              <div style="background:#F8FAFC; padding:0.75rem; border-radius:8px; margin-bottom:1rem;">
-                <strong style="font-size:0.78rem; text-transform:uppercase; color:#64748B;">Technician Checklist:</strong>
-                <ul class="tech-checklist">
-                  <li class="tech-check-item"><input type="checkbox"> Inspect 12 exterior bait stations</li>
-                  <li class="tech-check-item"><input type="checkbox"> Kitchen drain enzyme deep flush</li>
-                  <li class="tech-check-item"><input type="checkbox"> Log digital HACCP certificate</li>
-                </ul>
-              </div>
-
-              <div style="display:flex; gap:0.5rem;">
-                <a href="tel:+919890188320" class="btn btn-white btn-sm" style="flex:1;">📞 Call</a>
-                <button class="btn btn-outline btn-sm" style="flex:1;" onclick="showToast('Launching Google Maps Navigation...', 'info')">🗺️ GPS</button>
-                <button class="btn btn-primary btn-sm btn-complete-job" style="flex:1.5;">Start Job</button>
-              </div>
+            <div class="stat-card" style="background:#FFFFFF; padding:1.25rem; border-radius:12px; border:1px solid var(--border-subtle);">
+              <span style="font-size:0.8rem; color:#10B981; font-weight:600; text-transform:uppercase;">Active on Duty</span>
+              <div style="font-size:1.75rem; font-weight:800; color:#10B981; margin-top:0.25rem;" id="techActiveCount">4</div>
             </div>
+            <div class="stat-card" style="background:#FFFFFF; padding:1.25rem; border-radius:12px; border:1px solid var(--border-subtle);">
+              <span style="font-size:0.8rem; color:#0284C7; font-weight:600; text-transform:uppercase;">Available for Dispatch</span>
+              <div style="font-size:1.75rem; font-weight:800; color:#0284C7; margin-top:0.25rem;" id="techAvailableCount">3</div>
+            </div>
+            <div class="stat-card" style="background:#FFFFFF; padding:1.25rem; border-radius:12px; border:1px solid var(--border-subtle);">
+              <span style="font-size:0.8rem; color:#F59E0B; font-weight:600; text-transform:uppercase;">On Leave</span>
+              <div style="font-size:1.75rem; font-weight:800; color:#F59E0B; margin-top:0.25rem;" id="techLeaveCount">1</div>
+            </div>
+          </div>
+
+          <!-- Toolbar: Search & Filter -->
+          <div style="background:#FFFFFF; padding:1.25rem; border-radius:12px; border:1px solid var(--border-subtle); margin-bottom:1.5rem; display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap;">
+            <div style="display:flex; gap:0.75rem; flex-grow:1; max-width:550px;">
+              <input type="text" id="techSearchInput" class="form-control" placeholder="Search technician by name, phone, email, or skill..." style="padding:0.6rem 1rem;">
+            </div>
+            <div style="display:flex; gap:0.75rem; align-items:center;">
+              <select id="techFilterStatus" class="form-control" style="width:140px; padding:0.6rem;">
+                <option value="ALL">All Status</option>
+                <option value="ACTIVE" selected>ACTIVE</option>
+                <option value="ON_LEAVE">ON_LEAVE</option>
+                <option value="INACTIVE">INACTIVE</option>
+              </select>
+              <select id="techFilterAvailability" class="form-control" style="width:160px; padding:0.6rem;">
+                <option value="ALL">All Availability</option>
+                <option value="AVAILABLE">AVAILABLE</option>
+                <option value="ON_JOB">ON_JOB</option>
+                <option value="BUSY">BUSY</option>
+                <option value="OFF_DUTY">OFF_DUTY</option>
+              </select>
+              <button class="btn btn-white" onclick="renderAdminTechnicians()">🔄 Refresh</button>
+            </div>
+          </div>
+
+          <!-- Technicians Roster Grid -->
+          <div id="techniciansRosterGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(360px, 1fr)); gap:1.25rem;">
+            <!-- Hydrated dynamically by renderAdminTechnicians() -->
           </div>
         </section>
 
@@ -1658,6 +1654,75 @@
           </div>
         </div>
         <button id="btnSaveCmsArea" class="btn btn-primary" style="width:100%;">Save Coverage Area 📍</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 10: Technician Management Modal (Phase 5) -->
+  <div id="modalTechnician" class="modal-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center;">
+    <div class="modal-content" style="background:#FFFFFF; border-radius:12px; width:95%; max-width:620px; max-height:90vh; overflow-y:auto; box-shadow:0 20px 40px rgba(0,0,0,0.2);">
+      <div style="padding:1.25rem 1.5rem; border-bottom:1px solid #E2E8F0; display:flex; justify-content:space-between; align-items:center; background:#F8FAFC; border-radius:12px 12px 0 0;">
+        <h3 id="modalTechTitle" style="margin:0; font-size:1.15rem; color:#0F172A;">➕ Add New Field Technician</h3>
+        <button class="btn btn-sm btn-white" onclick="closeModalTech()">✕</button>
+      </div>
+      <div style="padding:1.5rem;">
+        <input type="hidden" id="techFormId">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+          <div class="form-group">
+            <label class="form-label">Full Name *</label>
+            <input type="text" id="techFormName" class="form-control" placeholder="e.g. Vikram Shinde" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Mobile Phone *</label>
+            <input type="text" id="techFormPhone" class="form-control" placeholder="+91 98230 44129" required>
+          </div>
+        </div>
+        <div style="display:grid; grid-template-columns:1.2fr 0.8fr; gap:0.75rem;">
+          <div class="form-group">
+            <label class="form-label">Email Address</label>
+            <input type="email" id="techFormEmail" class="form-control" placeholder="technician@universalpest.in">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Status *</label>
+            <select id="techFormStatus" class="form-control">
+              <option value="ACTIVE" selected>ACTIVE</option>
+              <option value="INACTIVE">INACTIVE</option>
+              <option value="ON_LEAVE">ON_LEAVE</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+          <div class="form-group">
+            <label class="form-label">Availability State *</label>
+            <select id="techFormAvailability" class="form-control">
+              <option value="AVAILABLE" selected>AVAILABLE</option>
+              <option value="ON_JOB">ON_JOB</option>
+              <option value="BUSY">BUSY</option>
+              <option value="OFF_DUTY">OFF_DUTY</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Specialization Summary</label>
+            <input type="text" id="techFormSpec" class="form-control" placeholder="e.g. Termite & Structural Audit">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Skills (comma-separated)</label>
+          <input type="text" id="techFormSkills" class="form-control" placeholder="e.g. Termite Radar Inspection, Herbal Cockroach Gel, Bedbug Steaming">
+          <small style="color:#64748B; font-size:0.75rem;">Enter certified skills separated by commas</small>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Assigned Service Areas (comma-separated)</label>
+          <input type="text" id="techFormAreas" class="form-control" placeholder="e.g. Kothrud, Baner, Wakad, Hinjawadi">
+          <small style="color:#64748B; font-size:0.75rem;">Coverage localities for route dispatch</small>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Profile Image URL</label>
+          <input type="text" id="techFormImage" class="form-control" placeholder="https://images.unsplash.com/photo-...">
+        </div>
+        <button id="btnSaveTechnician" class="btn btn-primary" style="width:100%; margin-top:0.5rem;" onclick="saveTechnicianFromModal()">
+          Save Technician Profile 👷
+        </button>
       </div>
     </div>
   </div>

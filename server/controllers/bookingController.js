@@ -90,6 +90,38 @@ const bookingController = {
       }
       next(error);
     }
+  },
+
+  async assignTechnician(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { technicianId } = req.body;
+      if (!technicianId) {
+        return apiError(res, 'technicianId is required.', 400);
+      }
+      const ipAddress = req.ip || req.connection.remoteAddress;
+      const updated = await bookingService.updateBooking(id, { technicianId, status: 'ASSIGNED' }, req.user, ipAddress);
+      return apiSuccess(res, updated, 'Technician assigned to booking successfully.');
+    } catch (error) {
+      if (error.message.includes('not found')) {
+        return apiError(res, error.message, 404);
+      }
+      next(error);
+    }
+  },
+
+  async getTracking(req, res, next) {
+    try {
+      const { idOrCode } = req.params;
+      const bookingModel = require('../models/bookingModel');
+      const trackingData = await bookingModel.getTrackingData(idOrCode);
+      if (!trackingData) {
+        return apiError(res, 'Booking not found for tracking.', 404);
+      }
+      return apiSuccess(res, trackingData, 'Booking tracking status retrieved.');
+    } catch (error) {
+      next(error);
+    }
   }
 };
 

@@ -1183,3 +1183,143 @@ function showToast(message, type = 'info') {
 window.showToast = showToast;
 window.switchView = switchView;
 window.openLeadModal = openLeadModal;
+
+/* 13. CUSTOMER LIVE BOOKING TRACKING (PHASE 5) */
+function openTrackBookingModal(defaultCode = '') {
+  const modal = document.getElementById('modalTrackBooking');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  const input = document.getElementById('trackBookingInput');
+  if (input) {
+    if (defaultCode) {
+      input.value = defaultCode;
+      searchCustomerBookingTracking();
+    }
+    input.focus();
+  }
+}
+
+function closeTrackBookingModal() {
+  const modal = document.getElementById('modalTrackBooking');
+  if (modal) modal.style.display = 'none';
+}
+
+async function searchCustomerBookingTracking() {
+  const input = document.getElementById('trackBookingInput');
+  const resultArea = document.getElementById('trackingResultArea');
+  if (!input || !resultArea) return;
+
+  const query = input.value.trim();
+  if (!query) {
+    showToast('Please enter your Booking Code or Phone Number', 'error');
+    return;
+  }
+
+  resultArea.style.display = 'block';
+  resultArea.innerHTML = `
+    <div style="text-align:center; padding:2rem; color:#64748B;">
+      Connecting to dispatch telemetry... 📡
+    </div>
+  `;
+
+  try {
+    if (!window.upcApi || !window.upcApi.bookings) {
+      throw new Error('API client not available.');
+    }
+
+    const res = await window.upcApi.bookings.getTracking(query);
+    const data = res.data;
+
+    if (!data) {
+      resultArea.innerHTML = `
+        <div style="background:#FEF2F2; border:1px solid #FCA5A5; color:#991B1B; padding:1.25rem; border-radius:10px; text-align:center;">
+          No active booking found matching "${escapeHtml(query)}". Please verify your booking reference code.
+        </div>
+      `;
+      return;
+    }
+
+    const tech = data.technician;
+    const stages = data.stages || [];
+
+    resultArea.innerHTML = `
+      <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:12px; padding:1.25rem; margin-bottom:1.25rem;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.75rem;">
+          <div>
+            <div style="font-size:0.75rem; color:#64748B; font-weight:700;">BOOKING REFERENCE</div>
+            <strong style="font-size:1.15rem; color:#0F172A;">${escapeHtml(data.bookingCode)}</strong>
+          </div>
+          <span class="badge ${data.currentStatus === 'COMPLETED' ? 'badge-success' : 'badge-primary'}" style="font-size:0.8rem; padding:0.35rem 0.65rem;">
+            ${data.currentStatus}
+          </span>
+        </div>
+        <div style="font-size:0.88rem; color:#334155; line-height:1.5;">
+          <div><strong>Service:</strong> ${escapeHtml(data.serviceName)} (${escapeHtml(data.propertyType || 'Residential')})</div>
+          <div><strong>Appointment:</strong> 📅 ${data.scheduledDate} • ⏰ ${escapeHtml(data.timeSlot)}</div>
+          <div><strong>Address:</strong> 📍 ${escapeHtml(data.address || 'Address on file')}, ${escapeHtml(data.city || 'Pune')}</div>
+        </div>
+      </div>
+
+      <!-- Assigned Technician Card -->
+      ${tech ? `
+        <div style="background:#ECFDF5; border:1px solid #A7F3D0; border-radius:12px; padding:1rem; margin-bottom:1.5rem; display:flex; align-items:center; gap:0.85rem;">
+          <img src="${escapeHtml(tech.profileImage)}" alt="${escapeHtml(tech.name)}"
+               style="width:52px; height:52px; border-radius:50%; object-fit:cover; border:2px solid #10B981;">
+          <div style="flex-grow:1;">
+            <div style="font-size:0.72rem; color:#065F46; font-weight:700; text-transform:uppercase;">Assigned Certified Technician</div>
+            <div style="font-size:1.05rem; font-weight:800; color:#064E3B;">${escapeHtml(tech.name)}</div>
+            <div style="font-size:0.8rem; color:#047857;">⭐ ${tech.rating || 4.9} Verified Specialist • <a href="tel:${escapeHtml(tech.phone)}" style="color:#065F46; font-weight:700; text-decoration:underline;">${escapeHtml(tech.phone)}</a></div>
+          </div>
+          <a href="tel:${escapeHtml(tech.phone)}" class="btn btn-sm btn-primary" style="padding:0.4rem 0.8rem; border-radius:8px; text-decoration:none;">
+            📞 Call
+          </a>
+        </div>
+      ` : `
+        <div style="background:#FFFBEB; border:1px solid #FDE68A; border-radius:10px; padding:0.85rem; margin-bottom:1.5rem; font-size:0.85rem; color:#92400E;">
+          ⏳ <strong>Technician Dispatch:</strong> Our operations manager is currently assigning the nearest certified specialist in your zone.
+        </div>
+      `}
+
+      <!-- Milestones Timeline -->
+      <div style="margin-top:1rem;">
+        <div style="font-size:0.75rem; text-transform:uppercase; font-weight:700; color:#64748B; margin-bottom:0.75rem; letter-spacing:0.04em;">SERVICE PROGRESS MILESTONES</div>
+        <div style="display:flex; flex-direction:column; gap:0.85rem; position:relative; padding-left:1.75rem;">
+          <div style="position:absolute; left:9px; top:8px; bottom:8px; width:2px; background:#E2E8F0;"></div>
+          ${stages.map((st, i) => {
+            const isCompleted = st.completed;
+            const isActive = st.active;
+            const dotColor = isCompleted ? '#10B981' : (isActive ? '#0284C7' : '#CBD5E1');
+            const icon = isCompleted ? '✓' : (isActive ? '●' : (i + 1));
+            return `
+              <div style="position:relative;">
+                <div style="position:absolute; left:-1.75rem; top:2px; width:20px; height:20px; border-radius:50%; background:${dotColor}; color:#FFFFFF; font-size:0.7rem; font-weight:800; display:flex; align-items:center; justify-content:center; box-shadow:0 0 0 3px #FFFFFF;">
+                  ${icon}
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:baseline;">
+                  <strong style="font-size:0.92rem; color:${isCompleted || isActive ? '#0F172A' : '#94A3B8'};">
+                    ${escapeHtml(st.label)}
+                  </strong>
+                  ${st.timestamp ? `<span style="font-size:0.75rem; color:#64748B;">${new Date(st.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>` : ''}
+                </div>
+                <div style="font-size:0.8rem; color:#64748B; margin-top:0.15rem;">
+                  ${escapeHtml(st.description)}
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  } catch (err) {
+    resultArea.innerHTML = `
+      <div style="background:#FEF2F2; border:1px solid #FCA5A5; color:#991B1B; padding:1.25rem; border-radius:10px; text-align:center;">
+        Failed to fetch tracking data: ${err.message}
+      </div>
+    `;
+  }
+}
+
+// Global exposes
+window.openTrackBookingModal = openTrackBookingModal;
+window.closeTrackBookingModal = closeTrackBookingModal;
+window.searchCustomerBookingTracking = searchCustomerBookingTracking;

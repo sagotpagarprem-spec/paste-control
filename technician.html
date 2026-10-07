@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Field Ops & Technician Portal | Universal Pest Control</title>
+  <meta name="description" content="Mobile-first technician field dispatch interface for job execution, customer navigation, and status tracking.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/admin.css">
+  <style>
+    :root {
+      --tech-bg: #F1F5F9;
+      --tech-card: #FFFFFF;
+      --tech-header: #022C22;
+      --tech-accent: #10B981;
+      --tech-primary: #065F46;
+      --tech-blue: #0284C7;
+      --tech-text: #0F172A;
+      --tech-sub: #64748B;
+    }
+
+    body {
+      background: var(--tech-bg);
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+      padding: 0;
+      color: var(--tech-text);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .tech-app-header {
+      background: var(--tech-header);
+      color: #FFFFFF;
+      padding: 1rem 1.25rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    }
+
+    .tech-header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+
+    .tech-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: #FFFFFF;
+      text-decoration: none;
+    }
+
+    .tech-profile-bar {
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 0.6rem 0.85rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .tech-avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid var(--tech-accent);
+      flex-shrink: 0;
+    }
+
+    .tech-tabs {
+      display: flex;
+      background: #FFFFFF;
+      border-bottom: 1px solid #E2E8F0;
+      position: sticky;
+      top: 106px;
+      z-index: 90;
+    }
+
+    .tech-tab-btn {
+      flex: 1;
+      text-align: center;
+      padding: 0.85rem 0.5rem;
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--tech-sub);
+      border: none;
+      background: none;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+      transition: all 0.2s;
+    }
+
+    .tech-tab-btn.active {
+      color: var(--tech-primary);
+      border-bottom-color: var(--tech-accent);
+      background: #F0FDF4;
+    }
+
+    .tech-badge-count {
+      font-size: 0.72rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 999px;
+      background: #E2E8F0;
+      color: #334155;
+    }
+
+    .tech-tab-btn.active .tech-badge-count {
+      background: var(--tech-accent);
+      color: #FFFFFF;
+    }
+
+    .tech-container {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 1rem 1rem 4rem 1rem;
+    }
+
+    .tech-job-card {
+      background: #FFFFFF;
+      border-radius: 14px;
+      border: 1px solid #E2E8F0;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .tech-job-card:active {
+      transform: scale(0.99);
+    }
+
+    .job-badge {
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 0.25rem 0.65rem;
+      border-radius: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .badge-ASSIGNED { background: #E0E7FF; color: #3730A3; }
+    .badge-ACCEPTED { background: #FEF3C7; color: #92400E; }
+    .badge-ON_THE_WAY { background: #DBEAFE; color: #1E40AF; }
+    .badge-ARRIVED { background: #E0F2FE; color: #0369A1; }
+    .badge-IN_PROGRESS { background: #FEF08A; color: #854D0E; }
+    .badge-COMPLETED { background: #DCFCE7; color: #166534; }
+    .badge-CANCELLED { background: #FEE2E2; color: #991B1B; }
+
+    .job-action-btn {
+      flex: 1;
+      padding: 0.75rem 0.5rem;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 0.88rem;
+      text-align: center;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-call { background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; }
+    .btn-navigate { background: #F0FDF4; color: #15803D; border: 1px solid #BBF7D0; }
+    .btn-accept { background: #F59E0B; color: #FFFFFF; }
+    .btn-ontheway { background: #2563EB; color: #FFFFFF; }
+    .btn-arrive { background: #0284C7; color: #FFFFFF; }
+    .btn-start { background: #D97706; color: #FFFFFF; }
+    .btn-complete { background: #10B981; color: #FFFFFF; }
+  </style>
+</head>
+<body>
+
+  <!-- Top Mobile-Friendly Ops Header -->
+  <header class="tech-app-header">
+    <div class="tech-header-top">
+      <a href="index.html" class="tech-brand">
+        🛡️ <span>Universal Pest Ops</span>
+      </a>
+      <div style="display:flex; gap:0.5rem; align-items:center;">
+        <a href="admin.html" style="color:#94A3B8; text-decoration:none; font-size:0.8rem; background:rgba(255,255,255,0.1); padding:0.35rem 0.7rem; border-radius:6px;">
+          ⚙️ Admin
+        </a>
+      </div>
+    </div>
+
+    <!-- Active Technician Profile & Switcher -->
+    <div class="tech-profile-bar">
+      <div style="display:flex; align-items:center; gap:0.65rem;">
+        <img id="techHeaderAvatar" class="tech-avatar" src="https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&w=120&q=80" alt="Technician">
+        <div>
+          <div style="font-size:0.72rem; color:#94A3B8; text-transform:uppercase; font-weight:700;">Field Technician</div>
+          <select id="techActiveSelect" style="background:transparent; border:none; color:#FFFFFF; font-weight:700; font-size:0.95rem; cursor:pointer; outline:none; padding:0;">
+            <!-- Populated dynamically -->
+          </select>
+        </div>
+      </div>
+      <div>
+        <select id="techHeaderAvailSelect" style="background:#064E3B; color:#A7F3D0; border:1px solid #059669; border-radius:6px; padding:0.35rem 0.5rem; font-size:0.75rem; font-weight:700;">
+          <option value="AVAILABLE">🟢 Available</option>
+          <option value="ON_JOB">🟡 On Job</option>
+          <option value="OFF_DUTY">⚪ Off Duty</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <!-- Sticky Job Schedule Navigation Tabs -->
+  <nav class="tech-tabs">
+    <button class="tech-tab-btn active" id="tabBtnToday" onclick="switchTechTab('today')">
+      ⚡ Today's Jobs <span class="tech-badge-count" id="countToday">0</span>
+    </button>
+    <button class="tech-tab-btn" id="tabBtnUpcoming" onclick="switchTechTab('upcoming')">
+      📅 Upcoming <span class="tech-badge-count" id="countUpcoming">0</span>
+    </button>
+    <button class="tech-tab-btn" id="tabBtnCompleted" onclick="switchTechTab('completed')">
+      ✅ Completed <span class="tech-badge-count" id="countCompleted">0</span>
+    </button>
+  </nav>
+
+  <!-- Main Viewport -->
+  <main class="tech-container">
+    <!-- Active Tab Banner -->
+    <div id="techDateBanner" style="font-size:0.8rem; color:#64748B; font-weight:600; margin-bottom:1rem; display:flex; justify-content:space-between; align-items:center;">
+      <span>📅 Field Route Schedule</span>
+      <span id="techTodayDateLabel" style="color:#0F172A; font-weight:700;">Today</span>
+    </div>
+
+    <!-- Jobs Stream List -->
+    <div id="techJobsList">
+      <div style="text-align:center; padding:3rem 1rem; color:#94A3B8;">
+        Loading assigned jobs...
+      </div>
+    </div>
+  </main>
+
+  <!-- Notification Toast Container -->
+  <div id="toastContainer" style="position:fixed; bottom:1.5rem; right:1.5rem; z-index:9999; display:flex; flex-direction:column; gap:0.5rem;"></div>
+
+  <!-- Scripts -->
+  <script src="js/api-client.js"></script>
+  <script src="js/technician.js"></script>
+</body>
+</html>
