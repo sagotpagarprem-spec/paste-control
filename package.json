@@ -1,0 +1,20 @@
+{
+  "name": "universal-pest-control",
+  "version": "1.0.0",
+  "description": "Universal Pest Control — Premium Pest Control Website, CRM & Advertising Platform",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "pest-control",
+    "lead-gen",
+    "crm",
+    "meta-ads",
+    "creative-studio",
+    "booking-system"
+  ],
+  "author": "Universal Pest Control",
+  "license": "ISC"
+}

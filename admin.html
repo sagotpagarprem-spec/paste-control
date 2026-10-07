@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Universal Pest Control | Enterprise Admin CRM & Ads Platform</title>
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/admin.css">
+  <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body style="background:#F8FAFC;">
+
+  <div class="admin-layout">
+
+    <!-- 1. ADMIN SIDEBAR -->
+    <aside class="admin-sidebar">
+      <div class="admin-sidebar-header">
+        <div class="brand-icon-shield" style="width:36px; height:36px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            <path d="m9 12 2 2 4-4"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <span class="brand-title" style="color:#FFFFFF; font-size:1.1rem;">UPC <span>ENTERPRISE</span></span>
+          <span class="brand-tagline" style="color:#94A3B8; font-size:0.6rem;">CRM & Ads Command</span>
+        </div>
+      </div>
+
+      <div class="admin-nav-group">Core Operations</div>
+      <ul class="admin-nav-menu">
+        <li class="admin-nav-item active" data-admin-view="overview">
+          <a>📊 Overview Dashboard</a>
+        </li>
+        <li class="admin-nav-item" data-admin-view="leads">
+          <a>
+            👥 Lead CRM
+            <span class="admin-nav-badge" id="sidebarNewLeadsBadge">Live</span>
+          </a>
+        </li>
+        <li class="admin-nav-item" data-admin-view="bookings">
+          <a>📋 Service Bookings</a>
+        </li>
+        <li class="admin-nav-item" data-admin-view="followups">
+          <a>
+            📅 Follow-up System
+            <span class="badge badge-warning" style="font-size:0.65rem;">Due: 2</span>
+          </a>
+        </li>
+        <li class="admin-nav-item" data-admin-view="technicians">
+          <a>👷 Technician Dispatch</a>
+        </li>
+      </ul>
+
+      <div class="admin-nav-group">Growth & Ads Studio</div>
+      <ul class="admin-nav-menu">
+        <li class="admin-nav-item" data-admin-view="creative-studio">
+          <a style="color:#34D399;">
+            🎨 Creative Studio & AI
+            <span class="badge badge-primary" style="font-size:0.65rem;">AI</span>
+          </a>
+        </li>
+        <li class="admin-nav-item" data-admin-view="meta-ads">
+          <a>📢 Meta & Lead Ads</a>
+        </li>
+        <li class="admin-nav-item" data-admin-view="whatsapp">
+          <a>💬 WhatsApp Business</a>
+        </li>
+        <li class="admin-nav-item" data-admin-view="analytics">
+          <a>📈 Attribution & ROI</a>
+        </li>
+      </ul>
+
+      <div class="admin-sidebar-footer">
+        <a href="index.html" class="btn btn-white btn-sm" style="font-size:0.8rem; width:100%; justify-content:center;">
+          🌐 Back to Public Website
+        </a>
+      </div>
+    </aside>
+
+    <!-- 2. ADMIN MAIN VIEWPORT -->
+    <div class="admin-main">
+
+      <!-- Topbar Header -->
+      <header class="admin-topbar">
+        <div style="display:flex; align-items:center; gap:1rem;">
+          <button id="adminSidebarToggle" class="mobile-toggle" style="display:inline-block;">☰</button>
+          <div class="admin-search-box">
+            <span>🔍</span>
+            <input type="text" id="crmSearchInput" placeholder="Search leads, phone, service, locality...">
+          </div>
+        </div>
+
+        <div class="admin-topbar-actions">
+          <button class="btn btn-accent btn-sm" onclick="openLeadModal({ property:'Home', pest:'General' })">
+            <span>+ Add New Lead</span>
+          </button>
+
+          <!-- Notification Bell -->
+          <div style="position:relative;">
+            <button id="btnAdminNotifBell" class="btn btn-white btn-sm" style="padding:0.6rem; border-radius:50%;">
+              🔔
+            </button>
+            <span id="adminNotifCount" class="badge badge-danger" style="position:absolute; top:-5px; right:-5px; padding:0.15rem 0.4rem; font-size:0.68rem;">3</span>
+          </div>
+
+          <!-- User Profile Badge -->
+          <div style="display:flex; align-items:center; gap:0.5rem; background:#F1F5F9; padding:0.35rem 0.75rem; border-radius:var(--radius-full);">
+            <div style="width:28px; height:28px; border-radius:50%; background:#064E3B; color:#fff; display:flex; align-items:center; justify-content:center; font-size:0.75rem; font-weight:700;">VS</div>
+            <span style="font-size:0.825rem; font-weight:700; color:#0F172A;">Vikram (Admin)</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Main Content Area -->
+      <div class="admin-content-area">
+
+        <!-- ==================== SECTION 1: OVERVIEW DASHBOARD ==================== -->
+        <section id="admin-sec-overview" class="admin-view-section" style="display:block;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+            <div>
+              <h2 style="font-size:1.75rem; margin-bottom:0.25rem;">Executive Performance Overview</h2>
+              <p style="color:#64748B; font-size:0.875rem; margin:0;">Real-time synchronized funnel tracking from Meta Lead Ads to Dispatched Bookings.</p>
+            </div>
+            <span class="badge badge-success">● Cloud Real-time Synced</span>
+          </div>
+
+          <!-- KPI Cards Grid -->
+          <div class="kpi-cards-grid">
+            <div class="kpi-card">
+              <div class="kpi-header">
+                <span class="kpi-title">Total Inbound Leads</span>
+                <div class="kpi-icon-wrap">👥</div>
+              </div>
+              <div class="kpi-value" id="kpiTotalLeads">5</div>
+              <div class="kpi-trend up">
+                <span>↑ 24.5%</span> <span style="color:#64748B; font-weight:normal;">vs last week</span>
+              </div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-header">
+                <span class="kpi-title">New Untouched Leads</span>
+                <div class="kpi-icon-wrap" style="background:#EFF6FF; color:#3B82F6;">⚡</div>
+              </div>
+              <div class="kpi-value" id="kpiNewLeads" style="color:#3B82F6;">1</div>
+              <div class="kpi-trend up">
+                <span>Requires 15m SLA</span>
+              </div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-header">
+                <span class="kpi-title">Confirmed Bookings</span>
+                <div class="kpi-icon-wrap" style="background:#ECFDF5; color:#10B981;">📋</div>
+              </div>
+              <div class="kpi-value" id="kpiBookings" style="color:#059669;">3</div>
+              <div class="kpi-trend up">
+                <span>↑ 18.2%</span> <span style="color:#64748B; font-weight:normal;">close rate</span>
+              </div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-header">
+                <span class="kpi-title">Pipeline Revenue</span>
+                <div class="kpi-icon-wrap" style="background:#FFFBEB; color:#F59E0B;">₹</div>
+              </div>
+              <div class="kpi-value" id="kpiRevenue" style="color:#B45309;">₹1,45,500</div>
+              <div class="kpi-trend up">
+                <span>Avg Deal: ₹14.8k</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Charts Row -->
+          <div class="admin-charts-grid">
+            <div class="chart-card">
+              <div class="chart-card-header">
+                <div>
+                  <h3 style="font-size:1.15rem; margin-bottom:0.25rem;">Lead Generation Velocity (7-Day Trend)</h3>
+                  <p style="color:#64748B; font-size:0.8rem; margin:0;">Inbound submissions across Instagram, Facebook, and Web channels.</p>
+                </div>
+                <span class="badge badge-primary">Daily Metrics</span>
+              </div>
+              <div id="chartLeadsOverTime" class="chart-container-svg">
+                <!-- SVG Area Chart Rendered by JS -->
+              </div>
+            </div>
+
+            <div class="chart-card">
+              <div class="chart-card-header">
+                <div>
+                  <h3 style="font-size:1.15rem; margin-bottom:0.25rem;">Service Revenue Breakdown</h3>
+                  <p style="color:#64748B; font-size:0.8rem; margin:0;">High-ticket commercial vs residential share.</p>
+                </div>
+              </div>
+              <div id="chartServiceBreakdown" style="height:240px;">
+                <!-- Breakdown Bars Rendered by JS -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Recent Bookings Quick Table -->
+          <div class="crm-table-card">
+            <div class="table-toolbar">
+              <h3 style="font-size:1.1rem; margin:0;">Today's Dispatched Bookings</h3>
+              <button class="btn btn-outline btn-sm" onclick="switchAdminSection('bookings')">View All Bookings →</button>
+            </div>
+            <table class="crm-data-table">
+              <thead>
+                <tr>
+                  <th>Booking ID</th>
+                  <th>Customer</th>
+                  <th>Service</th>
+                  <th>Time Slot</th>
+                  <th>Technician</th>
+                  <th>Status</th>
+                  <th>Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>UPC-2026-8941</strong></td>
+                  <td>Dr. Rajiv Malhotra</td>
+                  <td>Termite Radar Inspection</td>
+                  <td>11:00 AM – 01:00 PM</td>
+                  <td>Vikram Shinde</td>
+                  <td><span class="badge badge-primary">Assigned</span></td>
+                  <td><strong>₹14,500</strong></td>
+                </tr>
+                <tr>
+                  <td><strong>UPC-2026-8942</strong></td>
+                  <td>Chef Ananya Deshmukh</td>
+                  <td>Commercial Pest & Cockroach Gel AMC</td>
+                  <td>03:00 PM – 05:00 PM</td>
+                  <td>Ramesh Pawar</td>
+                  <td><span class="badge badge-success">Confirmed</span></td>
+                  <td><strong>₹28,000</strong></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ==================== SECTION 2: LEAD MANAGEMENT CRM ==================== -->
+        <section id="admin-sec-leads" class="admin-view-section" style="display:none;">
+          <div class="kanban-view-header">
+            <div>
+              <h2 style="font-size:1.75rem; margin-bottom:0.25rem;">Lead Management Pipeline</h2>
+              <p style="color:#64748B; font-size:0.875rem; margin:0;">9-Stage conversion lifecycle. Click any lead card to open the complete customer timeline.</p>
+            </div>
+            <div style="display:flex; gap:0.5rem;">
+              <button class="btn btn-white btn-sm" id="btnToggleTableView" onclick="document.getElementById('crmKanbanWrapper').style.display = document.getElementById('crmKanbanWrapper').style.display === 'none' ? 'block' : 'none'; document.getElementById('crmTableWrapper').style.display = document.getElementById('crmTableWrapper').style.display === 'none' ? 'block' : 'none';">
+                Toggle Table / Kanban View
+              </button>
+              <button class="btn btn-accent btn-sm" onclick="openLeadModal()">+ Create Inbound Lead</button>
+            </div>
+          </div>
+
+          <!-- KANBAN BOARD CONTAINER -->
+          <div id="crmKanbanWrapper">
+            <div id="crmKanbanContainer" class="kanban-board-container">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+
+          <!-- TABLE VIEW CONTAINER -->
+          <div id="crmTableWrapper" style="display:none;">
+            <div class="crm-table-card">
+              <div class="table-toolbar">
+                <div class="table-filters">
+                  <span style="font-size:0.85rem; font-weight:700;">Filter:</span>
+                  <select class="form-control" style="padding:0.4rem 0.8rem; font-size:0.85rem; width:180px;">
+                    <option>All Services</option>
+                    <option>Termite Control</option>
+                    <option>Cockroach Gel</option>
+                    <option>Commercial</option>
+                  </select>
+                </div>
+                <div>
+                  <button class="btn btn-white btn-sm">Export CSV</button>
+                </div>
+              </div>
+              <table class="crm-data-table">
+                <thead>
+                  <tr>
+                    <th>Lead ID</th>
+                    <th>Customer Name & Phone</th>
+                    <th>Service Required</th>
+                    <th>Property</th>
+                    <th>Locality</th>
+                    <th>Source</th>
+                    <th>Status</th>
+                    <th>Est. Value</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="crmTableBody">
+                  <!-- Populated via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================== SECTION 3: BOOKINGS OPERATIONS ==================== -->
+        <section id="admin-sec-bookings" class="admin-view-section" style="display:none;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+            <div>
+              <h2 style="font-size:1.75rem; margin-bottom:0.25rem;">Service Bookings Management</h2>
+              <p style="color:#64748B; font-size:0.875rem; margin:0;">Active field technician assignments, schedule slots, and completion states.</p>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="window.switchView('booking')">+ New Public Booking</button>
+          </div>
+
+          <div class="crm-table-card">
+            <table class="crm-data-table">
+              <thead>
+                <tr>
+                  <th>Booking ID</th>
+                  <th>Customer Name</th>
+                  <th>Service</th>
+                  <th>Scheduled Date</th>
+                  <th>Time Window</th>
+                  <th>Technician</th>
+                  <th>Status</th>
+                  <th>Amount</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>UPC-2026-8941</strong></td>
+                  <td>Dr. Rajiv Malhotra<br><span style="font-size:0.75rem; color:#64748B;">+91 98230 44129</span></td>
+                  <td>Termite Radar Inspection</td>
+                  <td>Oct 06, 2026</td>
+                  <td>11:00 AM – 01:00 PM</td>
+                  <td>Vikram Shinde</td>
+                  <td><span class="badge badge-primary">Assigned</span></td>
+                  <td><strong>₹14,500</strong></td>
+                  <td>
+                    <button class="btn btn-sm btn-white" onclick="showToast('Dispatch SMS sent to technician', 'info')">Re-assign</button>
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>UPC-2026-8942</strong></td>
+                  <td>Chef Ananya Deshmukh<br><span style="font-size:0.75rem; color:#64748B;">+91 98901 88320</span></td>
+                  <td>Commercial Kitchen & Cockroach Gel AMC</td>
+                  <td>Oct 06, 2026</td>
+                  <td>03:00 PM – 05:00 PM</td>
+                  <td>Ramesh Pawar</td>
+                  <td><span class="badge badge-success">Confirmed</span></td>
+                  <td><strong>₹28,000</strong></td>
+                  <td>
+                    <button class="btn btn-sm btn-white" onclick="showToast('Status verified', 'info')">Update</button>
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>UPC-2026-8943</strong></td>
+                  <td>Sanjay Deshpande<br><span style="font-size:0.75rem; color:#64748B;">+91 98811 55221</span></td>
+                  <td>Mosquito Fogging & Anti-Larval</td>
+                  <td>Oct 07, 2026</td>
+                  <td>09:00 AM – 11:00 AM</td>
+                  <td>Santosh Jadhav</td>
+                  <td><span class="badge badge-warning">Pending</span></td>
+                  <td><strong>₹8,500</strong></td>
+                  <td>
+                    <button class="btn btn-sm btn-accent" onclick="showToast('Technician assigned', 'success')">Assign</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ==================== SECTION 3B: FOLLOW-UP MANAGEMENT SYSTEM ==================== -->
+        <section id="admin-sec-followups" class="admin-view-section" style="display:none;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+            <div>
+              <h2 style="font-size:1.75rem; margin-bottom:0.25rem;">Follow-Up & Reminder Pipeline</h2>
+              <p style="color:#64748B; font-size:0.875rem; margin:0;">Automated reminders for site inspections, quotation clearances, and post-service AMC renewals.</p>
+            </div>
+            <div style="display:flex; gap:0.5rem;">
+              <span class="badge badge-danger">1 Overdue</span>
+              <span class="badge badge-warning">2 Today</span>
+              <span class="badge badge-primary">3 Upcoming</span>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:1.5rem; margin-bottom:2rem;">
+            <!-- Overdue -->
+            <div style="background:#fff; border-radius:12px; border:1px solid #FECACA; padding:1.25rem; box-shadow:var(--shadow-sm);">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <h3 style="font-size:1rem; color:#B91C1C; margin:0;">⚠️ Overdue Follow-ups</h3>
+                <span class="badge badge-danger">1</span>
+              </div>
+              <div style="background:#FEF2F2; border-radius:8px; padding:1rem; border:1px solid #FCA5A5; margin-bottom:0.75rem;">
+                <div style="font-weight:700; color:#0F172A; font-size:0.925rem;">Sameer Khandelwal</div>
+                <div style="font-size:0.78rem; color:#64748B;">German Cockroach Gel Quote</div>
+                <div style="font-size:0.75rem; color:#B91C1C; margin:0.4rem 0; font-weight:700;">Overdue by 2 hours • +91 97654 22091</div>
+                <div style="display:flex; gap:0.4rem; margin-top:0.5rem;">
+                  <button class="btn btn-sm btn-whatsapp" style="padding:0.25rem 0.5rem; font-size:0.75rem;" onclick="triggerWhatsAppChat('+91 97654 22091', 'Sameer Khandelwal')">WA Remind</button>
+                  <button class="btn btn-sm btn-white" style="padding:0.25rem 0.5rem; font-size:0.75rem;" onclick="showToast('Follow-up cleared', 'success')">Done ✓</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Today -->
+            <div style="background:#fff; border-radius:12px; border:1px solid #FDE68A; padding:1.25rem; box-shadow:var(--shadow-sm);">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <h3 style="font-size:1rem; color:#B45309; margin:0;">⏰ Today's Scheduled</h3>
+                <span class="badge badge-warning">2</span>
+              </div>
+              <div style="background:#FFFBEB; border-radius:8px; padding:1rem; border:1px solid #FCD34D; margin-bottom:0.75rem;">
+                <div style="font-weight:700; color:#0F172A; font-size:0.925rem;">Dr. Rajiv Malhotra</div>
+                <div style="font-size:0.78rem; color:#64748B;">Termite Radar Inspection Slot</div>
+                <div style="font-size:0.75rem; color:#B45309; margin:0.4rem 0; font-weight:700;">Scheduled for 11:30 AM • Assigned: Vikram</div>
+                <div style="display:flex; gap:0.4rem; margin-top:0.5rem;">
+                  <button class="btn btn-sm btn-primary" style="padding:0.25rem 0.5rem; font-size:0.75rem;" onclick="showToast('Calling Dr. Rajiv...', 'info')">Call</button>
+                  <button class="btn btn-sm btn-white" style="padding:0.25rem 0.5rem; font-size:0.75rem;" onclick="showToast('Marked completed', 'success')">Done ✓</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Upcoming -->
+            <div style="background:#fff; border-radius:12px; border:1px solid #E2E8F0; padding:1.25rem; box-shadow:var(--shadow-sm);">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <h3 style="font-size:1rem; color:#064E3B; margin:0;">📅 Upcoming (Next 48h)</h3>
+                <span class="badge badge-primary">3</span>
+              </div>
+              <div style="background:#F8FAFC; border-radius:8px; padding:1rem; border:1px solid #E2E8F0; margin-bottom:0.75rem;">
+                <div style="font-weight:700; color:#0F172A; font-size:0.925rem;">Adarsh Logistics Park</div>
+                <div style="font-size:0.78rem; color:#64748B;">Warehouse Rodent Barrier Contract Renewal</div>
+                <div style="font-size:0.75rem; color:#64748B; margin:0.4rem 0;">Tomorrow 09:00 AM • Contract PO Follow-up</div>
+                <div style="display:flex; gap:0.4rem; margin-top:0.5rem;">
+                  <button class="btn btn-sm btn-white" style="padding:0.25rem 0.5rem; font-size:0.75rem;" onclick="showToast('Reminder notification queued', 'info')">Snooze</button>
+                  <button class="btn btn-sm btn-outline" style="padding:0.25rem 0.5rem; font-size:0.75rem;" onclick="openLeadDrawer('LD-905')">Open Lead</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================== SECTION 4: TECHNICIAN DISPATCH VIEW ==================== -->
+        <section id="admin-sec-technicians" class="admin-view-section" style="display:none;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+            <div>
+              <h2 style="font-size:1.75rem; margin-bottom:0.25rem;">Technician Field Dispatch Interface</h2>
+              <p style="color:#64748B; font-size:0.875rem; margin:0;">Mobile-first field screen used by service technicians on the ground.</p>
+            </div>
+            <span class="badge badge-primary">GPS Fleet Active</span>
+          </div>
+
+          <div class="technician-jobs-grid">
+            <!-- Job 1 -->
+            <div class="tech-job-card">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                <span class="badge badge-warning">IN PROGRESS</span>
+                <span style="font-size:0.8rem; color:#64748B;">Slot: 11:00 AM</span>
+              </div>
+              <h3 style="font-size:1.15rem; margin-bottom:0.25rem;">Dr. Rajiv Malhotra</h3>
+              <p style="color:#064E3B; font-weight:700; font-size:0.9rem; margin-bottom:0.5rem;">🪵 Termite Radar Detection & Barrier</p>
+              <p style="font-size:0.825rem; color:#64748B; margin-bottom:1rem;">
+                📍 Bungalow 14, Lane 7, Koregaon Park, Pune
+              </p>
+
+              <div style="background:#F8FAFC; padding:0.75rem; border-radius:8px; margin-bottom:1rem;">
+                <strong style="font-size:0.78rem; text-transform:uppercase; color:#64748B;">Technician Checklist:</strong>
+                <ul class="tech-checklist">
+                  <li class="tech-check-item"><input type="checkbox" checked> Ultrasonic radar scan baseboards</li>
+                  <li class="tech-check-item"><input type="checkbox" checked> 45-degree angle 12mm drill holes</li>
+                  <li class="tech-check-item"><input type="checkbox"> Premise termiticide pressurized injection</li>
+                  <li class="tech-check-item"><input type="checkbox"> Color-matched wax sealing & cleanup</li>
+                </ul>
+              </div>
+
+              <div style="display:flex; gap:0.5rem;">
+                <a href="tel:+919823044129" class="btn btn-white btn-sm" style="flex:1;">📞 Call</a>
+                <button class="btn btn-outline btn-sm" style="flex:1;" onclick="showToast('Launching Google Maps Navigation...', 'info')">🗺️ GPS</button>
+                <button class="btn btn-primary btn-sm btn-complete-job" style="flex:1.5;">Finish Job</button>
+              </div>
+            </div>
+
+            <!-- Job 2 -->
+            <div class="tech-job-card">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                <span class="badge badge-info">UPCOMING</span>
+                <span style="font-size:0.8rem; color:#64748B;">Slot: 03:00 PM</span>
+              </div>
+              <h3 style="font-size:1.15rem; margin-bottom:0.25rem;">Chef Ananya Deshmukh</h3>
+              <p style="color:#064E3B; font-weight:700; font-size:0.9rem; margin-bottom:0.5rem;">🍽️ Commercial Kitchen AMC & Baiting</p>
+              <p style="font-size:0.825rem; color:#64748B; margin-bottom:1rem;">
+                📍 Bistro Olive, Baner High Street, Pune
+              </p>
+
+              <div style="background:#F8FAFC; padding:0.75rem; border-radius:8px; margin-bottom:1rem;">
+                <strong style="font-size:0.78rem; text-transform:uppercase; color:#64748B;">Technician Checklist:</strong>
+                <ul class="tech-checklist">
+                  <li class="tech-check-item"><input type="checkbox"> Inspect 12 exterior bait stations</li>
+                  <li class="tech-check-item"><input type="checkbox"> Kitchen drain enzyme deep flush</li>
+                  <li class="tech-check-item"><input type="checkbox"> Log digital HACCP certificate</li>
+                </ul>
+              </div>
+
+              <div style="display:flex; gap:0.5rem;">
+                <a href="tel:+919890188320" class="btn btn-white btn-sm" style="flex:1;">📞 Call</a>
+                <button class="btn btn-outline btn-sm" style="flex:1;" onclick="showToast('Launching Google Maps Navigation...', 'info')">🗺️ GPS</button>
+                <button class="btn btn-primary btn-sm btn-complete-job" style="flex:1.5;">Start Job</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================== SECTION 5: CREATIVE STUDIO & AI ASSISTANT ==================== -->
+        <section id="admin-sec-creative-studio" class="admin-view-section" style="display:none;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+            <div>
+              <h2 style="font-size:1.75rem; margin-bottom:0.25rem;">Creative Studio & AI Ad Generator</h2>
+              <p style="color:#64748B; font-size:0.875rem; margin:0;">
+                Generate high-converting ad copy and preview realistic mobile formats for Instagram Reels, Stories, and Facebook Feeds.
+              </p>
+            </div>
+            <span class="badge badge-primary">Meta Marketing API Ready</span>
+          </div>
+
+          <div class="creative-studio-grid">
+            <!-- Studio Left: Controls & AI Generator -->
+            <div class="studio-form-card">
+              <h3 style="font-size:1.25rem; margin-bottom:1.25rem;">Ad Campaign Parameters</h3>
+
+              <div class="form-group">
+                <label class="form-label">Target Service</label>
+                <select id="aiStudioService" class="form-control">
+                  <option value="Cockroach Control">Cockroach Odorless Gel Treatment</option>
+                  <option value="Termite Control" selected>Termite Radar Inspection & Barrier</option>
+                  <option value="Commercial Kitchen Audit">Commercial Kitchen & HACCP Compliance</option>
+                  <option value="Bed Bug Thermal">Bed Bug Steaming Extermination</option>
+                </select>
+              </div>
+
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+                <div class="form-group">
+                  <label class="form-label">Target City / Hub</label>
+                  <input type="text" id="aiStudioLocation" class="form-control" value="Pune">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Brand Tone</label>
+                  <select id="aiStudioTone" class="form-control">
+                    <option value="Professional & Scientific">Professional & Scientific</option>
+                    <option value="Urgent Problem Solver">Urgent Problem Solver</option>
+                    <option value="Family & Pet Safe">Family & Pet Safe</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Promotional Hook / Offer</label>
+                <input type="text" id="aiStudioOffer" class="form-control" value="Free Inspection + 20% Off Monsoon AMC">
+              </div>
+
+              <button id="btnAiGenerateCreative" class="btn btn-accent btn-block" style="margin-bottom:1.75rem;">
+                ✨ Generate High-Converting Creative with AI
+              </button>
+
+              <div style="border-top:1px solid #E2E8F0; padding-top:1.5rem;">
+                <h4 style="font-size:1rem; margin-bottom:1rem;">Generated Copy (Live Editable)</h4>
+                
+                <div class="form-group">
+                  <label class="form-label">Primary Headline</label>
+                  <input type="text" id="studioHeadlineInput" class="form-control" value="Protect Your Wooden Interiors from Termite Rot.">
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">Primary Body Copy</label>
+                  <textarea id="studioPrimaryTextInput" class="form-control" rows="3">Non-destructive Ultrasonic Radar detection finds underground colonies before damage spreads. 5-Year Government-approved warranty.</textarea>
+                </div>
+
+                <div style="display:flex; gap:0.75rem; margin-top:1.5rem;">
+                  <button class="btn btn-primary" onclick="showToast('Ad draft saved to Meta Campaign drafts!', 'success')">Save Draft</button>
+                  <button class="btn btn-outline" onclick="showToast('Pushed to Meta Ads Manager sandbox', 'info')">Publish to Meta Ads</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Studio Right: Simulated Mobile Phone Ad Preview Frame -->
+            <div class="studio-preview-card">
+              <div style="margin-bottom:1rem; color:#94A3B8; font-size:0.85rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em;">
+                Live Device Preview: Instagram Sponsored Feed
+              </div>
+
+              <div class="ad-device-frame">
+                <!-- Ad Frame Header -->
+                <div class="ad-frame-header">
+                  <div class="ad-avatar">UPC</div>
+                  <div>
+                    <div style="font-size:0.8rem; font-weight:700; color:#0F172A;">universalpestcontrol</div>
+                    <div style="font-size:0.68rem; color:#64748B;">Sponsored • Pune</div>
+                  </div>
+                  <span style="margin-left:auto; font-size:0.9rem; color:#64748B;">•••</span>
+                </div>
+
+                <!-- Ad Frame Visual Media -->
+                <div class="ad-frame-image">
+                  <img src="assets/images/termite.jpg" alt="Pest Radar Inspection Ad Visual">
+                  <div style="position:absolute; bottom:10px; right:10px; background:rgba(0,0,0,0.7); color:#fff; font-size:0.7rem; padding:0.2rem 0.5rem; border-radius:4px;">
+                    5-Year Warranty
+                  </div>
+                </div>
+
+                <!-- Ad Frame Content -->
+                <div class="ad-frame-body">
+                  <div id="previewAdHeadline" class="ad-headline">
+                    Protect Your Wooden Interiors from Termite Rot.
+                  </div>
+                  <div id="previewAdBody" class="ad-primary-text">
+                    Non-destructive Ultrasonic Radar detection finds underground colonies before damage spreads. 5-Year Government-approved warranty.
+                  </div>
+                  <a href="#" id="previewAdCta" class="ad-cta-button">
+                    Book Radar Termite Check →
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================== SECTION 6: META ADS MANAGER ==================== -->
+        <section id="admin-sec-meta-ads" class="admin-view-section" style="display:none;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+            <div>
+              <h2 style="font-size:1.75rem; margin-bottom:0.25rem;">Meta Ads & Lead Ads Tracking</h2>
+              <p style="color:#64748B; font-size:0.875rem; margin:0;">Real-time API tracking for Facebook & Instagram Lead Generation campaigns.</p>
+            </div>
+            <button class="btn btn-accent btn-sm" onclick="switchAdminSection('creative-studio')">+ Create New Meta Campaign</button>
+          </div>
+
+          <div class="crm-table-card">
+            <table class="crm-data-table">
+              <thead>
+                <tr>
+                  <th>Campaign Name</th>
+                  <th>Platform</th>
+                  <th>Status</th>
+                  <th>Budget</th>
+                  <th>Total Spend</th>
+                  <th>Leads Generated</th>
+                  <th>Cost per Lead (CPL)</th>
+                  <th>ROAS</th>
+                  <th>Toggle</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Termite Monsoon Shield 2026</strong></td>
+                  <td>Instagram / Facebook</td>
+                  <td><span class="badge badge-success">Active</span></td>
+                  <td>₹45,000 / mo</td>
+                  <td>₹18,420</td>
+                  <td><strong>68 Leads</strong></td>
+                  <td><span style="color:#059669; font-weight:700;">₹270.88</span></td>
+                  <td><strong>5.2x</strong></td>
+                  <td><button class="btn btn-white btn-sm" onclick="showToast('Campaign paused', 'info')">Pause</button></td>
+                </tr>
+                <tr>
+                  <td><strong>Cockroach Odorless Gel Promo</strong></td>
+                  <td>Instagram Reels</td>
+                  <td><span class="badge badge-success">Active</span></td>
+                  <td>₹25,000 / mo</td>
+                  <td>₹12,150</td>
+                  <td><strong>74 Leads</strong></td>
+                  <td><span style="color:#059669; font-weight:700;">₹164.18</span></td>
+                  <td><strong>4.8x</strong></td>
+                  <td><button class="btn btn-white btn-sm" onclick="showToast('Campaign paused', 'info')">Pause</button></td>
+                </tr>
+                <tr>
+                  <td><strong>Commercial Kitchen HACCP FSSAI</strong></td>
+                  <td>Facebook Feed & B2B</td>
+                  <td><span class="badge badge-success">Active</span></td>
+                  <td>₹35,000 / mo</td>
+                  <td>₹14,900</td>
+                  <td><strong>22 Leads</strong></td>
+                  <td><span style="color:#B45309; font-weight:700;">₹677.27</span></td>
+                  <td><strong>7.1x</strong></td>
+                  <td><button class="btn btn-white btn-sm" onclick="showToast('Campaign paused', 'info')">Pause</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ==================== SECTION 7: WHATSAPP BUSINESS HUB ==================== -->
+        <section id="admin-sec-whatsapp" class="admin-view-section" style="display:none;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+            <div>
+              <h2 style="font-size:1.75rem; margin-bottom:0.25rem;">WhatsApp Business Communications Hub</h2>
+              <p style="color:#64748B; font-size:0.875rem; margin:0;">Direct lead conversation management with pre-approved template triggers.</p>
+            </div>
+            <span class="badge badge-success">● WhatsApp Cloud API Active</span>
+          </div>
+
+          <div class="whatsapp-hub-container">
+            <!-- Sidebar Threads -->
+            <div class="wa-threads-sidebar">
+              <div style="padding:1rem; border-bottom:1px solid #E2E8F0; font-weight:700; font-size:0.9rem;">
+                Recent Customer Chats
+              </div>
+              <div class="wa-thread-item active">
+                <div style="width:40px; height:40px; border-radius:50%; background:#064E3B; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; flex-shrink:0;">RM</div>
+                <div>
+                  <div style="font-weight:700; font-size:0.9rem;">Dr. Rajiv Malhotra</div>
+                  <div style="font-size:0.75rem; color:#64748B;">Termite quote sent...</div>
+                </div>
+              </div>
+              <div class="wa-thread-item">
+                <div style="width:40px; height:40px; border-radius:50%; background:#10B981; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; flex-shrink:0;">AD</div>
+                <div>
+                  <div style="font-weight:700; font-size:0.9rem;">Chef Ananya Deshmukh</div>
+                  <div style="font-size:0.75rem; color:#64748B;">Technician en-route...</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Active Chat Stream -->
+            <div class="wa-chat-window">
+              <div class="wa-chat-header">
+                <div>
+                  <strong id="waActiveCustomer">Dr. Rajiv Malhotra (+91 98230 44129)</strong>
+                  <div style="font-size:0.75rem; color:#059669;">● Online • Lead: NEW • Termite Control</div>
+                </div>
+                <div style="display:flex; gap:0.5rem;">
+                  <button class="btn btn-sm btn-white" data-wa-template="quote">Send Quote</button>
+                  <button class="btn btn-sm btn-white" data-wa-template="confirm">Send Confirmation</button>
+                  <button class="btn btn-sm btn-white" data-wa-template="enroute">Send ETA</button>
+                </div>
+              </div>
+
+              <div id="waMessagesStream" class="wa-messages-stream">
+                <div class="wa-bubble incoming">
+                  Hello Universal Pest Control, I observed wood dust near my study door. Can you send someone for an inspection?
+                  <div style="font-size:0.68rem; color:#64748B; text-align:right; margin-top:0.25rem;">10:14 AM</div>
+                </div>
+                <div class="wa-bubble outgoing">
+                  Hello Dr. Rajiv Malhotra! Thank you for contacting Universal Pest Control. Our senior radar inspector Vikram Shinde is scheduled to visit you today between 11:00 AM – 01:00 PM.
+                  <div style="font-size:0.68rem; color:#64748B; text-align:right; margin-top:0.25rem;">10:15 AM</div>
+                </div>
+              </div>
+
+              <div class="wa-chat-input-bar">
+                <input type="text" id="waMessageInput" class="form-control" placeholder="Type a message or select a template above...">
+                <button id="btnWaSendMessage" class="btn btn-whatsapp">Send</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================== SECTION 8: ATTRIBUTION & ANALYTICS ==================== -->
+        <section id="admin-sec-analytics" class="admin-view-section" style="display:none;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+            <div>
+              <h2 style="font-size:1.75rem; margin-bottom:0.25rem;">Marketing Attribution & ROI Analytics</h2>
+              <p style="color:#64748B; font-size:0.875rem; margin:0;">Multi-touch customer acquisition cost analysis across advertising channels.</p>
+            </div>
+            <button class="btn btn-white btn-sm" onclick="showToast('Exporting analytics report...', 'info')">Export PDF</button>
+          </div>
+
+          <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:1.5rem; margin-bottom:2rem;">
+            <div class="stat-box" style="background:#fff; border:1px solid #E2E8F0; text-align:left;">
+              <div style="font-size:0.8rem; color:#64748B; text-transform:uppercase; font-weight:700;">Blended CPL</div>
+              <div style="font-size:2rem; font-weight:800; color:#064E3B; margin:0.25rem 0;">₹234.50</div>
+              <div style="font-size:0.75rem; color:#059669;">↓ 12% lower than industry avg</div>
+            </div>
+            <div class="stat-box" style="background:#fff; border:1px solid #E2E8F0; text-align:left;">
+              <div style="font-size:0.8rem; color:#64748B; text-transform:uppercase; font-weight:700;">Lead to Booking Rate</div>
+              <div style="font-size:2rem; font-weight:800; color:#064E3B; margin:0.25rem 0;">41.8%</div>
+              <div style="font-size:0.75rem; color:#059669;">↑ 6.4% from speed to lead</div>
+            </div>
+            <div class="stat-box" style="background:#fff; border:1px solid #E2E8F0; text-align:left;">
+              <div style="font-size:0.8rem; color:#64748B; text-transform:uppercase; font-weight:700;">Meta Ads ROAS</div>
+              <div style="font-size:2rem; font-weight:800; color:#064E3B; margin:0.25rem 0;">5.4x</div>
+              <div style="font-size:0.75rem; color:#64748B;">₹45,470 spend = ₹2.45L revenue</div>
+            </div>
+            <div class="stat-box" style="background:#fff; border:1px solid #E2E8F0; text-align:left;">
+              <div style="font-size:0.8rem; color:#64748B; text-transform:uppercase; font-weight:700;">Average Ticket Size</div>
+              <div style="font-size:2rem; font-weight:800; color:#064E3B; margin:0.25rem 0;">₹9,840</div>
+              <div style="font-size:0.75rem; color:#059669;">Driven by Termite & B2B contracts</div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================
+       LEAD DETAIL DRAWER (SLIDE-IN MODAL)
+       =================================================================== -->
+  <div id="leadDetailDrawer" class="lead-drawer">
+    <div class="drawer-header">
+      <div>
+        <h3 id="drawerLeadName" style="font-size:1.35rem; margin-bottom:0.2rem;">Dr. Rajiv Malhotra</h3>
+        <span id="drawerLeadId" style="font-size:0.78rem; color:#64748B; font-weight:700;">LD-901</span>
+      </div>
+      <button id="closeLeadDrawer" class="modal-close-btn" style="position:static;">✕</button>
+    </div>
+
+    <div class="drawer-body">
+      <!-- Status Changer -->
+      <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:12px; padding:1.25rem; margin-bottom:1.5rem; display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <span style="font-size:0.75rem; text-transform:uppercase; font-weight:700; color:#64748B;">Current Pipeline Stage</span>
+          <div style="margin-top:0.25rem;">
+            <select id="drawerStatusSelect" class="form-control" style="font-weight:700; color:#064E3B;">
+              <option value="NEW">NEW LEAD</option>
+              <option value="CONTACTED">CONTACTED</option>
+              <option value="QUALIFIED">QUALIFIED</option>
+              <option value="SITE VISIT">SITE VISIT SCHEDULED</option>
+              <option value="QUOTATION">QUOTATION SENT</option>
+              <option value="FOLLOW-UP">FOLLOW-UP DUE</option>
+              <option value="BOOKED">BOOKED SERVICE</option>
+              <option value="COMPLETED">COMPLETED</option>
+              <option value="LOST">LOST / CANCELLED</option>
+            </select>
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <span style="font-size:0.75rem; text-transform:uppercase; font-weight:700; color:#64748B;">Deal Value</span>
+          <div id="drawerLeadValue" style="font-size:1.25rem; font-weight:800; color:#064E3B;">₹14,500</div>
+        </div>
+      </div>
+
+      <!-- Quick Action Buttons -->
+      <div style="display:flex; gap:0.5rem; margin-bottom:1.5rem;">
+        <button class="btn btn-whatsapp btn-sm" style="flex:1;" onclick="triggerWhatsAppChat(document.getElementById('drawerLeadPhone').textContent, document.getElementById('drawerLeadName').textContent)">
+          💬 WhatsApp
+        </button>
+        <button class="btn btn-primary btn-sm" style="flex:1;" onclick="showToast('Calling customer...', 'info')">
+          📞 Direct Call
+        </button>
+        <button class="btn btn-outline btn-sm" style="flex:1;" onclick="showToast('PDF Quotation generated & sent', 'success')">
+          📄 Send Quote
+        </button>
+      </div>
+
+      <!-- Lead Attributes -->
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1.5rem; font-size:0.875rem;">
+        <div>
+          <strong style="color:#64748B; font-size:0.75rem; text-transform:uppercase;">Phone:</strong>
+          <div id="drawerLeadPhone" style="font-weight:600;">+91 98230 44129</div>
+        </div>
+        <div>
+          <strong style="color:#64748B; font-size:0.75rem; text-transform:uppercase;">Email:</strong>
+          <div id="drawerLeadEmail" style="font-weight:600;">rajiv@gmail.com</div>
+        </div>
+        <div>
+          <strong style="color:#64748B; font-size:0.75rem; text-transform:uppercase;">Service:</strong>
+          <div id="drawerLeadService" style="font-weight:600; color:#064E3B;">Termite Control</div>
+        </div>
+        <div>
+          <strong style="color:#64748B; font-size:0.75rem; text-transform:uppercase;">Property Type:</strong>
+          <div id="drawerLeadProperty" style="font-weight:600;">Villa (4 BHK)</div>
+        </div>
+        <div>
+          <strong style="color:#64748B; font-size:0.75rem; text-transform:uppercase;">Location:</strong>
+          <div id="drawerLeadLocation" style="font-weight:600;">Koregaon Park, Pune</div>
+        </div>
+        <div>
+          <strong style="color:#64748B; font-size:0.75rem; text-transform:uppercase;">Lead Source:</strong>
+          <div id="drawerLeadSource" style="font-weight:600;">Instagram Lead Ad</div>
+        </div>
+      </div>
+
+      <!-- UTM Tracking & Ad Attribution Box -->
+      <div style="background:#F1F5F9; border-radius:10px; padding:1rem; margin-bottom:1.5rem; font-size:0.8rem;">
+        <strong style="text-transform:uppercase; color:#475569; display:block; margin-bottom:0.5rem;">Campaign & UTM Attribution:</strong>
+        <div>Campaign: <span id="drawerLeadCampaign" style="font-weight:600;">Termite Monsoon Shield 2026</span></div>
+        <div>Ad Creative: <span id="drawerLeadAdName" style="font-weight:600;">Reel_Infestation_Detection_v2</span></div>
+      </div>
+
+      <!-- Add Note Input -->
+      <div style="margin-bottom:1.5rem;">
+        <label class="form-label">Add Internal Note / Follow-up Log</label>
+        <div style="display:flex; gap:0.5rem;">
+          <input type="text" id="leadNoteInput" class="form-control" placeholder="e.g. Customer requested evening site visit...">
+          <button id="btnAddLeadNote" class="btn btn-primary btn-sm" style="flex-shrink:0;">Save Note</button>
+        </div>
+      </div>
+
+      <!-- Activity Timeline -->
+      <div>
+        <h4 style="font-size:0.95rem; margin-bottom:1rem;">Activity & Communication Timeline</h4>
+        <div id="drawerTimeline" class="activity-timeline">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NOTIFICATION CENTER DRAWER -->
+  <div id="adminNotifDrawer" class="lead-drawer" style="width:400px;">
+    <div class="drawer-header">
+      <h3>System Notifications</h3>
+      <button id="btnCloseNotifDrawer" class="modal-close-btn" style="position:static;">✕</button>
+    </div>
+    <div class="drawer-body" id="adminNotifList">
+      <!-- Populated via JS -->
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/store.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>

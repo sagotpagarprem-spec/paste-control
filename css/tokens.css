@@ -1,0 +1,104 @@
+/* ===================================================================
+   UNIVERSAL PEST CONTROL — DESIGN TOKENS
+   Premium, Modern, Technology-Enabled Pest Management Platform
+   =================================================================== */
+
+:root {
+  /* Brand Color Palette */
+  --brand-primary: #064E3B;        /* Deep Forest Emerald - Authority, Safety, Trust */
+  --brand-primary-dark: #022C22;   /* Obsidian Forest */
+  --brand-primary-light: #065F46;  /* Deep Jade */
+  --brand-secondary: #0D9488;      /* Deep Teal Accent */
+  
+  --brand-accent: #10B981;         /* Electric Emerald */
+  --brand-accent-hover: #059669;   /* Rich Emerald Hover */
+  --brand-accent-light: #D1FAE5;   /* Mint Tint Background */
+  --brand-accent-subtle: #ECFDF5;  /* Ultra Light Mint */
+  
+  --brand-lime: #84CC16;           /* Fresh Eco Lime Accent */
+  --brand-lime-light: #F7FEE7;
+  
+  --brand-gold: #F59E0B;           /* Review Stars & Priority Badges */
+  --brand-gold-light: #FEF3C7;
+  
+  /* Status Colors */
+  --status-new: #3B82F6;
+  --status-new-bg: #EFF6FF;
+  --status-contacted: #8B5CF6;
+  --status-contacted-bg: #F5F3FF;
+  --status-qualified: #06B6D4;
+  --status-qualified-bg: #ECFEFF;
+  --status-visit: #EC4899;
+  --status-visit-bg: #FDF2F8;
+  --status-quote: #F59E0B;
+  --status-quote-bg: #FFFBEB;
+  --status-followup: #F97316;
+  --status-followup-bg: #FFF7ED;
+  --status-booked: #10B981;
+  --status-booked-bg: #ECFDF5;
+  --status-completed: #059669;
+  --status-completed-bg: #D1FAE5;
+  --status-lost: #6B7280;
+  --status-lost-bg: #F3F4F6;
+  --status-danger: #EF4444;
+  --status-danger-bg: #FEF2F2;
+
+  /* Surfaces & Backgrounds (Premium Light Theme) */
+  --bg-body: #F8FAFC;              /* Clean Off-White */
+  --bg-surface: #FFFFFF;           /* Crisp White Card/Section */
+  --bg-surface-elevated: #FFFFFF;
+  --bg-subtle: #F1F5F9;            /* Soft Slate Tint */
+  --bg-dark-hero: #022C22;         /* For High-Impact Contrast Banners */
+  --bg-glass: rgba(255, 255, 255, 0.85);
+  --bg-glass-dark: rgba(6, 78, 59, 0.92);
+
+  /* Typography Colors */
+  --text-main: #0F172A;            /* Charcoal Midnight */
+  --text-secondary: #334155;       /* Slate Grey */
+  --text-muted: #64748B;          /* Soft Cool Grey */
+  --text-light: #94A3B8;          /* Placeholder / Subtle */
+  --text-inverse: #FFFFFF;        /* On Dark Surfaces */
+  --text-brand: #064E3B;
+
+  /* Borders & Dividers */
+  --border-subtle: #E2E8F0;
+  --border-light: #CBD5E1;
+  --border-accent: rgba(16, 185, 129, 0.25);
+  --border-focus: #10B981;
+
+  /* Shadows (Elevated, Soft, Premium) */
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-sm: 0 4px 6px -1px rgba(15, 23, 42, 0.05), 0 2px 4px -2px rgba(15, 23, 42, 0.05);
+  --shadow-md: 0 10px 15px -3px rgba(15, 23, 42, 0.07), 0 4px 6px -4px rgba(15, 23, 42, 0.05);
+  --shadow-lg: 0 20px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
+  --shadow-xl: 0 25px 50px -12px rgba(6, 78, 59, 0.18);
+  --shadow-glow: 0 0 25px rgba(16, 185, 129, 0.35);
+
+  /* Border Radii */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --radius-2xl: 32px;
+  --radius-full: 9999px;
+
+  /* Typography */
+  --font-family-heading: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-family-body: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-smooth: 400ms cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Z-Index Hierarchy */
+  --z-base: 1;
+  --z-sticky: 100;
+  --z-header: 500;
+  --z-bottom-nav: 600;
+  --z-floating: 700;
+  --z-drawer: 800;
+  --z-modal: 900;
+  --z-toast: 1000;
+}

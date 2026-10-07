@@ -1,0 +1,277 @@
+/* ===================================================================
+   UNIVERSAL PEST CONTROL — RESPONSIVE STYLES
+   =================================================================== */
+
+/* Desktops & Laptops (Max 1280px) */
+@media (max-width: 1280px) {
+  .services-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .footer-top {
+    grid-template-columns: 2fr 1fr 1fr 1.5fr;
+  }
+}
+
+/* Tablets Landscape & Small Laptops (Max 1024px) */
+@media (max-width: 1024px) {
+  .hero-grid {
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+  }
+
+  .hero-floating-stat {
+    left: 20px;
+    bottom: 20px;
+  }
+
+  .hero-floating-guarantee {
+    right: 20px;
+  }
+
+  .trust-indicators-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .problem-solution-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .services-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .how-it-works-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .testimonials-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .kpi-cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .admin-charts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .creative-studio-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .technician-jobs-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .nav-menu {
+    display: none;
+  }
+
+  .mobile-toggle {
+    display: block;
+  }
+
+  .footer-top {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2.5rem;
+  }
+}
+
+/* Tablets Portrait & Large Mobiles (Max 768px) */
+@media (max-width: 768px) {
+  .top-bar {
+    display: none;
+  }
+
+  .header-inner {
+    height: 70px;
+  }
+
+  .hero-section {
+    padding: 2.5rem 0 2rem 0;
+  }
+
+  .hero-image-card img {
+    height: 320px;
+  }
+
+  .hero-quick-calc {
+    grid-template-columns: 1fr;
+  }
+
+  .trust-indicators-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .problem-solution-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .services-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ba-container {
+    height: 380px;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .stat-value {
+    font-size: 2.25rem;
+  }
+
+  .how-it-works-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .lead-gen-card {
+    padding: 1.75rem 1.25rem;
+  }
+
+  .lead-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .lead-form-full {
+    grid-column: span 1;
+  }
+
+  .lead-trust-strip {
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .google-review-badge-card {
+    flex-direction: column;
+    text-align: center;
+    gap: 1rem;
+  }
+
+  .testimonials-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .wizard-options-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .booking-body, .booking-header {
+    padding: 1.5rem 1rem;
+  }
+
+  .booking-time-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .footer-top {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+
+  .footer-bottom {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  /* Mobile Sticky Bottom Bar Enabled */
+  .mobile-bottom-bar {
+    display: block;
+  }
+
+  body {
+    padding-bottom: 70px;
+  }
+
+  /* Floating action adjustments on mobile */
+  .floating-actions {
+    bottom: 85px;
+    right: 16px;
+  }
+
+  .floating-btn {
+    padding: 0.65rem 0.95rem;
+    font-size: 0.8rem;
+  }
+
+  /* Admin Mobile Adjustments */
+  .admin-sidebar {
+    position: fixed;
+    left: -260px;
+    top: 0;
+    transition: left var(--transition-smooth);
+  }
+
+  .admin-sidebar.mobile-open {
+    left: 0;
+  }
+
+  .admin-topbar {
+    padding: 0.75rem 1rem;
+  }
+
+  .admin-search-box {
+    display: none;
+  }
+
+  .admin-content-area {
+    padding: 1rem;
+  }
+
+  .kpi-cards-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .lead-drawer {
+    width: 100%;
+    right: -100%;
+  }
+
+  .technician-jobs-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .whatsapp-hub-container {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  .wa-chat-window {
+    height: 500px;
+  }
+}
+
+/* Small Smart Phones (Max 430px / 390px / 360px) */
+@media (max-width: 430px) {
+  .hero-title {
+    font-size: 2rem;
+  }
+
+  .hero-floating-stat, .hero-floating-guarantee {
+    position: static;
+    margin-top: 1rem;
+  }
+
+  .ba-container {
+    height: 300px;
+  }
+
+  .modal-box {
+    padding: 1rem;
+  }
+
+  .wizard-content {
+    padding: 1.25rem 0.5rem;
+  }
+}
