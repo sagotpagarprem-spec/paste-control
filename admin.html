@@ -44,17 +44,20 @@
         </li>
         <li class="admin-nav-item" data-admin-view="leads">
           <a>
-            👥 Lead CRM
+            🎯 Lead CRM
             <span class="admin-nav-badge" id="sidebarNewLeadsBadge">Live</span>
           </a>
         </li>
         <li class="admin-nav-item" data-admin-view="bookings">
           <a>📋 Service Bookings</a>
         </li>
+        <li class="admin-nav-item" data-admin-view="customers">
+          <a>👥 Customer Management</a>
+        </li>
         <li class="admin-nav-item" data-admin-view="followups">
           <a>
             📅 Follow-up System
-            <span class="badge badge-warning" style="font-size:0.65rem;">Due: 2</span>
+            <span class="badge badge-warning" id="sidebarFollowupsBadge" style="font-size:0.65rem;">Due: 2</span>
           </a>
         </li>
         <li class="admin-nav-item" data-admin-view="technicians">
@@ -354,20 +357,39 @@
 
         <!-- ==================== SECTION 3: BOOKINGS OPERATIONS ==================== -->
         <section id="admin-sec-bookings" class="admin-view-section" style="display:none;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
             <div>
               <h2 style="font-size:1.75rem; margin-bottom:0.25rem;">Service Bookings Management</h2>
               <p style="color:#64748B; font-size:0.875rem; margin:0;">Active field technician assignments, schedule slots, and completion states.</p>
             </div>
-            <button class="btn btn-primary btn-sm" onclick="window.switchView('booking')">+ New Public Booking</button>
+            <div style="display:flex; gap:0.5rem;">
+              <button class="btn btn-white btn-sm" id="btnRefreshBookings">🔄 Refresh</button>
+              <button class="btn btn-primary btn-sm" onclick="window.switchView ? window.switchView('booking') : window.location.href='index.html#bookingSection'">+ New Public Booking</button>
+            </div>
           </div>
 
           <div class="crm-table-card">
+            <!-- Filter Bar -->
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:1rem 1.5rem; border-bottom:1px solid #E2E8F0; flex-wrap:wrap; gap:0.75rem;">
+              <div style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap;">
+                <input type="text" id="bookingSearchInput" class="form-control" placeholder="Search booking ID, customer, address..." style="padding:0.4rem 0.8rem; font-size:0.85rem; width:260px;">
+                <select id="bookingFilterStatus" class="form-control" style="padding:0.4rem 0.8rem; font-size:0.85rem; width:170px;">
+                  <option value="">All Statuses</option>
+                  <option value="PENDING">PENDING</option>
+                  <option value="CONFIRMED">CONFIRMED</option>
+                  <option value="ASSIGNED">ASSIGNED</option>
+                  <option value="IN_PROGRESS">IN_PROGRESS</option>
+                  <option value="COMPLETED">COMPLETED</option>
+                  <option value="CANCELLED">CANCELLED</option>
+                </select>
+              </div>
+              <div id="bookingPaginationInfo" style="font-size:0.85rem; color:#64748B;">Showing bookings</div>
+            </div>
             <table class="crm-data-table">
               <thead>
                 <tr>
                   <th>Booking ID</th>
-                  <th>Customer Name</th>
+                  <th>Customer Name & Phone</th>
                   <th>Service</th>
                   <th>Scheduled Date</th>
                   <th>Time Window</th>
@@ -377,46 +399,8 @@
                   <th>Actions</th>
                 </tr>
               </thead>
-              <tbody>
-                <tr>
-                  <td><strong>UPC-2026-8941</strong></td>
-                  <td>Dr. Rajiv Malhotra<br><span style="font-size:0.75rem; color:#64748B;">+91 98230 44129</span></td>
-                  <td>Termite Radar Inspection</td>
-                  <td>Oct 06, 2026</td>
-                  <td>11:00 AM – 01:00 PM</td>
-                  <td>Vikram Shinde</td>
-                  <td><span class="badge badge-primary">Assigned</span></td>
-                  <td><strong>₹14,500</strong></td>
-                  <td>
-                    <button class="btn btn-sm btn-white" onclick="showToast('Dispatch SMS sent to technician', 'info')">Re-assign</button>
-                  </td>
-                </tr>
-                <tr>
-                  <td><strong>UPC-2026-8942</strong></td>
-                  <td>Chef Ananya Deshmukh<br><span style="font-size:0.75rem; color:#64748B;">+91 98901 88320</span></td>
-                  <td>Commercial Kitchen & Cockroach Gel AMC</td>
-                  <td>Oct 06, 2026</td>
-                  <td>03:00 PM – 05:00 PM</td>
-                  <td>Ramesh Pawar</td>
-                  <td><span class="badge badge-success">Confirmed</span></td>
-                  <td><strong>₹28,000</strong></td>
-                  <td>
-                    <button class="btn btn-sm btn-white" onclick="showToast('Status verified', 'info')">Update</button>
-                  </td>
-                </tr>
-                <tr>
-                  <td><strong>UPC-2026-8943</strong></td>
-                  <td>Sanjay Deshpande<br><span style="font-size:0.75rem; color:#64748B;">+91 98811 55221</span></td>
-                  <td>Mosquito Fogging & Anti-Larval</td>
-                  <td>Oct 07, 2026</td>
-                  <td>09:00 AM – 11:00 AM</td>
-                  <td>Santosh Jadhav</td>
-                  <td><span class="badge badge-warning">Pending</span></td>
-                  <td><strong>₹8,500</strong></td>
-                  <td>
-                    <button class="btn btn-sm btn-accent" onclick="showToast('Technician assigned', 'success')">Assign</button>
-                  </td>
-                </tr>
+              <tbody id="bookingsTableBody">
+                <!-- Dynamically populated via JS -->
               </tbody>
             </table>
           </div>
@@ -424,69 +408,94 @@
 
         <!-- ==================== SECTION 3B: FOLLOW-UP MANAGEMENT SYSTEM ==================== -->
         <section id="admin-sec-followups" class="admin-view-section" style="display:none;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
             <div>
               <h2 style="font-size:1.75rem; margin-bottom:0.25rem;">Follow-Up & Reminder Pipeline</h2>
               <p style="color:#64748B; font-size:0.875rem; margin:0;">Automated reminders for site inspections, quotation clearances, and post-service AMC renewals.</p>
             </div>
-            <div style="display:flex; gap:0.5rem;">
-              <span class="badge badge-danger">1 Overdue</span>
-              <span class="badge badge-warning">2 Today</span>
-              <span class="badge badge-primary">3 Upcoming</span>
+            <div style="display:flex; gap:0.5rem; align-items:center;">
+              <button class="btn btn-white btn-sm" id="btnRefreshFollowups">🔄 Refresh</button>
+              <button class="btn btn-primary btn-sm" id="btnOpenScheduleFollowup">+ Schedule Follow-up</button>
+              <div style="display:flex; gap:0.35rem; margin-left:0.5rem;">
+                <span class="badge badge-danger" id="fuCountOverdue">0 Overdue</span>
+                <span class="badge badge-warning" id="fuCountToday">0 Today</span>
+                <span class="badge badge-primary" id="fuCountUpcoming">0 Upcoming</span>
+              </div>
             </div>
           </div>
 
           <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:1.5rem; margin-bottom:2rem;">
-            <!-- Overdue -->
+            <!-- Overdue Column -->
             <div style="background:#fff; border-radius:12px; border:1px solid #FECACA; padding:1.25rem; box-shadow:var(--shadow-sm);">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
                 <h3 style="font-size:1rem; color:#B91C1C; margin:0;">⚠️ Overdue Follow-ups</h3>
-                <span class="badge badge-danger">1</span>
+                <span class="badge badge-danger" id="badgeColOverdue">0</span>
               </div>
-              <div style="background:#FEF2F2; border-radius:8px; padding:1rem; border:1px solid #FCA5A5; margin-bottom:0.75rem;">
-                <div style="font-weight:700; color:#0F172A; font-size:0.925rem;">Sameer Khandelwal</div>
-                <div style="font-size:0.78rem; color:#64748B;">German Cockroach Gel Quote</div>
-                <div style="font-size:0.75rem; color:#B91C1C; margin:0.4rem 0; font-weight:700;">Overdue by 2 hours • +91 97654 22091</div>
-                <div style="display:flex; gap:0.4rem; margin-top:0.5rem;">
-                  <button class="btn btn-sm btn-whatsapp" style="padding:0.25rem 0.5rem; font-size:0.75rem;" onclick="triggerWhatsAppChat('+91 97654 22091', 'Sameer Khandelwal')">WA Remind</button>
-                  <button class="btn btn-sm btn-white" style="padding:0.25rem 0.5rem; font-size:0.75rem;" onclick="showToast('Follow-up cleared', 'success')">Done ✓</button>
-                </div>
+              <div id="followupColOverdue">
+                <!-- Populated via JS -->
               </div>
             </div>
 
-            <!-- Today -->
+            <!-- Today Column -->
             <div style="background:#fff; border-radius:12px; border:1px solid #FDE68A; padding:1.25rem; box-shadow:var(--shadow-sm);">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
                 <h3 style="font-size:1rem; color:#B45309; margin:0;">⏰ Today's Scheduled</h3>
-                <span class="badge badge-warning">2</span>
+                <span class="badge badge-warning" id="badgeColToday">0</span>
               </div>
-              <div style="background:#FFFBEB; border-radius:8px; padding:1rem; border:1px solid #FCD34D; margin-bottom:0.75rem;">
-                <div style="font-weight:700; color:#0F172A; font-size:0.925rem;">Dr. Rajiv Malhotra</div>
-                <div style="font-size:0.78rem; color:#64748B;">Termite Radar Inspection Slot</div>
-                <div style="font-size:0.75rem; color:#B45309; margin:0.4rem 0; font-weight:700;">Scheduled for 11:30 AM • Assigned: Vikram</div>
-                <div style="display:flex; gap:0.4rem; margin-top:0.5rem;">
-                  <button class="btn btn-sm btn-primary" style="padding:0.25rem 0.5rem; font-size:0.75rem;" onclick="showToast('Calling Dr. Rajiv...', 'info')">Call</button>
-                  <button class="btn btn-sm btn-white" style="padding:0.25rem 0.5rem; font-size:0.75rem;" onclick="showToast('Marked completed', 'success')">Done ✓</button>
-                </div>
+              <div id="followupColToday">
+                <!-- Populated via JS -->
               </div>
             </div>
 
-            <!-- Upcoming -->
+            <!-- Upcoming Column -->
             <div style="background:#fff; border-radius:12px; border:1px solid #E2E8F0; padding:1.25rem; box-shadow:var(--shadow-sm);">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
                 <h3 style="font-size:1rem; color:#064E3B; margin:0;">📅 Upcoming (Next 48h)</h3>
-                <span class="badge badge-primary">3</span>
+                <span class="badge badge-primary" id="badgeColUpcoming">0</span>
               </div>
-              <div style="background:#F8FAFC; border-radius:8px; padding:1rem; border:1px solid #E2E8F0; margin-bottom:0.75rem;">
-                <div style="font-weight:700; color:#0F172A; font-size:0.925rem;">Adarsh Logistics Park</div>
-                <div style="font-size:0.78rem; color:#64748B;">Warehouse Rodent Barrier Contract Renewal</div>
-                <div style="font-size:0.75rem; color:#64748B; margin:0.4rem 0;">Tomorrow 09:00 AM • Contract PO Follow-up</div>
-                <div style="display:flex; gap:0.4rem; margin-top:0.5rem;">
-                  <button class="btn btn-sm btn-white" style="padding:0.25rem 0.5rem; font-size:0.75rem;" onclick="showToast('Reminder notification queued', 'info')">Snooze</button>
-                  <button class="btn btn-sm btn-outline" style="padding:0.25rem 0.5rem; font-size:0.75rem;" onclick="openLeadDrawer('LD-905')">Open Lead</button>
-                </div>
+              <div id="followupColUpcoming">
+                <!-- Populated via JS -->
               </div>
             </div>
+          </div>
+        </section>
+
+        <!-- ==================== SECTION 3C: CUSTOMER MANAGEMENT ==================== -->
+        <section id="admin-sec-customers" class="admin-view-section" style="display:none;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
+            <div>
+              <h2 style="font-size:1.75rem; margin-bottom:0.25rem;">Customer Management Directory</h2>
+              <p style="color:#64748B; font-size:0.875rem; margin:0;">Centralized customer repository, booking history, lifetime value, and notes.</p>
+            </div>
+            <div style="display:flex; gap:0.5rem;">
+              <button class="btn btn-white btn-sm" id="btnRefreshCustomers">🔄 Refresh</button>
+            </div>
+          </div>
+
+          <div class="crm-table-card">
+            <!-- Filter Bar -->
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:1rem 1.5rem; border-bottom:1px solid #E2E8F0; flex-wrap:wrap; gap:0.75rem;">
+              <div style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap;">
+                <input type="text" id="customerSearchInput" class="form-control" placeholder="Search customer by name, phone, city..." style="padding:0.4rem 0.8rem; font-size:0.85rem; width:280px;">
+              </div>
+              <div id="customerPaginationInfo" style="font-size:0.85rem; color:#64748B;">Showing customers</div>
+            </div>
+            <table class="crm-data-table">
+              <thead>
+                <tr>
+                  <th>Customer Name & Contact</th>
+                  <th>Location</th>
+                  <th>Property Type</th>
+                  <th>Total Bookings</th>
+                  <th>Lifetime Value</th>
+                  <th>Member Since</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="customersTableBody">
+                <!-- Populated via JS -->
+              </tbody>
+            </table>
           </div>
         </section>
 
@@ -983,16 +992,117 @@
 
   <!-- NOTIFICATION CENTER DRAWER -->
   <div id="adminNotifDrawer" class="lead-drawer" style="width:400px;">
-    <div class="drawer-header">
-      <h3>System Notifications</h3>
+    <div class="drawer-header" style="display:flex; justify-content:space-between; align-items:center;">
+      <div>
+        <h3 style="margin:0;">System Notifications</h3>
+        <button id="btnMarkAllNotifsRead" class="btn btn-sm btn-white" style="margin-top:0.35rem; font-size:0.75rem; padding:0.2rem 0.5rem;">Mark All Read</button>
+      </div>
       <button id="btnCloseNotifDrawer" class="modal-close-btn" style="position:static;">✕</button>
     </div>
-    <div class="drawer-body" id="adminNotifList">
+    <div class="drawer-body" id="adminNotifList" style="padding:1rem;">
       <!-- Populated via JS -->
     </div>
   </div>
 
+  <!-- CUSTOMER PROFILE DRAWER -->
+  <div id="customerProfileDrawer" class="lead-drawer" style="width:460px;">
+    <div class="drawer-header">
+      <div>
+        <h3 id="custDrawerName" style="margin-bottom:0.25rem;">Customer Profile</h3>
+        <span class="badge badge-primary" id="custDrawerPhone">+91 XXXXX XXXXX</span>
+      </div>
+      <button id="btnCloseCustomerDrawer" class="modal-close-btn" style="position:static;">✕</button>
+    </div>
+    <div class="drawer-body" style="padding:1.5rem;">
+      <!-- Details Card -->
+      <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:10px; padding:1rem; margin-bottom:1.5rem;">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; font-size:0.85rem;">
+          <div><span style="color:#64748B;">Email:</span> <strong id="custDrawerEmail">-</strong></div>
+          <div><span style="color:#64748B;">City:</span> <strong id="custDrawerCity">-</strong></div>
+          <div><span style="color:#64748B;">Property:</span> <strong id="custDrawerProperty">-</strong></div>
+          <div><span style="color:#64748B;">Lifetime Spent:</span> <strong id="custDrawerSpent" style="color:#059669;">-</strong></div>
+        </div>
+        <div style="margin-top:0.5rem; font-size:0.85rem;"><span style="color:#64748B;">Address:</span> <span id="custDrawerAddress">-</span></div>
+      </div>
+
+      <!-- Services Availed -->
+      <div style="margin-bottom:1.5rem;">
+        <strong style="font-size:0.85rem; color:#475569; display:block; margin-bottom:0.5rem;">Availed Services:</strong>
+        <div id="custDrawerServices" style="display:flex; flex-wrap:wrap; gap:0.4rem;">-</div>
+      </div>
+
+      <!-- Bookings History -->
+      <div style="margin-bottom:1.5rem;">
+        <strong style="font-size:0.85rem; color:#475569; display:block; margin-bottom:0.5rem;">Service Bookings History:</strong>
+        <div id="custDrawerBookings" style="display:flex; flex-direction:column; gap:0.5rem;">-</div>
+      </div>
+
+      <!-- Inbound Leads History -->
+      <div style="margin-bottom:1.5rem;">
+        <strong style="font-size:0.85rem; color:#475569; display:block; margin-bottom:0.5rem;">Inbound Inquiries & Leads:</strong>
+        <div id="custDrawerLeads" style="display:flex; flex-direction:column; gap:0.5rem;">-</div>
+      </div>
+
+      <!-- Add Note -->
+      <div style="margin-bottom:1.5rem;">
+        <label class="form-label">Add Customer Account Note</label>
+        <div style="display:flex; gap:0.5rem;">
+          <input type="text" id="custNoteInput" class="form-control" placeholder="e.g. Preferred morning inspection...">
+          <button id="btnAddCustNote" class="btn btn-primary btn-sm" style="flex-shrink:0;">Save Note</button>
+        </div>
+        <div id="custDrawerNotes" style="margin-top:0.75rem; display:flex; flex-direction:column; gap:0.4rem;"></div>
+      </div>
+
+      <!-- Reviews -->
+      <div>
+        <strong style="font-size:0.85rem; color:#475569; display:block; margin-bottom:0.5rem;">Customer Reviews & Feedback:</strong>
+        <div id="custDrawerReviews" style="display:flex; flex-direction:column; gap:0.4rem;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: SCHEDULE FOLLOW-UP -->
+  <div id="modalScheduleFollowup" class="modal-overlay" style="display:none;">
+    <div class="modal-card" style="max-width:480px;">
+      <div class="modal-header">
+        <h3>Schedule Lead Follow-up</h3>
+        <button id="btnCloseFollowupModal" class="modal-close-btn">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Select Active Lead *</label>
+          <select id="fuModalLeadSelect" class="form-control" required>
+            <option value="">Choose Lead...</option>
+          </select>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+          <div class="form-group">
+            <label class="form-label">Date *</label>
+            <input type="date" id="fuModalDate" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Time Window</label>
+            <input type="text" id="fuModalTime" class="form-control" placeholder="11:30 AM" value="11:30 AM">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Assign Staff</label>
+          <select id="fuModalAssignSelect" class="form-control">
+            <option value="">Unassigned</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Reminder Notes / Action</label>
+          <textarea id="fuModalNotes" class="form-control" rows="3" placeholder="e.g. Call customer for quote approval and schedule radar scan..."></textarea>
+        </div>
+        <button id="btnSaveScheduleFollowup" class="btn btn-primary" style="width:100%;">Save & Queue Reminder ⏰</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Scripts -->
+  <script src="js/api-client.js"></script>
+  <script src="js/attribution.js"></script>
   <script src="js/store.js"></script>
   <script src="js/app.js"></script>
   <script src="js/admin.js"></script>

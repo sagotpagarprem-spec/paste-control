@@ -18,7 +18,13 @@ router.get('/', authenticateToken, requirePermission('bookings:read'), bookingCo
 // GET /api/bookings/:id
 router.get('/:id', authenticateToken, requirePermission('bookings:read'), bookingController.getBookingById);
 
+// PUT /api/bookings/:id
+router.put('/:id', authenticateToken, requirePermission('bookings:manage'), bookingController.updateBooking);
+
 // PUT /api/bookings/:id/status
 router.put('/:id/status', authenticateToken, requirePermission('bookings:manage'), bookingController.updateStatus);
+
+// DELETE /api/bookings/:id (Archive)
+router.delete('/:id', authenticateToken, requirePermission('bookings:manage'), bookingController.deleteBooking);
 
 module.exports = router;

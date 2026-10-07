@@ -128,6 +128,80 @@ async function runMigrationAndSeed() {
       await conn.query(`ALTER TABLE leads MODIFY COLUMN status VARCHAR(50) NOT NULL DEFAULT 'NEW'`);
     } catch (e) {}
 
+    // Safe column migrations for bookings table
+    const bookingColumnsToAdd = [
+      { name: 'city', def: "VARCHAR(50) NOT NULL DEFAULT 'Pune'" },
+      { name: 'instructions', def: 'TEXT NULL' },
+      { name: 'is_archived', def: 'BOOLEAN NOT NULL DEFAULT FALSE' }
+    ];
+
+    for (const col of bookingColumnsToAdd) {
+      const [colExists] = await conn.query(
+        `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'bookings' AND COLUMN_NAME = ?`,
+        [database, col.name]
+      );
+      if (colExists.length === 0) {
+        await conn.query(`ALTER TABLE bookings ADD COLUMN \`${col.name}\` ${col.def}`);
+        logger.info(`Added column ${col.name} to bookings table.`);
+      }
+    }
+    // Widen bookings status column to VARCHAR(50)
+    try {
+      await conn.query(`ALTER TABLE bookings MODIFY COLUMN status VARCHAR(50) NOT NULL DEFAULT 'PENDING'`);
+    } catch (e) {}
+
+    // Ensure followups table exists
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS \`followups\` (
+        \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+        \`lead_id\` INT NOT NULL,
+        \`assigned_to\` INT NULL,
+        \`scheduled_date\` DATE NOT NULL,
+        \`scheduled_time\` VARCHAR(20) NULL,
+        \`notes\` TEXT NULL,
+        \`status\` VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+        \`completed_at\` TIMESTAMP NULL DEFAULT NULL,
+        \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        \`updated_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        CONSTRAINT \`fk_followups_lead\` FOREIGN KEY (\`lead_id\`) REFERENCES \`leads\` (\`id\`) ON DELETE CASCADE,
+        CONSTRAINT \`fk_followups_user\` FOREIGN KEY (\`assigned_to\`) REFERENCES \`users\` (\`id\`) ON DELETE SET NULL,
+        INDEX \`idx_followups_status\` (\`status\`),
+        INDEX \`idx_followups_date\` (\`scheduled_date\`),
+        INDEX \`idx_followups_assigned\` (\`assigned_to\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    // Ensure customer_reviews table exists
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS \`customer_reviews\` (
+        \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+        \`customer_id\` INT NOT NULL,
+        \`booking_id\` INT NULL,
+        \`rating\` DECIMAL(2, 1) NOT NULL DEFAULT 5.0,
+        \`review_text\` TEXT NULL,
+        \`source\` VARCHAR(50) NOT NULL DEFAULT 'Direct',
+        \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT \`fk_crev_customer\` FOREIGN KEY (\`customer_id\`) REFERENCES \`customers\` (\`id\`) ON DELETE CASCADE,
+        CONSTRAINT \`fk_crev_booking\` FOREIGN KEY (\`booking_id\`) REFERENCES \`bookings\` (\`id\`) ON DELETE SET NULL,
+        INDEX \`idx_crev_customer\` (\`customer_id\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    // Ensure customer_notes table exists
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS \`customer_notes\` (
+        \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+        \`customer_id\` INT NOT NULL,
+        \`user_id\` INT NULL,
+        \`note\` TEXT NOT NULL,
+        \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT \`fk_cnotes_customer\` FOREIGN KEY (\`customer_id\`) REFERENCES \`customers\` (\`id\`) ON DELETE CASCADE,
+        CONSTRAINT \`fk_cnotes_user\` FOREIGN KEY (\`user_id\`) REFERENCES \`users\` (\`id\`) ON DELETE SET NULL,
+        INDEX \`idx_cnotes_customer\` (\`customer_id\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
     // Step 5: Seed Default Admin & Sales Staff Users
     const staffMembers = [
       { name: 'Vikram Shinde', email: 'admin@universalpestcontrol.com', role: 'admin', phone: '+91 98230 44129' },
@@ -293,45 +367,131 @@ async function runMigrationAndSeed() {
     // Step 9: Seed Initial Bookings
     const sampleBookings = [
       {
-        code: 'UPC-2026-8812',
+        code: 'UPC-2026-8941',
         name: 'Dr. Rajiv Malhotra',
         phone: '+91 98230 44129',
-        service: 'Termite Control (Drill-Fill-Seal)',
-        property: 'Villa (4 BHK)',
+        service: 'Termite Radar Inspection & Barrier',
+        property: 'Villa / Independent House',
         date: '2026-10-08',
-        slot: '10:00 AM - 12:00 PM',
+        slot: '11:00 AM – 01:00 PM',
         address: 'Bungalow 14, Lane 7, Koregaon Park, Pune',
+        city: 'Pune',
         amount: 14500.00,
-        status: 'Confirmed'
+        status: 'ASSIGNED',
+        technician_id: 1,
+        instructions: 'Gate bell on left pillar. Senior inspection technician requested.'
       },
       {
-        code: 'UPC-2026-8813',
-        name: 'Bistro Olive (Chef Ananya)',
+        code: 'UPC-2026-8942',
+        name: 'Chef Ananya Deshmukh',
         phone: '+91 98901 88320',
-        service: 'Commercial Pest AMC (Quarterly)',
-        property: 'Restaurant (3,200 sq.ft)',
-        date: '2026-10-09',
-        slot: '02:00 PM - 04:00 PM',
+        service: 'Commercial Kitchen & Cockroach Gel AMC',
+        property: 'Commercial Office / Restaurant',
+        date: '2026-10-08',
+        slot: '03:00 PM – 05:00 PM',
         address: 'Level 2, High Street Hub, Baner, Pune',
+        city: 'Pune',
         amount: 28000.00,
-        status: 'Confirmed'
+        status: 'CONFIRMED',
+        technician_id: 2,
+        instructions: 'Kitchen closure window between 3 PM and 5 PM.'
+      },
+      {
+        code: 'UPC-2026-8943',
+        name: 'Sanjay Deshpande',
+        phone: '+91 98811 55221',
+        service: 'Mosquito Fogging & Anti-Larval',
+        property: 'Residential Apartment',
+        date: '2026-10-09',
+        slot: '09:00 AM – 11:00 AM',
+        address: 'Flat 901, Marvel Bounty, Hadapsar, Pune',
+        city: 'Pune',
+        amount: 8500.00,
+        status: 'PENDING',
+        technician_id: null,
+        instructions: 'Garden and balcony perimeter focus.'
       }
     ];
 
     for (const b of sampleBookings) {
       await conn.query(
-        `INSERT INTO bookings (booking_code, customer_name, phone, service_name, property_type, scheduled_date, time_slot, address, amount, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-         ON DUPLICATE KEY UPDATE status = VALUES(status)`,
-        [b.code, b.name, b.phone, b.service, b.property, b.date, b.slot, b.address, b.amount, b.status]
+        `INSERT INTO bookings (booking_code, customer_name, phone, service_name, property_type, scheduled_date, time_slot, address, city, amount, status, technician_id, instructions)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE status = VALUES(status), technician_id = VALUES(technician_id), instructions = VALUES(instructions)`,
+        [b.code, b.name, b.phone, b.service, b.property, b.date, b.slot, b.address, b.city, b.amount, b.status, b.technician_id, b.instructions]
       );
     }
 
-    // Step 10: Seed Initial Notifications
+    // Step 10: Seed Follow-ups (Overdue, Today, Upcoming)
+    const [leadRows] = await conn.query(`SELECT id, lead_code FROM leads ORDER BY id ASC LIMIT 5`);
+    if (leadRows.length > 0) {
+      const todayDate = new Date().toISOString().split('T')[0];
+      const yesterdayDate = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+      const tomorrowDate = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+
+      const sampleFollowups = [
+        {
+          lead_id: leadRows[2]?.id || leadRows[0].id,
+          assigned_to: 1,
+          date: yesterdayDate,
+          time: '11:00 AM',
+          notes: 'German Cockroach Gel Quote clearance - check approval with building admin.',
+          status: 'PENDING'
+        },
+        {
+          lead_id: leadRows[0]?.id || leadRows[0].id,
+          assigned_to: 1,
+          date: todayDate,
+          time: '11:30 AM',
+          notes: 'Termite Radar Inspection Slot confirmation call.',
+          status: 'PENDING'
+        },
+        {
+          lead_id: leadRows[3]?.id || leadRows[0].id,
+          assigned_to: 2,
+          date: tomorrowDate,
+          time: '02:00 PM',
+          notes: 'Warehouse Bedbug Steaming contract renewal and quotation review.',
+          status: 'PENDING'
+        }
+      ];
+
+      for (const fu of sampleFollowups) {
+        const [existingFu] = await conn.query(
+          `SELECT id FROM followups WHERE lead_id = ? AND scheduled_date = ? LIMIT 1`,
+          [fu.lead_id, fu.date]
+        );
+        if (existingFu.length === 0) {
+          await conn.query(
+            `INSERT INTO followups (lead_id, assigned_to, scheduled_date, scheduled_time, notes, status)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            [fu.lead_id, fu.assigned_to, fu.date, fu.time, fu.notes, fu.status]
+          );
+        }
+      }
+    }
+
+    // Step 11: Seed Initial Customer Reviews
+    const [custRows] = await conn.query(`SELECT id FROM customers LIMIT 2`);
+    if (custRows.length > 0) {
+      for (const c of custRows) {
+        const [existingRev] = await conn.query(`SELECT id FROM customer_reviews WHERE customer_id = ? LIMIT 1`, [c.id]);
+        if (existingRev.length === 0) {
+          await conn.query(
+            `INSERT INTO customer_reviews (customer_id, rating, review_text, source)
+             VALUES (?, 5.0, 'Exceptional termite treatment. Professional technicians and zero chemical odor.', 'Google Reviews')`,
+            [c.id]
+          );
+        }
+      }
+    }
+
+    // Step 12: Seed Initial Notifications with Required Types
     const sampleNotifications = [
-      { title: 'New High-Value Lead', message: 'Termite Villa inspection requested in Koregaon Park.', type: 'info' },
-      { title: 'Commercial AMC Booking', message: 'Bistro Olive inspection confirmed for tomorrow.', type: 'success' },
-      { title: 'Follow-up Due Reminder', message: '2 leads have follow-up schedules due today.', type: 'warning' }
+      { title: 'New Lead Inbound', message: 'Termite Villa inspection requested in Koregaon Park.', type: 'NEW_LEAD' },
+      { title: 'Follow-Up Due', message: 'German Cockroach quote clearance is due for follow-up today.', type: 'FOLLOWUP_DUE' },
+      { title: 'Booking Confirmed', message: 'UPC-2026-8942 confirmed for Chef Ananya Deshmukh.', type: 'BOOKING_CONFIRMED' },
+      { title: 'Technician Assigned', message: 'UPC-2026-8941 assigned to Senior Technician Vikram Shinde.', type: 'BOOKING_ASSIGNED' }
     ];
 
     for (const notif of sampleNotifications) {

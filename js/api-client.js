@@ -173,10 +173,23 @@ class UPCApiClient {
       });
     },
 
+    update: async (id, data) => {
+      return await this.request(`/bookings/${id}`, {
+        method: 'PUT',
+        body: data
+      });
+    },
+
     updateStatus: async (id, status) => {
       return await this.request(`/bookings/${id}/status`, {
         method: 'PUT',
         body: { status }
+      });
+    },
+
+    delete: async (id) => {
+      return await this.request(`/bookings/${id}`, {
+        method: 'DELETE'
       });
     }
   };
@@ -196,6 +209,59 @@ class UPCApiClient {
       return await this.request('/customers', {
         method: 'POST',
         body: customerData
+      });
+    },
+
+    update: async (id, data) => {
+      return await this.request(`/customers/${id}`, {
+        method: 'PUT',
+        body: data
+      });
+    },
+
+    addNote: async (id, note) => {
+      return await this.request(`/customers/${id}/notes`, {
+        method: 'POST',
+        body: { note }
+      });
+    },
+
+    addReview: async (id, reviewData) => {
+      return await this.request(`/customers/${id}/reviews`, {
+        method: 'POST',
+        body: reviewData
+      });
+    }
+  };
+
+  // Follow-ups API
+  followups = {
+    getAll: async (params = {}) => {
+      const query = new URLSearchParams(params).toString();
+      return await this.request(`/followups${query ? `?${query}` : ''}`, { method: 'GET' });
+    },
+
+    getById: async (id) => {
+      return await this.request(`/followups/${id}`, { method: 'GET' });
+    },
+
+    create: async (data) => {
+      return await this.request('/followups', {
+        method: 'POST',
+        body: data
+      });
+    },
+
+    update: async (id, data) => {
+      return await this.request(`/followups/${id}`, {
+        method: 'PUT',
+        body: data
+      });
+    },
+
+    delete: async (id) => {
+      return await this.request(`/followups/${id}`, {
+        method: 'DELETE'
       });
     }
   };
@@ -229,6 +295,10 @@ class UPCApiClient {
   notifications = {
     getAll: async () => {
       return await this.request('/notifications', { method: 'GET' });
+    },
+
+    markRead: async (id) => {
+      return await this.request(`/notifications/${id}/read`, { method: 'PUT' });
     },
 
     markAllRead: async () => {

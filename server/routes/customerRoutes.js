@@ -17,4 +17,13 @@ router.get('/:id', requirePermission('customers:read'), customerController.getCu
 // POST /api/customers
 router.post('/', requirePermission('customers:manage'), customerController.createCustomer);
 
+// PUT /api/customers/:id
+router.put('/:id', requirePermission('customers:manage'), customerController.updateCustomer);
+
+// POST /api/customers/:id/notes
+router.post('/:id/notes', requirePermission('customers:manage'), customerController.addNote);
+
+// POST /api/customers/:id/reviews
+router.post('/:id/reviews', requirePermission('customers:manage'), customerController.addReview);
+
 module.exports = router;

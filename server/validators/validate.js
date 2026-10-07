@@ -67,7 +67,7 @@ function validateBookingCreate(body) {
   if (!service || typeof service !== 'string') {
     errors.push({ field: 'service', message: 'Service selection is required.' });
   }
-  const date = body.date || body.scheduled_date;
+  const date = body.date || body.scheduled_date || body.scheduledDate;
   if (!date || typeof date !== 'string') {
     errors.push({ field: 'date', message: 'Scheduled date is required.' });
   }

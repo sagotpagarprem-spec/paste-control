@@ -117,6 +117,25 @@ class LeadService {
   async updateLead(id, data, user = null, ipAddress = null) {
     const updated = await leadModel.update(id, data, user ? user.id : null);
 
+    // If status became QUALIFIED, BOOKED, or COMPLETED, automatically ensure customer record is created/synced
+    const targetStatus = data.status ? String(data.status).toUpperCase().replace(/[\-_]/g, ' ') : null;
+    if (targetStatus && ['QUALIFIED', 'BOOKED', 'COMPLETED', 'SITE VISIT', 'QUOTATION'].includes(targetStatus) && updated && updated.phone) {
+      try {
+        const customer = await customerModel.upsertFromLeadOrBooking({
+          name: updated.name,
+          phone: updated.phone,
+          email: updated.email,
+          address: updated.address,
+          city: updated.city,
+          area: updated.area,
+          property_type: updated.propertyType || updated.property_type
+        });
+        if (customer && !updated.customerId && !updated.customer_id) {
+          await leadModel.update(updated.id, { customer_id: customer.id });
+        }
+      } catch (e) {}
+    }
+
     if (user) {
       await auditLogModel.log({
         userId: user.id,

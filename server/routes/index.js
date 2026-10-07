@@ -10,6 +10,7 @@ const serviceRoutes = require('./serviceRoutes');
 const technicianRoutes = require('./technicianRoutes');
 const notificationRoutes = require('./notificationRoutes');
 const userRoutes = require('./userRoutes');
+const followupRoutes = require('./followupRoutes');
 const { metaRouter, whatsappRouter, campaignsRouter, analyticsRouter } = require('./futureRoutes');
 
 const { apiSuccess } = require('../utils/response');
@@ -26,7 +27,7 @@ router.get('/health', (req, res) => {
       host: dbConfig.host,
       name: dbConfig.database
     },
-    version: '1.0.0-phase2'
+    version: '1.0.0-phase3'
   }, 'Universal Pest Control API service is healthy.');
 });
 
@@ -35,6 +36,7 @@ router.use('/auth', authRoutes);
 router.use('/leads', leadRoutes);
 router.use('/customers', customerRoutes);
 router.use('/bookings', bookingRoutes);
+router.use('/followups', followupRoutes);
 router.use('/services', serviceRoutes);
 router.use('/technicians', technicianRoutes);
 router.use('/notifications', notificationRoutes);

@@ -235,9 +235,12 @@ CREATE TABLE IF NOT EXISTS `bookings` (
   `scheduled_date` DATE NOT NULL,
   `time_slot` VARCHAR(50) NOT NULL,
   `address` TEXT NULL,
+  `city` VARCHAR(50) NOT NULL DEFAULT 'Pune',
+  `instructions` TEXT NULL,
   `amount` DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
-  `status` ENUM('Pending', 'Confirmed', 'In Progress', 'Completed', 'Cancelled') NOT NULL DEFAULT 'Confirmed',
+  `status` VARCHAR(50) NOT NULL DEFAULT 'PENDING',
   `notes` TEXT NULL,
+  `is_archived` BOOLEAN NOT NULL DEFAULT FALSE,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT `fk_bookings_lead` FOREIGN KEY (`lead_id`) REFERENCES `leads` (`id`) ON DELETE SET NULL,
@@ -246,7 +249,59 @@ CREATE TABLE IF NOT EXISTS `bookings` (
   CONSTRAINT `fk_bookings_tech` FOREIGN KEY (`technician_id`) REFERENCES `technicians` (`id`) ON DELETE SET NULL,
   INDEX `idx_bookings_status` (`status`),
   INDEX `idx_bookings_date` (`scheduled_date`),
-  INDEX `idx_bookings_tech` (`technician_id`)
+  INDEX `idx_bookings_tech` (`technician_id`),
+  INDEX `idx_bookings_archived` (`is_archived`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------
+-- 12B. FOLLOWUPS TABLE (Follow-Up & Reminder Pipeline)
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `followups` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `lead_id` INT NOT NULL,
+  `assigned_to` INT NULL,
+  `scheduled_date` DATE NOT NULL,
+  `scheduled_time` VARCHAR(20) NULL,
+  `notes` TEXT NULL,
+  `status` VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+  `completed_at` TIMESTAMP NULL DEFAULT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT `fk_followups_lead` FOREIGN KEY (`lead_id`) REFERENCES `leads` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_followups_user` FOREIGN KEY (`assigned_to`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  INDEX `idx_followups_status` (`status`),
+  INDEX `idx_followups_date` (`scheduled_date`),
+  INDEX `idx_followups_assigned` (`assigned_to`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------
+-- 12C. CUSTOMER_REVIEWS TABLE
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `customer_reviews` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `customer_id` INT NOT NULL,
+  `booking_id` INT NULL,
+  `rating` DECIMAL(2, 1) NOT NULL DEFAULT 5.0,
+  `review_text` TEXT NULL,
+  `source` VARCHAR(50) NOT NULL DEFAULT 'Direct',
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT `fk_crev_customer` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_crev_booking` FOREIGN KEY (`booking_id`) REFERENCES `bookings` (`id`) ON DELETE SET NULL,
+  INDEX `idx_crev_customer` (`customer_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------
+-- 12D. CUSTOMER_NOTES TABLE
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `customer_notes` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `customer_id` INT NOT NULL,
+  `user_id` INT NULL,
+  `note` TEXT NOT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT `fk_cnotes_customer` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_cnotes_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  INDEX `idx_cnotes_customer` (`customer_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------

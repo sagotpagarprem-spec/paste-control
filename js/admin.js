@@ -11,6 +11,9 @@ document.addEventListener('DOMContentLoaded', () => {
   renderAdminOverview();
   renderCrmKanban();
   renderCrmTable();
+  renderAdminBookings();
+  renderAdminFollowups();
+  renderAdminCustomers();
   initLeadDrawer();
   initAiCreativeStudio();
   initWhatsAppHub();
@@ -123,6 +126,12 @@ function switchAdminSection(viewKey) {
   // Close mobile sidebar
   const sidebar = document.querySelector('.admin-sidebar');
   if (sidebar) sidebar.classList.remove('mobile-open');
+
+  // Trigger real backend hydrations on view change
+  if (viewKey === 'bookings') renderAdminBookings();
+  if (viewKey === 'followups') renderAdminFollowups();
+  if (viewKey === 'customers') renderAdminCustomers();
+  if (viewKey === 'leads' || viewKey === 'crm') { renderCrmKanban(); renderCrmTable(); }
 }
 
 /* 2. OVERVIEW KPI CARDS & CHARTS */
@@ -1013,18 +1022,583 @@ function initTechnicianDispatch() {
   });
 }
 
-/* 9. NOTIFICATION DRAWER */
+/* 9. SERVICE BOOKINGS MANAGEMENT */
+const BOOKING_STATUSES = [
+  'PENDING', 'CONFIRMED', 'ASSIGNED', 'ON_THE_WAY', 'ARRIVED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'
+];
+
+async function renderAdminBookings() {
+  const tbody = document.getElementById('bookingsTableBody');
+  if (!tbody) return;
+
+  const searchInput = document.getElementById('bookingSearchInput');
+  const statusFilter = document.getElementById('bookingFilterStatus');
+  const paginationInfo = document.getElementById('bookingPaginationInfo');
+
+  const search = searchInput ? searchInput.value.trim() : '';
+  const status = statusFilter ? statusFilter.value : '';
+
+  try {
+    let bookings = [];
+    let staff = [];
+
+    if (window.upcApi && window.upcApi.bookings) {
+      const res = await window.upcApi.bookings.getAll({ search, status });
+      bookings = res.data || [];
+      if (paginationInfo) {
+        const total = (res.meta && res.meta.total) !== undefined ? res.meta.total : bookings.length;
+        paginationInfo.textContent = `Showing ${bookings.length} of ${total} bookings`;
+      }
+      try {
+        const staffRes = await window.upcApi.users.getStaff();
+        staff = staffRes.data || [];
+      } catch (e) {}
+    }
+
+    if (bookings.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="9" style="text-align:center; padding:2.5rem; color:#64748B;">
+            No service bookings found matching current filters.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    tbody.innerHTML = bookings.map(b => {
+      const bCode = b.bookingCode || b.booking_code || `UPC-${b.id}`;
+      const isArchived = b.isArchived || b.is_archived;
+
+      return `
+        <tr style="${isArchived ? 'opacity:0.6;' : ''}">
+          <td><strong>${bCode}</strong></td>
+          <td>
+            <strong>${escapeHtml(b.customerName || b.name || 'Customer')}</strong><br>
+            <span style="font-size:0.75rem; color:#64748B;">${escapeHtml(b.phone || '-')}</span>
+          </td>
+          <td>
+            ${escapeHtml(b.serviceName || b.service || 'Pest Control')}<br>
+            <span style="font-size:0.75rem; color:#64748B;">${escapeHtml(b.propertyType || 'Residential')}</span>
+          </td>
+          <td>${b.scheduledDate || b.date || '-'}</td>
+          <td><span style="font-size:0.8rem; background:#F1F5F9; padding:0.2rem 0.5rem; border-radius:4px;">${escapeHtml(b.timeSlot || '-')}</span></td>
+          <td>
+            <select class="form-control" style="padding:0.25rem 0.5rem; font-size:0.8rem; width:135px;"
+              onchange="assignBookingTechnician(${b.id}, this.value)">
+              <option value="">Unassigned</option>
+              ${staff.map(s => `
+                <option value="${s.id}" ${(b.technicianId == s.id || b.technician_id == s.id) ? 'selected' : ''}>
+                  ${escapeHtml(s.name)}
+                </option>
+              `).join('')}
+            </select>
+          </td>
+          <td>
+            <select class="form-control" style="padding:0.25rem 0.5rem; font-size:0.8rem; font-weight:700; width:130px;"
+              onchange="updateBookingStatusLive(${b.id}, this.value)">
+              ${BOOKING_STATUSES.map(st => `
+                <option value="${st}" ${String(b.status).toUpperCase() === st ? 'selected' : ''}>${st}</option>
+              `).join('')}
+            </select>
+          </td>
+          <td><strong>₹${Number(b.amount || 0).toLocaleString()}</strong></td>
+          <td>
+            <div style="display:flex; gap:0.35rem;">
+              <button class="btn btn-sm btn-white" title="Archive / Cancel Booking" onclick="cancelBookingLive(${b.id})">✕ Cancel</button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  } catch (err) {
+    console.error('Failed to load bookings:', err);
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:#DC2626; padding:2rem;">Failed to load bookings: ${err.message}</td></tr>`;
+  }
+}
+
+function getBookingStatusBadgeClass(status) {
+  const s = String(status || '').toUpperCase();
+  if (s === 'CONFIRMED') return 'badge-success';
+  if (s === 'ASSIGNED' || s === 'IN_PROGRESS' || s === 'ON_THE_WAY') return 'badge-primary';
+  if (s === 'PENDING') return 'badge-warning';
+  if (s === 'COMPLETED') return 'badge-success';
+  if (s === 'CANCELLED') return 'badge-danger';
+  return 'badge-neutral';
+}
+
+async function updateBookingStatusLive(bookingId, newStatus) {
+  try {
+    if (window.upcApi && window.upcApi.bookings) {
+      await window.upcApi.bookings.updateStatus(bookingId, newStatus);
+      showToast(`Booking status updated to ${newStatus}`, 'success');
+      renderAdminBookings();
+    }
+  } catch (err) {
+    showToast(err.message || 'Failed to update booking status', 'error');
+  }
+}
+
+async function assignBookingTechnician(bookingId, techId) {
+  try {
+    if (window.upcApi && window.upcApi.bookings) {
+      await window.upcApi.bookings.update(bookingId, { technicianId: techId ? Number(techId) : null });
+      showToast('Technician assigned successfully', 'success');
+      renderAdminBookings();
+    }
+  } catch (err) {
+    showToast(err.message || 'Failed to assign technician', 'error');
+  }
+}
+
+async function cancelBookingLive(bookingId) {
+  if (!confirm('Are you sure you want to cancel / archive this booking?')) return;
+  try {
+    if (window.upcApi && window.upcApi.bookings) {
+      await window.upcApi.bookings.delete(bookingId);
+      showToast('Booking cancelled and archived', 'info');
+      renderAdminBookings();
+    }
+  } catch (err) {
+    showToast(err.message || 'Failed to cancel booking', 'error');
+  }
+}
+
+// Bind search and filters for bookings
+document.addEventListener('DOMContentLoaded', () => {
+  const bSearch = document.getElementById('bookingSearchInput');
+  const bFilter = document.getElementById('bookingFilterStatus');
+  const bRefresh = document.getElementById('btnRefreshBookings');
+
+  let debounceTimer;
+  if (bSearch) {
+    bSearch.addEventListener('input', () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => renderAdminBookings(), 300);
+    });
+  }
+  if (bFilter) bFilter.addEventListener('change', () => renderAdminBookings());
+  if (bRefresh) bRefresh.addEventListener('click', () => {
+    showToast('Refreshing bookings...', 'info');
+    renderAdminBookings();
+  });
+});
+
+/* 10. FOLLOW-UP SYSTEM */
+async function renderAdminFollowups() {
+  const colOverdue = document.getElementById('followupColOverdue');
+  const colToday = document.getElementById('followupColToday');
+  const colUpcoming = document.getElementById('followupColUpcoming');
+
+  if (!colOverdue || !colToday || !colUpcoming) return;
+
+  try {
+    let followups = [];
+    let summary = { overdue: 0, today: 0, upcoming: 0 };
+
+    if (window.upcApi && window.upcApi.followups) {
+      const res = await window.upcApi.followups.getAll();
+      followups = res.data || [];
+      if (res.meta && res.meta.summary) {
+        summary = res.meta.summary;
+      }
+    }
+
+    // Update Counter Badges
+    const bOverdue = document.getElementById('fuCountOverdue');
+    const bToday = document.getElementById('fuCountToday');
+    const bUpcoming = document.getElementById('fuCountUpcoming');
+    const sbBadge = document.getElementById('sidebarFollowupsBadge');
+    const badgeColOverdue = document.getElementById('badgeColOverdue');
+    const badgeColToday = document.getElementById('badgeColToday');
+    const badgeColUpcoming = document.getElementById('badgeColUpcoming');
+
+    if (bOverdue) bOverdue.textContent = `${summary.overdue} Overdue`;
+    if (bToday) bToday.textContent = `${summary.today} Today`;
+    if (bUpcoming) bUpcoming.textContent = `${summary.upcoming} Upcoming`;
+    if (sbBadge) sbBadge.textContent = `Due: ${summary.today + summary.overdue}`;
+    if (badgeColOverdue) badgeColOverdue.textContent = summary.overdue;
+    if (badgeColToday) badgeColToday.textContent = summary.today;
+    if (badgeColUpcoming) badgeColUpcoming.textContent = summary.upcoming;
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const overdueList = followups.filter(f => f.status === 'PENDING' && f.scheduledDate < todayStr);
+    const todayList = followups.filter(f => f.status === 'PENDING' && f.scheduledDate === todayStr);
+    const upcomingList = followups.filter(f => f.status === 'PENDING' && f.scheduledDate > todayStr);
+
+    // Render Overdue Column
+    colOverdue.innerHTML = overdueList.length > 0 ? overdueList.map(f => `
+      <div style="background:#FEF2F2; border-radius:8px; padding:1rem; border:1px solid #FCA5A5; margin-bottom:0.75rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div style="font-weight:700; color:#0F172A; font-size:0.925rem;">${escapeHtml(f.customerName)}</div>
+          <span class="badge badge-danger" style="font-size:0.65rem;">OVERDUE</span>
+        </div>
+        <div style="font-size:0.78rem; color:#64748B; margin-top:0.2rem;">${escapeHtml(f.service || 'Service Inquiry')} (${f.leadCode || 'Lead'})</div>
+        <div style="font-size:0.75rem; color:#B91C1C; margin:0.4rem 0; font-weight:700;">Scheduled: ${f.scheduledDate} ${f.scheduledTime || ''} • ${escapeHtml(f.phone || '')}</div>
+        ${f.notes ? `<div style="font-size:0.75rem; color:#475569; font-style:italic; margin-bottom:0.5rem;">"${escapeHtml(f.notes)}"</div>` : ''}
+        <div style="display:flex; gap:0.4rem; margin-top:0.5rem;">
+          <button class="btn btn-sm btn-white" style="padding:0.25rem 0.5rem; font-size:0.75rem;" onclick="markFollowupDone(${f.id})">Done ✓</button>
+          <button class="btn btn-sm btn-outline" style="padding:0.25rem 0.5rem; font-size:0.75rem;" onclick="openLeadDrawer(${f.leadId})">Open Lead</button>
+        </div>
+      </div>
+    `).join('') : '<div style="color:#64748B; font-size:0.825rem; padding:0.5rem;">No overdue follow-ups. All clear! 🎉</div>';
+
+    // Render Today Column
+    colToday.innerHTML = todayList.length > 0 ? todayList.map(f => `
+      <div style="background:#FFFBEB; border-radius:8px; padding:1rem; border:1px solid #FCD34D; margin-bottom:0.75rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div style="font-weight:700; color:#0F172A; font-size:0.925rem;">${escapeHtml(f.customerName)}</div>
+          <span class="badge badge-warning" style="font-size:0.65rem;">TODAY</span>
+        </div>
+        <div style="font-size:0.78rem; color:#64748B; margin-top:0.2rem;">${escapeHtml(f.service || 'Service Inquiry')} • Assigned: ${escapeHtml(f.assignedToName || 'Sales')}</div>
+        <div style="font-size:0.75rem; color:#B45309; margin:0.4rem 0; font-weight:700;">Time: ${f.scheduledTime || '11:00 AM'} • ${escapeHtml(f.phone || '')}</div>
+        ${f.notes ? `<div style="font-size:0.75rem; color:#475569; font-style:italic; margin-bottom:0.5rem;">"${escapeHtml(f.notes)}"</div>` : ''}
+        <div style="display:flex; gap:0.4rem; margin-top:0.5rem;">
+          <button class="btn btn-sm btn-primary" style="padding:0.25rem 0.5rem; font-size:0.75rem;" onclick="showToast('Calling customer...', 'info')">Call</button>
+          <button class="btn btn-sm btn-white" style="padding:0.25rem 0.5rem; font-size:0.75rem;" onclick="markFollowupDone(${f.id})">Done ✓</button>
+          <button class="btn btn-sm btn-outline" style="padding:0.25rem 0.5rem; font-size:0.75rem;" onclick="openLeadDrawer(${f.leadId})">Lead</button>
+        </div>
+      </div>
+    `).join('') : '<div style="color:#64748B; font-size:0.825rem; padding:0.5rem;">No pending follow-ups for today.</div>';
+
+    // Render Upcoming Column
+    colUpcoming.innerHTML = upcomingList.length > 0 ? upcomingList.map(f => `
+      <div style="background:#F8FAFC; border-radius:8px; padding:1rem; border:1px solid #E2E8F0; margin-bottom:0.75rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div style="font-weight:700; color:#0F172A; font-size:0.925rem;">${escapeHtml(f.customerName)}</div>
+          <span class="badge badge-primary" style="font-size:0.65rem;">UPCOMING</span>
+        </div>
+        <div style="font-size:0.78rem; color:#64748B; margin-top:0.2rem;">${escapeHtml(f.service || 'Service Inquiry')}</div>
+        <div style="font-size:0.75rem; color:#64748B; margin:0.4rem 0;">Date: ${f.scheduledDate} ${f.scheduledTime || ''}</div>
+        ${f.notes ? `<div style="font-size:0.75rem; color:#475569; font-style:italic; margin-bottom:0.5rem;">"${escapeHtml(f.notes)}"</div>` : ''}
+        <div style="display:flex; gap:0.4rem; margin-top:0.5rem;">
+          <button class="btn btn-sm btn-white" style="padding:0.25rem 0.5rem; font-size:0.75rem;" onclick="markFollowupDone(${f.id})">Done ✓</button>
+          <button class="btn btn-sm btn-outline" style="padding:0.25rem 0.5rem; font-size:0.75rem;" onclick="openLeadDrawer(${f.leadId})">Open Lead</button>
+        </div>
+      </div>
+    `).join('') : '<div style="color:#64748B; font-size:0.825rem; padding:0.5rem;">No upcoming follow-ups scheduled.</div>';
+
+  } catch (err) {
+    console.error('Failed to load followups:', err);
+  }
+}
+
+async function markFollowupDone(followupId) {
+  try {
+    if (window.upcApi && window.upcApi.followups) {
+      await window.upcApi.followups.update(followupId, { status: 'COMPLETED' });
+      showToast('Follow-up marked completed! ✓', 'success');
+      renderAdminFollowups();
+    }
+  } catch (err) {
+    showToast(err.message || 'Failed to complete follow-up', 'error');
+  }
+}
+
+// Schedule Follow-up Modal Handling
+document.addEventListener('DOMContentLoaded', () => {
+  const openBtn = document.getElementById('btnOpenScheduleFollowup');
+  const modal = document.getElementById('modalScheduleFollowup');
+  const closeBtn = document.getElementById('btnCloseFollowupModal');
+  const saveBtn = document.getElementById('btnSaveScheduleFollowup');
+  const leadSelect = document.getElementById('fuModalLeadSelect');
+  const staffSelect = document.getElementById('fuModalAssignSelect');
+  const refreshFuBtn = document.getElementById('btnRefreshFollowups');
+
+  if (refreshFuBtn) {
+    refreshFuBtn.addEventListener('click', () => {
+      showToast('Refreshing follow-ups pipeline...', 'info');
+      renderAdminFollowups();
+    });
+  }
+
+  if (openBtn && modal) {
+    openBtn.addEventListener('click', async () => {
+      modal.style.display = 'flex';
+      const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+      const dateInput = document.getElementById('fuModalDate');
+      if (dateInput) dateInput.value = tomorrow;
+
+      // Populate Leads
+      if (leadSelect && window.upcApi) {
+        leadSelect.innerHTML = '<option value="">Loading active leads...</option>';
+        try {
+          const res = await window.upcApi.leads.getAll({ limit: 50 });
+          const leads = res.data || [];
+          leadSelect.innerHTML = '<option value="">Choose Lead...</option>' + leads.map(l => `
+            <option value="${l.id}">${escapeHtml(l.name)} (${escapeHtml(l.service)}) - #${l.leadCode || l.id}</option>
+          `).join('');
+        } catch (e) {
+          leadSelect.innerHTML = '<option value="">Error loading leads</option>';
+        }
+      }
+
+      // Populate Staff
+      if (staffSelect && window.upcApi) {
+        staffSelect.innerHTML = '<option value="">Unassigned</option>';
+        try {
+          const sRes = await window.upcApi.users.getStaff();
+          const staff = sRes.data || [];
+          staffSelect.innerHTML = '<option value="">Unassigned</option>' + staff.map(s => `
+            <option value="${s.id}">${escapeHtml(s.name)} (${s.roles ? s.roles[0] : 'Staff'})</option>
+          `).join('');
+        } catch (e) {}
+      }
+    });
+  }
+
+  if (closeBtn && modal) {
+    closeBtn.addEventListener('click', () => { modal.style.display = 'none'; });
+  }
+
+  if (saveBtn) {
+    saveBtn.addEventListener('click', async () => {
+      const leadId = document.getElementById('fuModalLeadSelect')?.value;
+      const date = document.getElementById('fuModalDate')?.value;
+      const time = document.getElementById('fuModalTime')?.value;
+      const assignedTo = document.getElementById('fuModalAssignSelect')?.value;
+      const notes = document.getElementById('fuModalNotes')?.value;
+
+      if (!leadId || !date) {
+        showToast('Please select a lead and date', 'error');
+        return;
+      }
+
+      saveBtn.disabled = true;
+      try {
+        await window.upcApi.followups.create({
+          leadId: Number(leadId),
+          date,
+          time,
+          assignedTo: assignedTo ? Number(assignedTo) : null,
+          notes
+        });
+        showToast('Follow-up scheduled and reminder queued! ⏰', 'success');
+        modal.style.display = 'none';
+        renderAdminFollowups();
+      } catch (err) {
+        showToast(err.message || 'Failed to schedule follow-up', 'error');
+      } finally {
+        saveBtn.disabled = false;
+      }
+    });
+  }
+});
+
+/* 11. CUSTOMER MANAGEMENT */
+async function renderAdminCustomers() {
+  const tbody = document.getElementById('customersTableBody');
+  if (!tbody) return;
+
+  const searchInput = document.getElementById('customerSearchInput');
+  const paginationInfo = document.getElementById('customerPaginationInfo');
+  const search = searchInput ? searchInput.value.trim() : '';
+
+  try {
+    let customers = [];
+    if (window.upcApi && window.upcApi.customers) {
+      const res = await window.upcApi.customers.getAll({ search });
+      customers = res.data || [];
+      if (paginationInfo) {
+        const total = (res.meta && res.meta.total) !== undefined ? res.meta.total : customers.length;
+        paginationInfo.textContent = `Showing ${customers.length} of ${total} customers`;
+      }
+    }
+
+    if (customers.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="7" style="text-align:center; padding:2.5rem; color:#64748B;">
+            No customer profiles found.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    tbody.innerHTML = customers.map(c => `
+      <tr>
+        <td>
+          <strong>${escapeHtml(c.name)}</strong><br>
+          <span style="font-size:0.75rem; color:#64748B;">${escapeHtml(c.phone)}</span>
+        </td>
+        <td>${escapeHtml(c.city || 'Pune')} ${c.area ? '• ' + escapeHtml(c.area) : ''}</td>
+        <td><span class="badge badge-neutral">${escapeHtml(c.propertyType || 'Residential')}</span></td>
+        <td><span class="badge badge-primary">${c.totalBookings || 0} Bookings</span></td>
+        <td><strong style="color:#059669;">₹${Number(c.totalSpent || 0).toLocaleString()}</strong></td>
+        <td>${c.createdAt ? new Date(c.createdAt).toLocaleDateString() : '-'}</td>
+        <td>
+          <button class="btn btn-sm btn-outline" onclick="openCustomerProfile(${c.id})">View Profile</button>
+        </td>
+      </tr>
+    `).join('');
+  } catch (err) {
+    console.error('Failed to load customers:', err);
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#DC2626; padding:2rem;">Failed to load customers: ${err.message}</td></tr>`;
+  }
+}
+
+// Bind search and refresh for customers
+document.addEventListener('DOMContentLoaded', () => {
+  const cSearch = document.getElementById('customerSearchInput');
+  const cRefresh = document.getElementById('btnRefreshCustomers');
+
+  let debounceTimer;
+  if (cSearch) {
+    cSearch.addEventListener('input', () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => renderAdminCustomers(), 300);
+    });
+  }
+  if (cRefresh) {
+    cRefresh.addEventListener('click', () => {
+      showToast('Refreshing customer directory...', 'info');
+      renderAdminCustomers();
+    });
+  }
+
+  // Customer Drawer Close
+  const closeCustDrawer = document.getElementById('btnCloseCustomerDrawer');
+  const custDrawer = document.getElementById('customerProfileDrawer');
+  if (closeCustDrawer && custDrawer) {
+    closeCustDrawer.addEventListener('click', () => {
+      custDrawer.classList.remove('open');
+    });
+  }
+});
+
+let currentActiveCustomerId = null;
+
+async function openCustomerProfile(customerId) {
+  const drawer = document.getElementById('customerProfileDrawer');
+  if (!drawer) return;
+
+  currentActiveCustomerId = customerId;
+  drawer.classList.add('open');
+
+  try {
+    const res = await window.upcApi.customers.getById(customerId);
+    const c = res.data;
+    if (!c) return;
+
+    // Populate Details
+    document.getElementById('custDrawerName').textContent = c.name;
+    document.getElementById('custDrawerPhone').textContent = c.phone;
+    document.getElementById('custDrawerEmail').textContent = c.email || 'Not provided';
+    document.getElementById('custDrawerCity').textContent = c.city || 'Pune';
+    document.getElementById('custDrawerProperty').textContent = c.propertyType || 'Residential';
+    document.getElementById('custDrawerSpent').textContent = `₹${Number(c.stats?.totalSpent || c.totalSpent || 0).toLocaleString()}`;
+    document.getElementById('custDrawerAddress').textContent = c.address || 'Address not registered yet';
+
+    // Services Badges
+    const sWrap = document.getElementById('custDrawerServices');
+    if (sWrap) {
+      const services = c.services || [];
+      sWrap.innerHTML = services.length > 0 ? services.map(s => `
+        <span class="badge badge-primary" style="font-size:0.75rem;">${escapeHtml(s)}</span>
+      `).join('') : '<span style="color:#64748B; font-size:0.8rem;">No service history</span>';
+    }
+
+    // Bookings History
+    const bWrap = document.getElementById('custDrawerBookings');
+    if (bWrap) {
+      const bookings = c.bookings || [];
+      bWrap.innerHTML = bookings.length > 0 ? bookings.map(b => `
+        <div style="background:#fff; border:1px solid #E2E8F0; border-radius:6px; padding:0.6rem 0.8rem; font-size:0.8rem;">
+          <div style="display:flex; justify-content:space-between; font-weight:700;">
+            <span>${b.bookingCode || b.id} - ${escapeHtml(b.serviceName || b.service)}</span>
+            <span class="badge ${getBookingStatusBadgeClass(b.status)}" style="font-size:0.65rem;">${b.status}</span>
+          </div>
+          <div style="color:#64748B; font-size:0.75rem; margin-top:0.25rem;">
+            📅 ${b.scheduledDate || b.date} • ₹${Number(b.amount || 0).toLocaleString()} • Tech: ${escapeHtml(b.technicianName || 'Unassigned')}
+          </div>
+        </div>
+      `).join('') : '<span style="color:#64748B; font-size:0.8rem;">Zero bookings recorded</span>';
+    }
+
+    // Lead History
+    const lWrap = document.getElementById('custDrawerLeads');
+    if (lWrap) {
+      const leads = c.leadHistory || [];
+      lWrap.innerHTML = leads.length > 0 ? leads.map(l => `
+        <div style="background:#fff; border:1px solid #E2E8F0; border-radius:6px; padding:0.6rem 0.8rem; font-size:0.8rem;">
+          <div style="display:flex; justify-content:space-between; font-weight:700;">
+            <span>#${l.leadCode} - ${escapeHtml(l.service)}</span>
+            <span class="badge badge-neutral" style="font-size:0.65rem;">${l.status}</span>
+          </div>
+          <div style="color:#64748B; font-size:0.75rem; margin-top:0.25rem;">
+            Source: ${escapeHtml(l.source || 'Website')} • Est: ₹${Number(l.estimatedValue || 0).toLocaleString()}
+          </div>
+        </div>
+      `).join('') : '<span style="color:#64748B; font-size:0.8rem;">No prior leads</span>';
+    }
+
+    // Notes
+    const nWrap = document.getElementById('custDrawerNotes');
+    if (nWrap) {
+      const notes = c.notes || [];
+      nWrap.innerHTML = notes.map(n => `
+        <div style="background:#F8FAFC; border-left:3px solid #059669; padding:0.5rem 0.75rem; font-size:0.8rem; border-radius:4px;">
+          <div>${escapeHtml(n.note)}</div>
+          <div style="font-size:0.7rem; color:#64748B; margin-top:0.2rem;">By ${escapeHtml(n.authorName || 'Staff')} • ${new Date(n.createdAt).toLocaleDateString()}</div>
+        </div>
+      `).join('');
+    }
+
+    // Reviews
+    const rWrap = document.getElementById('custDrawerReviews');
+    if (rWrap) {
+      const reviews = c.reviews || [];
+      rWrap.innerHTML = reviews.length > 0 ? reviews.map(r => `
+        <div style="background:#FFFBEB; border:1px solid #FCD34D; border-radius:6px; padding:0.6rem 0.8rem; font-size:0.8rem;">
+          <div style="color:#B45309; font-weight:700;">⭐ ${r.rating} / 5.0 (${escapeHtml(r.source || 'Direct')})</div>
+          <div style="color:#0F172A; margin-top:0.25rem;">"${escapeHtml(r.reviewText || 'Positive feedback')}"</div>
+        </div>
+      `).join('') : '<span style="color:#64748B; font-size:0.8rem;">No customer reviews submitted</span>';
+    }
+
+  } catch (err) {
+    showToast(err.message || 'Failed to load customer profile', 'error');
+  }
+}
+
+// Add note to customer
+document.addEventListener('DOMContentLoaded', () => {
+  const addNoteBtn = document.getElementById('btnAddCustNote');
+  const noteInput = document.getElementById('custNoteInput');
+
+  if (addNoteBtn && noteInput) {
+    addNoteBtn.addEventListener('click', async () => {
+      const note = noteInput.value.trim();
+      if (!note || !currentActiveCustomerId) return;
+
+      addNoteBtn.disabled = true;
+      try {
+        await window.upcApi.customers.addNote(currentActiveCustomerId, note);
+        showToast('Customer account note saved! 📝', 'success');
+        noteInput.value = '';
+        openCustomerProfile(currentActiveCustomerId);
+      } catch (err) {
+        showToast(err.message || 'Failed to save note', 'error');
+      } finally {
+        addNoteBtn.disabled = false;
+      }
+    });
+  }
+});
+
+/* 12. NOTIFICATION DRAWER & REAL-TIME BADGE */
 function initNotificationDrawer() {
   const bellBtn = document.getElementById('btnAdminNotifBell');
   const drawer = document.getElementById('adminNotifDrawer');
   const closeBtn = document.getElementById('btnCloseNotifDrawer');
+  const markAllBtn = document.getElementById('btnMarkAllNotifsRead');
 
   if (bellBtn && drawer) {
-    bellBtn.addEventListener('click', () => {
+    bellBtn.addEventListener('click', async () => {
       drawer.classList.toggle('open');
-      if (window.upcStore) {
-        window.upcStore.markAllNotificationsRead();
-        updateNotificationBadge();
+      if (drawer.classList.contains('open')) {
+        await refreshLiveNotifications();
       }
     });
   }
@@ -1035,35 +1609,93 @@ function initNotificationDrawer() {
     });
   }
 
-  updateNotificationBadge();
+  if (markAllBtn) {
+    markAllBtn.addEventListener('click', async () => {
+      try {
+        if (window.upcApi && window.upcApi.notifications) {
+          await window.upcApi.notifications.markAllRead();
+          showToast('All notifications marked as read ✓', 'success');
+          await refreshLiveNotifications();
+        }
+      } catch (e) {}
+    });
+  }
+
+  refreshLiveNotifications();
+}
+
+async function refreshLiveNotifications() {
+  const badge = document.getElementById('adminNotifCount');
+  const list = document.getElementById('adminNotifList');
+
+  try {
+    let notifs = [];
+    let unreadCount = 0;
+
+    if (window.upcApi && window.upcApi.notifications) {
+      const res = await window.upcApi.notifications.getAll();
+      notifs = res.data || [];
+      unreadCount = (res.meta && res.meta.unreadCount) !== undefined ? res.meta.unreadCount : notifs.filter(n => n.unread || !n.isRead).length;
+    }
+
+    if (badge) {
+      badge.textContent = unreadCount;
+      badge.style.display = unreadCount > 0 ? 'inline-block' : 'none';
+    }
+
+    if (list) {
+      if (notifs.length === 0) {
+        list.innerHTML = '<div style="text-align:center; color:#64748B; padding:2rem;">No notifications right now.</div>';
+        return;
+      }
+
+      list.innerHTML = notifs.map(n => {
+        const typeBadge = getNotificationTypeBadge(n.type);
+        const timeStr = n.createdAt ? new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Now';
+        const isUnread = n.unread || !n.isRead;
+
+        return `
+          <div style="padding:0.85rem; border-bottom:1px solid #F1F5F9; background:${isUnread ? '#F0FDF4' : '#FFFFFF'}; border-left:3px solid ${isUnread ? '#059669' : '#CBD5E1'}; border-radius:6px; margin-bottom:0.5rem; transition:background 0.2s;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.35rem;">
+              <span class="badge ${typeBadge.cssClass}" style="font-size:0.65rem;">${typeBadge.label}</span>
+              <span style="font-size:0.75rem; color:#64748B;">${timeStr}</span>
+            </div>
+            <div style="font-weight:700; font-size:0.85rem; color:#0F172A;">${escapeHtml(n.title)}</div>
+            <div style="font-size:0.8rem; color:#475569; margin-top:0.2rem;">${escapeHtml(n.message)}</div>
+          </div>
+        `;
+      }).join('');
+    }
+  } catch (err) {
+    console.error('Failed to load notifications:', err);
+  }
+}
+
+function getNotificationTypeBadge(type) {
+  const t = String(type || '').toUpperCase();
+  if (t === 'NEW_LEAD') return { label: '⚡ NEW LEAD', cssClass: 'badge-primary' };
+  if (t === 'FOLLOWUP_DUE') return { label: '⏰ FOLLOW-UP', cssClass: 'badge-warning' };
+  if (t === 'BOOKING_CREATED') return { label: '📋 NEW BOOKING', cssClass: 'badge-primary' };
+  if (t === 'BOOKING_CONFIRMED') return { label: '✅ CONFIRMED', cssClass: 'badge-success' };
+  if (t === 'BOOKING_ASSIGNED') return { label: '👷 DISPATCHED', cssClass: 'badge-primary' };
+  if (t === 'BOOKING_COMPLETED') return { label: '🎉 COMPLETED', cssClass: 'badge-success' };
+  return { label: 'INFO', cssClass: 'badge-neutral' };
 }
 
 function updateNotificationBadge() {
-  const badge = document.getElementById('adminNotifCount');
-  const list = document.getElementById('adminNotifList');
-  if (!badge || !window.upcStore) return;
-
-  const notifs = window.upcStore.data.notifications || [];
-  const unreadCount = notifs.filter(n => n.unread).length;
-
-  badge.textContent = unreadCount;
-  badge.style.display = unreadCount > 0 ? 'inline-block' : 'none';
-
-  if (list) {
-    list.innerHTML = notifs.map(n => `
-      <div style="padding:0.85rem; border-bottom:1px solid #F1F5F9; background:${n.unread ? '#F0FDF4' : '#FFFFFF'}; border-radius:6px; margin-bottom:0.5rem;">
-        <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:#64748B; font-weight:700;">
-          <span>${n.title}</span>
-          <span>${n.time}</span>
-        </div>
-        <div style="font-size:0.85rem; color:#0F172A; margin-top:0.25rem;">${n.text}</div>
-      </div>
-    `).join('');
-  }
+  refreshLiveNotifications();
 }
 
 // Global expose
 window.openLeadDrawer = openLeadDrawer;
+window.openCustomerProfile = openCustomerProfile;
 window.triggerWhatsAppChat = triggerWhatsAppChat;
 window.quickAdvanceLead = quickAdvanceLead;
 window.switchAdminSection = switchAdminSection;
+window.updateBookingStatusLive = updateBookingStatusLive;
+window.assignBookingTechnician = assignBookingTechnician;
+window.cancelBookingLive = cancelBookingLive;
+window.markFollowupDone = markFollowupDone;
+window.renderAdminBookings = renderAdminBookings;
+window.renderAdminFollowups = renderAdminFollowups;
+window.renderAdminCustomers = renderAdminCustomers;

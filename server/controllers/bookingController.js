@@ -5,9 +5,18 @@ const { apiSuccess, apiError } = require('../utils/response');
 const bookingController = {
   async getBookings(req, res, next) {
     try {
-      const { status, limit, offset } = req.query;
-      const bookings = await bookingService.getBookings({ status, limit, offset });
-      return apiSuccess(res, bookings, 'Bookings retrieved successfully.');
+      const { search, status, technicianId, date, includeArchived, page, limit, offset } = req.query;
+      const result = await bookingService.getBookings({
+        search,
+        status,
+        technicianId,
+        date,
+        includeArchived: includeArchived === 'true',
+        page: page || 1,
+        limit: limit || 50,
+        offset
+      });
+      return apiSuccess(res, result.bookings || result, 'Bookings retrieved successfully.', 200, result.pagination);
     } catch (error) {
       next(error);
     }
@@ -37,6 +46,20 @@ const bookingController = {
     }
   },
 
+  async updateBooking(req, res, next) {
+    try {
+      const { id } = req.params;
+      const ipAddress = req.ip || req.connection.remoteAddress;
+      const updated = await bookingService.updateBooking(id, req.body, req.user, ipAddress);
+      return apiSuccess(res, updated, 'Booking updated successfully.');
+    } catch (error) {
+      if (error.message.includes('not found')) {
+        return apiError(res, error.message, 404);
+      }
+      next(error);
+    }
+  },
+
   async updateStatus(req, res, next) {
     try {
       const { id } = req.params;
@@ -45,9 +68,26 @@ const bookingController = {
         return apiError(res, 'New status is required.', 422);
       }
       const ipAddress = req.ip || req.connection.remoteAddress;
-      const updated = await bookingService.updateBookingStatus(id, status, req.user, ipAddress);
+      const updated = await bookingService.updateBooking(id, { status }, req.user, ipAddress);
       return apiSuccess(res, updated, 'Booking status updated.');
     } catch (error) {
+      if (error.message.includes('not found')) {
+        return apiError(res, error.message, 404);
+      }
+      next(error);
+    }
+  },
+
+  async deleteBooking(req, res, next) {
+    try {
+      const { id } = req.params;
+      const ipAddress = req.ip || req.connection.remoteAddress;
+      const archived = await bookingService.archiveBooking(id, req.user, ipAddress);
+      return apiSuccess(res, archived, 'Booking archived / cancelled successfully.');
+    } catch (error) {
+      if (error.message.includes('not found')) {
+        return apiError(res, error.message, 404);
+      }
       next(error);
     }
   }
