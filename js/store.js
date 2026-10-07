@@ -280,6 +280,25 @@ class UPCStore {
     });
 
     this.notify();
+
+    // Async sync with Production API if available
+    if (window.upcApi) {
+      window.upcApi.leads.create({
+        name: newLead.name,
+        phone: newLead.phone,
+        email: newLead.email,
+        service: newLead.service,
+        property: newLead.property,
+        city: newLead.city,
+        area: newLead.area,
+        source: newLead.source,
+        campaign: newLead.campaign,
+        urgency: newLead.urgency,
+        value: newLead.value,
+        notes: newLead.notes
+      }).catch(() => {});
+    }
+
     return newLead;
   }
 
@@ -292,6 +311,10 @@ class UPCStore {
         text: `Status updated to ${newStatus} by Admin.`
       });
       this.notify();
+
+      if (window.upcApi && window.upcApi.auth.isAuthenticated()) {
+        window.upcApi.leads.update(leadId, { status: newStatus }).catch(() => {});
+      }
     }
   }
 
@@ -304,7 +327,45 @@ class UPCStore {
         text: `Note added: "${noteText}"`
       });
       this.notify();
+
+      if (window.upcApi && window.upcApi.auth.isAuthenticated()) {
+        window.upcApi.leads.addNote(leadId, noteText).catch(() => {});
+      }
     }
+  }
+
+  // Synchronize state from live MySQL API
+  syncFromBackend(backendLeads = []) {
+    if (!Array.isArray(backendLeads) || backendLeads.length === 0) return;
+    
+    // Normalize backend leads to store schema
+    const formatted = backendLeads.map(b => ({
+      id: b.lead_code || `LD-${b.id}`,
+      dbId: b.id,
+      name: b.name,
+      phone: b.phone,
+      email: b.email || '',
+      service: b.service_name,
+      property: b.property_type || 'Residential',
+      city: b.city || 'Pune',
+      area: b.area || '',
+      source: b.source || 'Website',
+      campaign: b.campaign || '',
+      adName: b.ad_name || '',
+      status: b.status || 'NEW',
+      urgency: b.urgency || 'Today',
+      value: Number(b.estimated_value) || 0,
+      createdAt: b.created_at,
+      followUpDate: b.follow_up_date || '',
+      assignedTo: b.assigned_to_name || 'Vikram Shinde',
+      notes: b.notes ? (Array.isArray(b.notes) ? b.notes.map(n => n.note).join('\n') : b.notes) : '',
+      timeline: b.timeline && Array.isArray(b.timeline) 
+        ? b.timeline.map(t => ({ time: t.created_at || 'Recently', text: t.description }))
+        : [{ time: 'Recent', text: `Lead received via ${b.source}` }]
+    }));
+
+    this.data.leads = formatted;
+    this.notify();
   }
 
   // Booking actions
@@ -338,6 +399,23 @@ class UPCStore {
     });
 
     this.notify();
+
+    // Async sync with Production API if available
+    if (window.upcApi) {
+      window.upcApi.bookings.create({
+        booking_code: newBooking.id,
+        name: newBooking.customerName,
+        phone: newBooking.phone,
+        service: newBooking.service,
+        property: newBooking.propertyType,
+        date: newBooking.date,
+        slot: newBooking.timeSlot,
+        address: newBooking.address,
+        amount: newBooking.amount,
+        notes: newBooking.notes
+      }).catch(() => {});
+    }
+
     return newBooking;
   }
 
@@ -346,6 +424,10 @@ class UPCStore {
     if (booking) {
       booking.status = newStatus;
       this.notify();
+
+      if (window.upcApi && window.upcApi.auth.isAuthenticated()) {
+        window.upcApi.bookings.updateStatus(bookingId, newStatus).catch(() => {});
+      }
     }
   }
 

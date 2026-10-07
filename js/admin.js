@@ -4,6 +4,7 @@
    =================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
+  initAdminAuth();
   if (!window.upcStore) return;
 
   initAdminNavigation();
@@ -24,6 +25,62 @@ document.addEventListener('DOMContentLoaded', () => {
     updateNotificationBadge();
   });
 });
+
+/* 0. ADMIN AUTHENTICATION & SESSION MANAGEMENT */
+function initAdminAuth() {
+  const logoutBtn = document.getElementById('adminLogoutBtn');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      if (confirm('Are you sure you want to sign out of the admin console?')) {
+        if (window.upcApi) {
+          await window.upcApi.auth.logout();
+        }
+        window.location.href = 'login.html';
+      }
+    });
+  }
+
+  // Populate user profile in topbar
+  if (window.upcApi) {
+    const user = window.upcApi.auth.getUser();
+    if (user) {
+      const nameEl = document.getElementById('adminUserName');
+      const avatarEl = document.getElementById('adminUserAvatar');
+      if (nameEl) nameEl.textContent = `${user.name} (${(user.roles && user.roles[0]) || 'Admin'})`;
+      if (avatarEl && user.name) {
+        const initials = user.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+        avatarEl.textContent = initials || 'AD';
+      }
+    }
+
+    // Verify session validity with backend
+    window.upcApi.auth.getMe().then(res => {
+      if (res && res.data) {
+        const u = res.data;
+        const nameEl = document.getElementById('adminUserName');
+        const avatarEl = document.getElementById('adminUserAvatar');
+        if (nameEl) nameEl.textContent = `${u.name} (${(u.roles && u.roles[0]) || 'Admin'})`;
+        if (avatarEl && u.name) {
+          const initials = u.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+          avatarEl.textContent = initials || 'AD';
+        }
+
+        // Sync leads from backend API if available
+        window.upcApi.leads.getAll().then(leadRes => {
+          if (leadRes && leadRes.data && leadRes.data.length > 0 && window.upcStore) {
+            window.upcStore.syncFromBackend(leadRes.data);
+          }
+        }).catch(() => {});
+      }
+    }).catch(err => {
+      if (err.status === 401) {
+        window.upcApi.auth.clearSession();
+        window.location.href = 'login.html';
+      }
+    });
+  }
+}
 
 /* 1. ADMIN NAVIGATION & SECTION SWITCHING */
 function initAdminNavigation() {

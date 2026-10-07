@@ -10,6 +10,13 @@
   <link rel="stylesheet" href="css/components.css">
   <link rel="stylesheet" href="css/admin.css">
   <link rel="stylesheet" href="css/responsive.css">
+  <script src="js/api-client.js"></script>
+  <script>
+    // Admin Authentication Guard: Redirect immediately to login.html if unauthenticated
+    if (!window.upcApi || !window.upcApi.auth.isAuthenticated()) {
+      window.location.replace('login.html');
+    }
+  </script>
 </head>
 <body style="background:#F8FAFC;">
 
@@ -107,10 +114,15 @@
             <span id="adminNotifCount" class="badge badge-danger" style="position:absolute; top:-5px; right:-5px; padding:0.15rem 0.4rem; font-size:0.68rem;">3</span>
           </div>
 
-          <!-- User Profile Badge -->
-          <div style="display:flex; align-items:center; gap:0.5rem; background:#F1F5F9; padding:0.35rem 0.75rem; border-radius:var(--radius-full);">
-            <div style="width:28px; height:28px; border-radius:50%; background:#064E3B; color:#fff; display:flex; align-items:center; justify-content:center; font-size:0.75rem; font-weight:700;">VS</div>
-            <span style="font-size:0.825rem; font-weight:700; color:#0F172A;">Vikram (Admin)</span>
+          <!-- User Profile & Logout -->
+          <div style="display:flex; align-items:center; gap:0.5rem;">
+            <div style="display:flex; align-items:center; gap:0.5rem; background:#F1F5F9; padding:0.35rem 0.75rem; border-radius:var(--radius-full);">
+              <div id="adminUserAvatar" style="width:28px; height:28px; border-radius:50%; background:#064E3B; color:#fff; display:flex; align-items:center; justify-content:center; font-size:0.75rem; font-weight:700;">VS</div>
+              <span id="adminUserName" style="font-size:0.825rem; font-weight:700; color:#0F172A;">Admin</span>
+            </div>
+            <button id="adminLogoutBtn" class="btn btn-white btn-sm" title="Sign out" style="padding:0.35rem 0.65rem; font-size:0.75rem; color:#DC2626; border-color:#FECACA; font-weight:600;">
+              Logout
+            </button>
           </div>
         </div>
       </header>
