@@ -84,6 +84,28 @@
         </li>
       </ul>
 
+      <div class="admin-nav-group">Website CMS</div>
+      <ul class="admin-nav-menu">
+        <li class="admin-nav-item" data-admin-view="cms-services">
+          <a>🛠️ Services Catalog</a>
+        </li>
+        <li class="admin-nav-item" data-admin-view="cms-offers">
+          <a>🏷️ Offers & Promos</a>
+        </li>
+        <li class="admin-nav-item" data-admin-view="cms-reviews">
+          <a>
+            ⭐ Customer Reviews
+            <span class="badge badge-warning" id="sidebarReviewsBadge" style="font-size:0.65rem;">Moderation</span>
+          </a>
+        </li>
+        <li class="admin-nav-item" data-admin-view="cms-blog">
+          <a>📝 Blog & Articles</a>
+        </li>
+        <li class="admin-nav-item" data-admin-view="cms-service-areas">
+          <a>📍 Service Areas</a>
+        </li>
+      </ul>
+
       <div class="admin-sidebar-footer">
         <a href="index.html" class="btn btn-white btn-sm" style="font-size:0.8rem; width:100%; justify-content:center;">
           🌐 Back to Public Website
@@ -845,6 +867,231 @@
           </div>
         </section>
 
+        <!-- ==================== SECTION 9: CMS SERVICES ==================== -->
+        <section id="admin-sec-cms-services" class="admin-view-section" style="display:none;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
+            <div>
+              <h2 style="font-size:1.75rem; margin-bottom:0.25rem;">Services Catalog & Offerings</h2>
+              <p style="color:#64748B; font-size:0.875rem; margin:0;">Configure services, scientific process stages, warranty terms, and public pricing.</p>
+            </div>
+            <button id="btnOpenAddServiceModal" class="btn btn-primary btn-sm">
+              <span>+ Add New Service</span>
+            </button>
+          </div>
+
+          <!-- Services Toolbar -->
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-bottom:1.5rem; flex-wrap:wrap;">
+            <div style="display:flex; gap:0.5rem; align-items:center;">
+              <select id="cmsServiceCategoryFilter" class="form-control" style="width:180px; padding:0.45rem 0.75rem; font-size:0.85rem;">
+                <option value="All">All Categories</option>
+                <option value="Residential">Residential</option>
+                <option value="Commercial">Commercial</option>
+                <option value="Structural">Structural</option>
+                <option value="General">General</option>
+                <option value="Outdoor">Outdoor</option>
+              </select>
+              <select id="cmsServiceStatusFilter" class="form-control" style="width:150px; padding:0.45rem 0.75rem; font-size:0.85rem;">
+                <option value="All">All Statuses</option>
+                <option value="ACTIVE">Active Only</option>
+                <option value="INACTIVE">Inactive</option>
+                <option value="ARCHIVED">Archived</option>
+              </select>
+            </div>
+            <div style="position:relative; width:260px;">
+              <input type="text" id="cmsServiceSearchInput" class="form-control" placeholder="Search services..." style="padding:0.45rem 0.75rem; font-size:0.85rem;">
+            </div>
+          </div>
+
+          <!-- Services Table -->
+          <div class="admin-card" style="background:#fff; border:1px solid #E2E8F0; border-radius:16px; overflow:hidden; box-shadow:var(--shadow-sm);">
+            <div style="overflow-x:auto;">
+              <table class="crm-table">
+                <thead>
+                  <tr>
+                    <th>Service Name</th>
+                    <th>Slug</th>
+                    <th>Category</th>
+                    <th>Starting Price</th>
+                    <th>Duration</th>
+                    <th>Status</th>
+                    <th style="text-align:right;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="adminCmsServicesTableBody">
+                  <tr>
+                    <td colspan="7" style="text-align:center; padding:2rem; color:#94A3B8;">Loading services catalog...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================== SECTION 10: CMS OFFERS ==================== -->
+        <section id="admin-sec-cms-offers" class="admin-view-section" style="display:none;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
+            <div>
+              <h2 style="font-size:1.75rem; margin-bottom:0.25rem;">Promotional Offers & Coupons</h2>
+              <p style="color:#64748B; font-size:0.875rem; margin:0;">Manage public discount campaigns, seasonal promo codes, and terms.</p>
+            </div>
+            <button id="btnOpenAddOfferModal" class="btn btn-primary btn-sm">
+              <span>+ Create Offer</span>
+            </button>
+          </div>
+
+          <!-- Offers Table -->
+          <div class="admin-card" style="background:#fff; border:1px solid #E2E8F0; border-radius:16px; overflow:hidden; box-shadow:var(--shadow-sm);">
+            <div style="overflow-x:auto;">
+              <table class="crm-table">
+                <thead>
+                  <tr>
+                    <th>Campaign / Offer Title</th>
+                    <th>Applicable Service</th>
+                    <th>Discount</th>
+                    <th>Coupon CTA Code</th>
+                    <th>Validity</th>
+                    <th>Status</th>
+                    <th style="text-align:right;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="adminCmsOffersTableBody">
+                  <tr>
+                    <td colspan="7" style="text-align:center; padding:2rem; color:#94A3B8;">Loading promotional offers...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================== SECTION 11: CMS REVIEWS ==================== -->
+        <section id="admin-sec-cms-reviews" class="admin-view-section" style="display:none;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
+            <div>
+              <h2 style="font-size:1.75rem; margin-bottom:0.25rem;">Review Moderation & Testimonials</h2>
+              <p style="color:#64748B; font-size:0.875rem; margin:0;">Moderate customer reviews. Only <strong>Approved</strong> reviews appear on the live website.</p>
+            </div>
+            <button id="btnOpenAddReviewModal" class="btn btn-primary btn-sm">
+              <span>+ Add Manual Review</span>
+            </button>
+          </div>
+
+          <!-- Moderation Queue Tabs -->
+          <div style="display:flex; gap:0.5rem; margin-bottom:1.5rem;">
+            <button class="btn btn-white btn-sm active" data-cms-review-tab="ALL">All Reviews</button>
+            <button class="btn btn-white btn-sm" data-cms-review-tab="PENDING">
+              Pending Approval <span id="cmsReviewPendingBadge" class="badge badge-warning" style="margin-left:0.35rem; font-size:0.65rem;">0</span>
+            </button>
+            <button class="btn btn-white btn-sm" data-cms-review-tab="APPROVED">Approved (Public)</button>
+            <button class="btn btn-white btn-sm" data-cms-review-tab="REJECTED">Rejected</button>
+          </div>
+
+          <!-- Reviews Table -->
+          <div class="admin-card" style="background:#fff; border:1px solid #E2E8F0; border-radius:16px; overflow:hidden; box-shadow:var(--shadow-sm);">
+            <div style="overflow-x:auto;">
+              <table class="crm-table">
+                <thead>
+                  <tr>
+                    <th>Customer</th>
+                    <th>Rating</th>
+                    <th>Review Content</th>
+                    <th>Service & Location</th>
+                    <th>Moderation Status</th>
+                    <th>Featured</th>
+                    <th style="text-align:right;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="adminCmsReviewsTableBody">
+                  <tr>
+                    <td colspan="7" style="text-align:center; padding:2rem; color:#94A3B8;">Loading reviews moderation queue...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================== SECTION 12: CMS BLOG ==================== -->
+        <section id="admin-sec-cms-blog" class="admin-view-section" style="display:none;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
+            <div>
+              <h2 style="font-size:1.75rem; margin-bottom:0.25rem;">Blog & Entomological Articles</h2>
+              <p style="color:#64748B; font-size:0.875rem; margin:0;">Create and publish technical pest guides, monsoon prevention tips, and compliance articles.</p>
+            </div>
+            <button id="btnOpenAddBlogModal" class="btn btn-primary btn-sm">
+              <span>+ New Article</span>
+            </button>
+          </div>
+
+          <!-- Blog Status Tabs -->
+          <div style="display:flex; gap:0.5rem; margin-bottom:1.5rem;">
+            <button class="btn btn-white btn-sm active" data-cms-blog-tab="ALL">All Articles</button>
+            <button class="btn btn-white btn-sm" data-cms-blog-tab="PUBLISHED">Published (Public)</button>
+            <button class="btn btn-white btn-sm" data-cms-blog-tab="DRAFT">Drafts</button>
+            <button class="btn btn-white btn-sm" data-cms-blog-tab="ARCHIVED">Archived</button>
+          </div>
+
+          <!-- Blog Table -->
+          <div class="admin-card" style="background:#fff; border:1px solid #E2E8F0; border-radius:16px; overflow:hidden; box-shadow:var(--shadow-sm);">
+            <div style="overflow-x:auto;">
+              <table class="crm-table">
+                <thead>
+                  <tr>
+                    <th>Article Title</th>
+                    <th>Slug</th>
+                    <th>Category</th>
+                    <th>Author</th>
+                    <th>Published Date</th>
+                    <th>Status</th>
+                    <th style="text-align:right;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="adminCmsBlogsTableBody">
+                  <tr>
+                    <td colspan="7" style="text-align:center; padding:2rem; color:#94A3B8;">Loading blog articles...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================== SECTION 13: CMS SERVICE AREAS ==================== -->
+        <section id="admin-sec-cms-service-areas" class="admin-view-section" style="display:none;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
+            <div>
+              <h2 style="font-size:1.75rem; margin-bottom:0.25rem;">Service Areas & Hub Directory</h2>
+              <p style="color:#64748B; font-size:0.875rem; margin:0;">Manage geographic coverage, rapid response hubs, and service availability flags.</p>
+            </div>
+            <button id="btnOpenAddAreaModal" class="btn btn-primary btn-sm">
+              <span>+ Add Coverage Area</span>
+            </button>
+          </div>
+
+          <!-- Areas Table -->
+          <div class="admin-card" style="background:#fff; border:1px solid #E2E8F0; border-radius:16px; overflow:hidden; box-shadow:var(--shadow-sm);">
+            <div style="overflow-x:auto;">
+              <table class="crm-table">
+                <thead>
+                  <tr>
+                    <th>City</th>
+                    <th>Area / Locality</th>
+                    <th>Service Availability</th>
+                    <th>Status</th>
+                    <th>SEO Title</th>
+                    <th style="text-align:right;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="adminCmsAreasTableBody">
+                  <tr>
+                    <td colspan="6" style="text-align:center; padding:2rem; color:#94A3B8;">Loading coverage areas...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
       </div>
     </div>
   </div>
@@ -1096,6 +1343,321 @@
           <textarea id="fuModalNotes" class="form-control" rows="3" placeholder="e.g. Call customer for quote approval and schedule radar scan..."></textarea>
         </div>
         <button id="btnSaveScheduleFollowup" class="btn btn-primary" style="width:100%;">Save & Queue Reminder ⏰</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CMS SERVICE -->
+  <div id="modalCmsService" class="modal-overlay" style="display:none;">
+    <div class="modal-card" style="max-width:640px; max-height:90vh; overflow-y:auto;">
+      <div class="modal-header">
+        <h3 id="modalServiceTitle">Add / Edit Service</h3>
+        <button id="btnCloseServiceModal" class="modal-close-btn">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="serviceEditId">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+          <div class="form-group">
+            <label class="form-label">Service Name *</label>
+            <input type="text" id="serviceInputName" class="form-control" placeholder="e.g. Cockroach Herbal Gel" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Slug *</label>
+            <input type="text" id="serviceInputSlug" class="form-control" placeholder="e.g. cockroach-control" required>
+          </div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.75rem;">
+          <div class="form-group">
+            <label class="form-label">Category</label>
+            <select id="serviceInputCategory" class="form-control">
+              <option value="Residential">Residential</option>
+              <option value="Commercial">Commercial</option>
+              <option value="Structural">Structural</option>
+              <option value="General">General</option>
+              <option value="Outdoor">Outdoor</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Price (₹) *</label>
+            <input type="number" id="serviceInputPrice" class="form-control" placeholder="1499" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <select id="serviceInputStatus" class="form-control">
+              <option value="ACTIVE">ACTIVE</option>
+              <option value="INACTIVE">INACTIVE</option>
+              <option value="ARCHIVED">ARCHIVED</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+          <div class="form-group">
+            <label class="form-label">Estimated Duration</label>
+            <input type="text" id="serviceInputDuration" class="form-control" placeholder="e.g. 45 - 60 Mins">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Warranty (Months)</label>
+            <input type="number" id="serviceInputWarranty" class="form-control" placeholder="12" value="12">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Image URL / Asset Path</label>
+          <input type="text" id="serviceInputImage" class="form-control" placeholder="assets/images/hero.jpg">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Short Description</label>
+          <input type="text" id="serviceInputShortDesc" class="form-control" placeholder="Brief 1-sentence hook for cards">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Full Description</label>
+          <textarea id="serviceInputDesc" class="form-control" rows="3" placeholder="Detailed service description..."></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Key Benefits / Perks (one per line)</label>
+          <textarea id="serviceInputBenefits" class="form-control" rows="3" placeholder="Bayer Maxforce Gel Technology&#10;100% Odorless non-toxic&#10;1-Year Warranty"></textarea>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+          <div class="form-group">
+            <label class="form-label">SEO Title</label>
+            <input type="text" id="serviceInputSeoTitle" class="form-control" placeholder="e.g. Cockroach Control Pune">
+          </div>
+          <div class="form-group">
+            <label class="form-label">SEO Description</label>
+            <input type="text" id="serviceInputSeoDesc" class="form-control" placeholder="Meta description for search engines">
+          </div>
+        </div>
+        <button id="btnSaveCmsService" class="btn btn-primary" style="width:100%;">Save Service Details 💾</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CMS OFFER -->
+  <div id="modalCmsOffer" class="modal-overlay" style="display:none;">
+    <div class="modal-card" style="max-width:540px; max-height:90vh; overflow-y:auto;">
+      <div class="modal-header">
+        <h3 id="modalOfferTitle">Add / Edit Promotional Offer</h3>
+        <button id="btnCloseOfferModal" class="modal-close-btn">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="offerEditId">
+        <div class="form-group">
+          <label class="form-label">Offer Title *</label>
+          <input type="text" id="offerInputTitle" class="form-control" placeholder="e.g. First Time Customer 20% Off" required>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+          <div class="form-group">
+            <label class="form-label">Discount Text *</label>
+            <input type="text" id="offerInputDiscount" class="form-control" placeholder="e.g. 20% OFF" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Coupon Code / CTA *</label>
+            <input type="text" id="offerInputCta" class="form-control" placeholder="e.g. WELCOME20" required>
+          </div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+          <div class="form-group">
+            <label class="form-label">Applicable Service</label>
+            <input type="text" id="offerInputService" class="form-control" placeholder="e.g. Cockroach Control">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Campaign Status</label>
+            <select id="offerInputStatus" class="form-control">
+              <option value="ACTIVE">ACTIVE</option>
+              <option value="INACTIVE">INACTIVE</option>
+              <option value="EXPIRED">EXPIRED</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+          <div class="form-group">
+            <label class="form-label">Valid From</label>
+            <input type="date" id="offerInputValidFrom" class="form-control">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Valid Until</label>
+            <input type="date" id="offerInputValidUntil" class="form-control">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <textarea id="offerInputDesc" class="form-control" rows="2" placeholder="Promotional offer details..."></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Terms & Conditions</label>
+          <input type="text" id="offerInputTerms" class="form-control" placeholder="e.g. Valid for residential properties only.">
+        </div>
+        <button id="btnSaveCmsOffer" class="btn btn-primary" style="width:100%;">Save Promotional Offer 🏷️</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CMS REVIEW -->
+  <div id="modalCmsReview" class="modal-overlay" style="display:none;">
+    <div class="modal-card" style="max-width:500px;">
+      <div class="modal-header">
+        <h3 id="modalReviewTitle">Add / Edit Review</h3>
+        <button id="btnCloseReviewModal" class="modal-close-btn">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="reviewEditId">
+        <div style="display:grid; grid-template-columns:1.2fr 0.8fr; gap:0.75rem;">
+          <div class="form-group">
+            <label class="form-label">Customer Name *</label>
+            <input type="text" id="reviewInputCustomer" class="form-control" placeholder="e.g. Anjali Mehta" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Rating (1 - 5) *</label>
+            <select id="reviewInputRating" class="form-control">
+              <option value="5.0">5.0 ★★★★★</option>
+              <option value="4.5">4.5 ★★★★½</option>
+              <option value="4.0">4.0 ★★★★☆</option>
+              <option value="3.0">3.0 ★★★☆☆</option>
+              <option value="2.0">2.0 ★★☆☆☆</option>
+              <option value="1.0">1.0 ★☆☆☆☆</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+          <div class="form-group">
+            <label class="form-label">Service</label>
+            <input type="text" id="reviewInputService" class="form-control" placeholder="e.g. Termite Radar Inspection">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Location / Area</label>
+            <input type="text" id="reviewInputLocation" class="form-control" placeholder="e.g. Kalyani Nagar, Pune">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Review Content *</label>
+          <textarea id="reviewInputText" class="form-control" rows="3" placeholder="Customer testimony and feedback..." required></textarea>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+          <div class="form-group">
+            <label class="form-label">Moderation Status</label>
+            <select id="reviewInputStatus" class="form-control">
+              <option value="APPROVED">APPROVED (Public)</option>
+              <option value="PENDING">PENDING</option>
+              <option value="REJECTED">REJECTED</option>
+            </select>
+          </div>
+          <div class="form-group" style="display:flex; align-items:center; margin-top:1.5rem;">
+            <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer;">
+              <input type="checkbox" id="reviewInputFeatured">
+              <span style="font-size:0.875rem; font-weight:600;">Featured Review ⭐</span>
+            </label>
+          </div>
+        </div>
+        <button id="btnSaveCmsReview" class="btn btn-primary" style="width:100%;">Save Review ⭐</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CMS BLOG -->
+  <div id="modalCmsBlog" class="modal-overlay" style="display:none;">
+    <div class="modal-card" style="max-width:680px; max-height:90vh; overflow-y:auto;">
+      <div class="modal-header">
+        <h3 id="modalBlogTitle">New / Edit Blog Article</h3>
+        <button id="btnCloseBlogModal" class="modal-close-btn">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="blogEditId">
+        <div class="form-group">
+          <label class="form-label">Article Title *</label>
+          <input type="text" id="blogInputTitle" class="form-control" placeholder="e.g. How to Detect Subterranean Termites Before Wood Hollows" required>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.75rem;">
+          <div class="form-group">
+            <label class="form-label">Slug</label>
+            <input type="text" id="blogInputSlug" class="form-control" placeholder="e.g. how-to-detect-subterranean-termites">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Category</label>
+            <input type="text" id="blogInputCategory" class="form-control" placeholder="e.g. Termite Science" value="Termite Science">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <select id="blogInputStatus" class="form-control">
+              <option value="PUBLISHED">PUBLISHED (Public)</option>
+              <option value="DRAFT">DRAFT</option>
+              <option value="ARCHIVED">ARCHIVED</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+          <div class="form-group">
+            <label class="form-label">Author Name</label>
+            <input type="text" id="blogInputAuthor" class="form-control" placeholder="e.g. Dr. S. Rao (Entomologist)" value="Dr. S. Rao (Entomologist)">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Featured Image URL</label>
+            <input type="text" id="blogInputImage" class="form-control" placeholder="assets/images/termite.jpg" value="assets/images/termite.jpg">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Excerpt / Summary</label>
+          <textarea id="blogInputExcerpt" class="form-control" rows="2" placeholder="Brief summary displayed on article cards..."></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Article Content (Markdown / Text) *</label>
+          <textarea id="blogInputContent" class="form-control" rows="6" placeholder="Full article body content..." required></textarea>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+          <div class="form-group">
+            <label class="form-label">SEO Title</label>
+            <input type="text" id="blogInputSeoTitle" class="form-control" placeholder="Meta title">
+          </div>
+          <div class="form-group">
+            <label class="form-label">SEO Description</label>
+            <input type="text" id="blogInputSeoDesc" class="form-control" placeholder="Meta description">
+          </div>
+        </div>
+        <button id="btnSaveCmsBlog" class="btn btn-primary" style="width:100%;">Save Blog Article 📝</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CMS SERVICE AREA -->
+  <div id="modalCmsArea" class="modal-overlay" style="display:none;">
+    <div class="modal-card" style="max-width:480px;">
+      <div class="modal-header">
+        <h3 id="modalAreaTitle">Add / Edit Coverage Area</h3>
+        <button id="btnCloseAreaModal" class="modal-close-btn">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="areaEditId">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+          <div class="form-group">
+            <label class="form-label">City *</label>
+            <input type="text" id="areaInputCity" class="form-control" placeholder="Pune" value="Pune" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <select id="areaInputStatus" class="form-control">
+              <option value="ACTIVE">ACTIVE</option>
+              <option value="INACTIVE">INACTIVE</option>
+              <option value="COMING_SOON">COMING_SOON</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Area / Locality Name *</label>
+          <input type="text" id="areaInputName" class="form-control" placeholder="e.g. Baner & Balewadi (High Street)" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Service Availability Details</label>
+          <input type="text" id="areaInputAvailability" class="form-control" placeholder="e.g. All Services (Termite, Cockroach, Bedbug, Commercial)">
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+          <div class="form-group">
+            <label class="form-label">SEO Title</label>
+            <input type="text" id="areaInputSeoTitle" class="form-control" placeholder="Locality SEO title">
+          </div>
+          <div class="form-group">
+            <label class="form-label">SEO Description</label>
+            <input type="text" id="areaInputSeoDesc" class="form-control" placeholder="Meta description">
+          </div>
+        </div>
+        <button id="btnSaveCmsArea" class="btn btn-primary" style="width:100%;">Save Coverage Area 📍</button>
       </div>
     </div>
   </div>

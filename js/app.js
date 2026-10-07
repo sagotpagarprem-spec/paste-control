@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initServiceAreaChecker();
   initOfferCouponCopy();
   initMobileBottomBar();
+  initPublicCmsHydration();
 });
 
 /* 1. NAVIGATION & VIEW ROUTING */
@@ -726,6 +727,14 @@ const SERVICES_DATA = {
   }
 };
 
+let publicCmsState = {
+  services: [],
+  offers: [],
+  reviews: [],
+  blogs: [],
+  areas: []
+};
+
 function initServiceDetailSwitch() {
   const serviceDetailLinks = document.querySelectorAll('[data-service-detail]');
   serviceDetailLinks.forEach(link => {
@@ -740,8 +749,16 @@ function initServiceDetailSwitch() {
 }
 
 function renderServiceDetailPage(key) {
-  const data = SERVICES_DATA[key] || SERVICES_DATA['termite'];
-  
+  // Find in live CMS services first
+  let liveService = publicCmsState.services.find(s =>
+    s.slug === key ||
+    s.slug.replace(/-/g, '').includes(key.toLowerCase().replace(/[^a-z0-9]/g, '')) ||
+    s.name.toLowerCase().includes(key.toLowerCase()) ||
+    s.id == key
+  );
+
+  const fallback = SERVICES_DATA[key] || SERVICES_DATA['termite'];
+
   const titleEl = document.getElementById('sd-title');
   const badgeEl = document.getElementById('sd-badge');
   const taglineEl = document.getElementById('sd-tagline');
@@ -749,27 +766,59 @@ function renderServiceDetailPage(key) {
   const symptomsEl = document.getElementById('sd-symptoms-list');
   const processEl = document.getElementById('sd-process-grid');
 
-  if (titleEl) titleEl.textContent = data.title;
-  if (badgeEl) badgeEl.textContent = data.badge;
-  if (taglineEl) taglineEl.textContent = data.tagline;
-  if (priceEl) priceEl.textContent = data.price;
+  if (liveService) {
+    if (titleEl) titleEl.textContent = liveService.name;
+    if (badgeEl) badgeEl.textContent = liveService.category ? `${liveService.category} Pest Solution` : 'Certified Solution';
+    if (taglineEl) taglineEl.textContent = liveService.shortDescription || liveService.description;
+    if (priceEl) priceEl.textContent = `From ₹${liveService.price.toLocaleString()}`;
 
-  if (symptomsEl) {
-    symptomsEl.innerHTML = data.symptoms.map(s => `
-      <li style="display:flex; align-items:flex-start; gap:0.65rem; margin-bottom:0.75rem; font-size:0.95rem;">
-        <span style="color:#DC2626; font-weight:bold;">⚠️</span> ${s}
-      </li>
-    `).join('');
-  }
+    if (symptomsEl) {
+      const perks = (liveService.benefits && liveService.benefits.length > 0)
+        ? liveService.benefits
+        : fallback.symptoms;
+      symptomsEl.innerHTML = perks.map(s => `
+        <li style="display:flex; align-items:flex-start; gap:0.65rem; margin-bottom:0.75rem; font-size:0.95rem;">
+          <span style="color:#10B981; font-weight:bold;">✓</span> ${s}
+        </li>
+      `).join('');
+    }
 
-  if (processEl) {
-    processEl.innerHTML = data.process.map(p => `
-      <div class="step-card">
-        <div class="step-number-badge">${p.step}</div>
-        <h4 class="step-title">${p.title}</h4>
-        <p class="step-desc">${p.desc}</p>
-      </div>
-    `).join('');
+    if (processEl) {
+      const steps = (liveService.process && liveService.process.length > 0)
+        ? liveService.process
+        : fallback.process;
+      processEl.innerHTML = steps.map(p => `
+        <div class="step-card">
+          <div class="step-number-badge">${p.step || '01'}</div>
+          <h4 class="step-title">${p.title}</h4>
+          <p class="step-desc">${p.desc}</p>
+        </div>
+      `).join('');
+    }
+  } else {
+    // Graceful fallback to static data
+    if (titleEl) titleEl.textContent = fallback.title;
+    if (badgeEl) badgeEl.textContent = fallback.badge;
+    if (taglineEl) taglineEl.textContent = fallback.tagline;
+    if (priceEl) priceEl.textContent = fallback.price;
+
+    if (symptomsEl) {
+      symptomsEl.innerHTML = fallback.symptoms.map(s => `
+        <li style="display:flex; align-items:flex-start; gap:0.65rem; margin-bottom:0.75rem; font-size:0.95rem;">
+          <span style="color:#DC2626; font-weight:bold;">⚠️</span> ${s}
+        </li>
+      `).join('');
+    }
+
+    if (processEl) {
+      processEl.innerHTML = fallback.process.map(p => `
+        <div class="step-card">
+          <div class="step-number-badge">${p.step}</div>
+          <h4 class="step-title">${p.title}</h4>
+          <p class="step-desc">${p.desc}</p>
+        </div>
+      `).join('');
+    }
   }
 }
 
@@ -782,24 +831,302 @@ function initServiceAreaChecker() {
   if (!checkBtn || !input || !resultBox) return;
 
   checkBtn.addEventListener('click', () => {
-    const val = input.value.trim();
+    const val = input.value.trim().toLowerCase();
     if (val.length < 3) {
       showToast('Please enter a valid pincode or locality name.', 'error');
       return;
     }
 
+    // Match against live CMS areas
+    const matchedArea = publicCmsState.areas.find(a =>
+      a.area.toLowerCase().includes(val) ||
+      a.city.toLowerCase().includes(val) ||
+      (a.seoDescription && a.seoDescription.toLowerCase().includes(val))
+    );
+
     resultBox.style.display = 'block';
-    resultBox.innerHTML = `
-      <div style="background:#ECFDF5; border:1px solid #10B981; border-radius:12px; padding:1.25rem; display:flex; align-items:center; gap:1rem;">
-        <div style="width:44px; height:44px; border-radius:50%; background:#10B981; color:#fff; display:flex; align-items:center; justify-content:center; font-size:1.25rem;">✓</div>
-        <div>
-          <h4 style="color:#064E3B; margin-bottom:0.25rem;">Active Service Hub Detected!</h4>
-          <p style="color:#065F46; font-size:0.875rem; margin:0;">2 Senior Technicians available in <strong>"${val}"</strong>. Rapid arrival guaranteed within 45 minutes.</p>
+
+    if (matchedArea) {
+      resultBox.innerHTML = `
+        <div style="background:#ECFDF5; border:1px solid #10B981; border-radius:12px; padding:1.25rem; display:flex; align-items:center; gap:1rem;">
+          <div style="width:44px; height:44px; border-radius:50%; background:#10B981; color:#fff; display:flex; align-items:center; justify-content:center; font-size:1.25rem;">✓</div>
+          <div>
+            <h4 style="color:#064E3B; margin-bottom:0.25rem;">Active Service Hub: ${matchedArea.area}</h4>
+            <p style="color:#065F46; font-size:0.875rem; margin:0;">
+              2 Senior Technicians available in <strong>"${input.value.trim()}"</strong>. Rapid arrival guaranteed within 45 minutes.<br>
+              <small style="opacity:0.9;">Available: ${matchedArea.serviceAvailability || 'All Services'}</small>
+            </p>
+          </div>
+        </div>
+      `;
+    } else {
+      resultBox.innerHTML = `
+        <div style="background:#ECFDF5; border:1px solid #10B981; border-radius:12px; padding:1.25rem; display:flex; align-items:center; gap:1rem;">
+          <div style="width:44px; height:44px; border-radius:50%; background:#10B981; color:#fff; display:flex; align-items:center; justify-content:center; font-size:1.25rem;">✓</div>
+          <div>
+            <h4 style="color:#064E3B; margin-bottom:0.25rem;">Active Service Hub Detected!</h4>
+            <p style="color:#065F46; font-size:0.875rem; margin:0;">Mobile dispatch team servicing "${input.value.trim()}" zone. Guaranteed arrival in under 45 minutes.</p>
+          </div>
+        </div>
+      `;
+    }
+  });
+}
+
+/* ===================================================================
+   CMS PUBLIC DATA HYDRATION (PHASE 4 DYNAMIC CONSUMPTION)
+   =================================================================== */
+async function initPublicCmsHydration() {
+  if (!window.upcApi) return;
+
+  try {
+    await Promise.allSettled([
+      loadPublicServices(),
+      loadPublicOffers(),
+      loadPublicReviews(),
+      loadPublicBlogs(),
+      loadPublicServiceAreas()
+    ]);
+  } catch (err) {
+    console.warn('Public CMS Hydration notice:', err.message);
+  }
+}
+
+// 1. SERVICES HYDRATION
+async function loadPublicServices() {
+  try {
+    const res = await window.upcApi.cms.getServices();
+    if (!res || !res.data || !Array.isArray(res.data) || res.data.length === 0) return;
+
+    publicCmsState.services = res.data;
+
+    // Render Home Services Grid
+    const grid = document.getElementById('publicServicesGrid');
+    if (grid) {
+      grid.innerHTML = res.data.map(s => {
+        const perks = Array.isArray(s.benefits) ? s.benefits.slice(0, 3) : [];
+        return `
+          <div class="service-card">
+            <div class="service-card-image">
+              <img src="${s.image || 'assets/images/hero.jpg'}" alt="${s.name}">
+              <span class="service-card-badge">${s.category || 'Specialized'}</span>
+            </div>
+            <div class="service-card-body">
+              <h3 class="service-card-title">${s.name}</h3>
+              <p class="service-card-desc">${s.shortDescription || s.description || 'Scientific, odorless pest management solution.'}</p>
+              <ul class="service-perks-list">
+                ${perks.map(p => `<li class="service-perk-item">✓ ${p}</li>`).join('')}
+              </ul>
+              <div class="service-card-footer">
+                <div class="service-price-from">Starting at <strong>₹${s.price.toLocaleString()}</strong></div>
+                <button class="btn btn-outline btn-sm" data-service-detail="${s.slug}">Learn More</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      initServiceDetailSwitch();
+    }
+
+    // Populate Navigation Dropdown Menu
+    const navDropdown = document.querySelector('.nav-dropdown');
+    if (navDropdown) {
+      const icons = { Structural: '🪵', Residential: '🪳', Commercial: '🏢', General: '🐭', Outdoor: '🦟' };
+      navDropdown.innerHTML = res.data.map(s => `
+        <li>
+          <a class="dropdown-link" data-service-detail="${s.slug}">
+            <span class="dropdown-icon">${icons[s.category] || '🛡️'}</span> ${s.name}
+          </a>
+        </li>
+      `).join('');
+      initServiceDetailSwitch();
+    }
+
+    // Populate Quick Quote Calculator Dropdown
+    const calcPest = document.getElementById('calc-pest');
+    if (calcPest) {
+      calcPest.innerHTML = res.data.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
+    }
+  } catch (err) {
+    console.warn('Failed loading CMS services:', err.message);
+  }
+}
+
+// 2. OFFERS HYDRATION
+async function loadPublicOffers() {
+  try {
+    const res = await window.upcApi.cms.getOffers();
+    if (!res || !res.data || !Array.isArray(res.data) || res.data.length === 0) return;
+
+    publicCmsState.offers = res.data;
+
+    const grid = document.getElementById('publicOffersGrid');
+    if (grid) {
+      grid.innerHTML = res.data.map(o => `
+        <div class="service-card" style="padding:2rem;">
+          <span class="badge badge-warning" style="margin-bottom:1rem;">${o.discount}</span>
+          <h3 style="font-size:1.35rem; margin-bottom:0.5rem;">${o.title}</h3>
+          <p style="color:#64748B; font-size:0.9rem; margin-bottom:1.5rem;">${o.description || ''}</p>
+          <div style="display:flex; justify-content:space-between; align-items:center; background:#F8FAFC; padding:0.75rem 1rem; border-radius:8px; border:1px dashed #CBD5E1;">
+            <code style="font-weight:800; color:#064E3B; font-size:1.1rem;">${o.cta}</code>
+            <button class="btn btn-sm btn-outline" data-copy-coupon="${o.cta}">Copy</button>
+          </div>
+          ${o.terms ? `<small style="display:block; margin-top:0.75rem; color:#94A3B8; font-size:0.75rem;">*${o.terms}</small>` : ''}
+        </div>
+      `).join('');
+
+      initOfferCouponCopy();
+    }
+  } catch (err) {
+    console.warn('Failed loading CMS offers:', err.message);
+  }
+}
+
+// 3. REVIEWS HYDRATION (APPROVED ONLY)
+async function loadPublicReviews() {
+  try {
+    const res = await window.upcApi.cms.getReviews();
+    if (!res || !res.data || !Array.isArray(res.data) || res.data.length === 0) return;
+
+    publicCmsState.reviews = res.data;
+
+    const grid = document.getElementById('publicReviewsGrid');
+    if (grid) {
+      grid.innerHTML = res.data.map(r => {
+        const stars = '★'.repeat(Math.round(r.rating)) + '☆'.repeat(Math.max(0, 5 - Math.round(r.rating)));
+        const initials = r.image || r.customer.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+        return `
+          <div class="testimonial-card">
+            <div class="star-rating" style="color:#F59E0B;">${stars}</div>
+            <p style="margin-top:1rem; font-size:0.925rem; color:#334155; line-height:1.6;">
+              "${r.review}"
+            </p>
+            <div class="testimonial-author">
+              <div class="author-avatar">${initials}</div>
+              <div>
+                <div class="author-name">${r.customer}</div>
+                <div class="author-meta">${r.location || 'Pune'} • ${r.service || 'Verified Service'}</div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  } catch (err) {
+    console.warn('Failed loading CMS reviews:', err.message);
+  }
+}
+
+// 4. BLOGS HYDRATION (PUBLISHED ONLY)
+async function loadPublicBlogs() {
+  try {
+    const res = await window.upcApi.cms.getBlogPosts();
+    if (!res || !res.data || !Array.isArray(res.data) || res.data.length === 0) return;
+
+    publicCmsState.blogs = res.data;
+
+    const grid = document.getElementById('publicBlogsGrid');
+    if (grid) {
+      grid.innerHTML = res.data.map(b => {
+        const pubDate = b.publishedAt ? new Date(b.publishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recent';
+        return `
+          <div class="service-card">
+            <div class="service-card-image">
+              <img src="${b.featuredImage || 'assets/images/hero.jpg'}" alt="${b.title}">
+              <span class="service-card-badge">${b.category}</span>
+            </div>
+            <div class="service-card-body">
+              <div style="font-size:0.75rem; color:#64748B; margin-bottom:0.4rem;">${pubDate} • 5 min read</div>
+              <h3 class="service-card-title">${b.title}</h3>
+              <p class="service-card-desc">${b.excerpt || ''}</p>
+              <div class="service-card-footer">
+                <span style="font-size:0.8rem; font-weight:700; color:#064E3B;">By ${b.author}</span>
+                <button class="btn btn-outline btn-sm" onclick="showArticleModal('${b.slug}')">Read Article →</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  } catch (err) {
+    console.warn('Failed loading CMS blogs:', err.message);
+  }
+}
+
+// 5. SERVICE AREAS HYDRATION
+async function loadPublicServiceAreas() {
+  try {
+    const res = await window.upcApi.cms.getServiceAreas();
+    if (!res || !res.data || !Array.isArray(res.data) || res.data.length === 0) return;
+
+    publicCmsState.areas = res.data;
+
+    const grid = document.getElementById('publicAreasGrid');
+    if (grid) {
+      // Group areas into 2 balanced columns
+      const half = Math.ceil(res.data.length / 2);
+      const col1 = res.data.slice(0, half);
+      const col2 = res.data.slice(half);
+
+      grid.innerHTML = `
+        <div style="background:#fff; border-radius:16px; padding:2rem; border:1px solid #E2E8F0;">
+          <h3 style="color:#064E3B; margin-bottom:1rem;">Active Hubs & Metropolitan Coverage</h3>
+          <ul style="list-style:none; line-height:2.2; color:#334155;">
+            ${col1.map(a => `<li>📍 <strong>${a.area}</strong> (${a.city}) — <small style="color:#64748B;">${a.serviceAvailability || 'All Services'}</small></li>`).join('')}
+          </ul>
+        </div>
+        <div style="background:#fff; border-radius:16px; padding:2rem; border:1px solid #E2E8F0;">
+          <h3 style="color:#064E3B; margin-bottom:1rem;">Regional Express Dispatch Zones</h3>
+          <ul style="list-style:none; line-height:2.2; color:#334155;">
+            ${col2.map(a => `<li>📍 <strong>${a.area}</strong> (${a.city}) — <small style="color:#64748B;">${a.serviceAvailability || 'All Services'}</small></li>`).join('')}
+          </ul>
+        </div>
+      `;
+    }
+  } catch (err) {
+    console.warn('Failed loading CMS service areas:', err.message);
+  }
+}
+
+// Global article modal viewer
+window.showArticleModal = function(slug) {
+  const article = publicCmsState.blogs.find(b => b.slug === slug);
+  if (!article) {
+    showToast('Article loading...', 'info');
+    return;
+  }
+
+  let modal = document.getElementById('publicArticleModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'publicArticleModal';
+    modal.className = 'modal-backdrop';
+    modal.style.display = 'none';
+    modal.innerHTML = `
+      <div class="modal-card" style="max-width:760px; max-height:85vh; overflow-y:auto; padding:2.5rem; border-radius:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1.5rem;">
+          <div>
+            <span id="artModalCategory" class="badge badge-primary">Category</span>
+            <h2 id="artModalTitle" style="margin-top:0.5rem; font-size:1.6rem; line-height:1.3;">Article Title</h2>
+            <div id="artModalMeta" style="font-size:0.85rem; color:#64748B; margin-top:0.25rem;">By Author • Date</div>
+          </div>
+          <button onclick="document.getElementById('publicArticleModal').style.display='none'" class="btn btn-white btn-sm" style="font-size:1.2rem; line-height:1;">✕</button>
+        </div>
+        <div id="artModalContent" style="color:#334155; line-height:1.8; font-size:1rem; white-space:pre-line;">
         </div>
       </div>
     `;
-  });
-}
+    document.body.appendChild(modal);
+  }
+
+  document.getElementById('artModalCategory').textContent = article.category;
+  document.getElementById('artModalTitle').textContent = article.title;
+  document.getElementById('artModalMeta').textContent = `By ${article.author} • Published ${new Date(article.publishedAt || Date.now()).toLocaleDateString()}`;
+  document.getElementById('artModalContent').innerHTML = article.content.replace(/\n\n/g, '<br><br>');
+
+  modal.style.display = 'flex';
+};
 
 /* 10. OFFERS / COUPON COPY */
 function initOfferCouponCopy() {

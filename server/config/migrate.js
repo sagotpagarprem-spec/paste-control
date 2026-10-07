@@ -67,6 +67,8 @@ async function runMigrationAndSeed() {
       { name: 'customers:manage', module: 'customers', description: 'Manage customer accounts' },
       { name: 'technicians:read', module: 'technicians', description: 'View technician roster' },
       { name: 'technicians:manage', module: 'technicians', description: 'Assign and manage technicians' },
+      { name: 'cms:read', module: 'cms', description: 'View CMS content' },
+      { name: 'cms:manage', module: 'cms', description: 'Create and update CMS content' },
       { name: 'users:manage', module: 'users', description: 'Manage admin and staff users' },
       { name: 'settings:manage', module: 'settings', description: 'Update platform settings' },
       { name: 'audit:read', module: 'audit', description: 'View audit logs' }
@@ -202,6 +204,113 @@ async function runMigrationAndSeed() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
 
+    // Step 4.7: Ensure Phase 4 Columns on services table
+    const serviceColumnsToAdd = [
+      { name: 'short_description', def: 'TEXT NULL' },
+      { name: 'image', def: 'VARCHAR(255) NULL' },
+      { name: 'price', def: 'DECIMAL(10, 2) NOT NULL DEFAULT 0.00' },
+      { name: 'duration', def: "VARCHAR(100) NULL DEFAULT '2 Hours'" },
+      { name: 'benefits', def: 'JSON NULL' },
+      { name: 'process', def: 'JSON NULL' },
+      { name: 'faq', def: 'JSON NULL' },
+      { name: 'seo_title', def: 'VARCHAR(255) NULL' },
+      { name: 'seo_description', def: 'TEXT NULL' },
+      { name: 'status', def: "VARCHAR(50) NOT NULL DEFAULT 'ACTIVE'" }
+    ];
+
+    for (const col of serviceColumnsToAdd) {
+      const [colCheck] = await conn.query(
+        `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'services' AND COLUMN_NAME = ?`,
+        [database, col.name]
+      );
+      if (colCheck.length === 0) {
+        await conn.query(`ALTER TABLE services ADD COLUMN \`${col.name}\` ${col.def}`);
+        logger.info(`Added column ${col.name} to services table.`);
+      }
+    }
+
+    // Ensure Phase 4 CMS tables exist
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS \`offers\` (
+        \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+        \`title\` VARCHAR(150) NOT NULL,
+        \`description\` TEXT NULL,
+        \`service\` VARCHAR(100) NULL,
+        \`service_id\` INT NULL,
+        \`discount\` VARCHAR(50) NOT NULL,
+        \`valid_from\` DATE NULL,
+        \`valid_until\` DATE NULL,
+        \`image\` VARCHAR(255) NULL,
+        \`cta\` VARCHAR(100) NOT NULL DEFAULT 'Book Now',
+        \`terms\` TEXT NULL,
+        \`status\` VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
+        \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        \`updated_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        CONSTRAINT \`fk_offers_service\` FOREIGN KEY (\`service_id\` ) REFERENCES \`services\` (\`id\`) ON DELETE SET NULL,
+        INDEX \`idx_offers_status\` (\`status\`),
+        INDEX \`idx_offers_valid_until\` (\`valid_until\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS \`reviews\` (
+        \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+        \`customer\` VARCHAR(100) NOT NULL,
+        \`rating\` DECIMAL(2, 1) NOT NULL DEFAULT 5.0,
+        \`review\` TEXT NOT NULL,
+        \`service\` VARCHAR(100) NULL,
+        \`location\` VARCHAR(150) NULL,
+        \`image\` VARCHAR(255) NULL,
+        \`status\` VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+        \`featured\` BOOLEAN NOT NULL DEFAULT FALSE,
+        \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        \`updated_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX \`idx_reviews_status\` (\`status\`),
+        INDEX \`idx_reviews_featured\` (\`featured\`),
+        INDEX \`idx_reviews_rating\` (\`rating\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS \`blogs\` (
+        \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+        \`title\` VARCHAR(200) NOT NULL,
+        \`slug\` VARCHAR(200) NOT NULL UNIQUE,
+        \`excerpt\` TEXT NULL,
+        \`content\` LONGTEXT NOT NULL,
+        \`featured_image\` VARCHAR(255) NULL,
+        \`category\` VARCHAR(100) NOT NULL DEFAULT 'General',
+        \`author\` VARCHAR(100) NOT NULL DEFAULT 'Universal Pest Specialist',
+        \`seo_title\` VARCHAR(255) NULL,
+        \`seo_description\` TEXT NULL,
+        \`status\` VARCHAR(50) NOT NULL DEFAULT 'DRAFT',
+        \`published_at\` TIMESTAMP NULL DEFAULT NULL,
+        \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        \`updated_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX \`idx_blogs_slug\` (\`slug\`),
+        INDEX \`idx_blogs_status\` (\`status\`),
+        INDEX \`idx_blogs_category\` (\`category\`),
+        INDEX \`idx_blogs_published\` (\`published_at\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS \`service_areas\` (
+        \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+        \`city\` VARCHAR(100) NOT NULL DEFAULT 'Pune',
+        \`area\` VARCHAR(150) NOT NULL,
+        \`status\` VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
+        \`service_availability\` TEXT NULL,
+        \`seo_title\` VARCHAR(255) NULL,
+        \`seo_description\` TEXT NULL,
+        \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        \`updated_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX \`idx_areas_city\` (\`city\`),
+        INDEX \`idx_areas_status\` (\`status\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
     // Step 5: Seed Default Admin & Sales Staff Users
     const staffMembers = [
       { name: 'Vikram Shinde', email: 'admin@universalpestcontrol.com', role: 'admin', phone: '+91 98230 44129' },
@@ -233,22 +342,229 @@ async function runMigrationAndSeed() {
       }
     }
 
-    // Step 6: Seed Services
+    // Step 6: Seed Rich Services (Phase 4 CMS)
     const services = [
-      { slug: 'termite-control', name: 'Termite Control (Drill-Fill-Seal)', category: 'Structural', base_price: 14500.00, warranty_months: 60, duration_hours: 4.5, desc: 'Advanced sub-surface barrier protection with 5-year written warranty.' },
-      { slug: 'commercial-pest-control', name: 'Commercial Pest AMC (HACCP/FSSAI)', category: 'Commercial', base_price: 28000.00, warranty_months: 12, duration_hours: 3.0, desc: 'Food-grade compliance pest management for hotels, kitchens, and warehouses.' },
-      { slug: 'cockroach-control', name: 'German Cockroach Herbal Gel', category: 'Residential', base_price: 3200.00, warranty_months: 12, duration_hours: 1.5, desc: 'Odorless non-toxic micro-gel baiting with crack & crevice sealing.' },
-      { slug: 'bed-bug-control', name: 'Bed Bug Thermal Steam & Cryo', category: 'Residential', base_price: 5800.00, warranty_months: 6, duration_hours: 3.0, desc: '2-visit elimination guarantee targeting eggs, nymphs, and adult harborages.' },
-      { slug: 'rodent-control', name: 'Rodent Bait Station & Exclusion', category: 'General', base_price: 4500.00, warranty_months: 12, duration_hours: 2.0, desc: 'Tamper-resistant bait stations and sonic exclusion perimeter defense.' },
-      { slug: 'mosquito-management', name: 'Mosquito Thermal Fogging & Larvicide', category: 'Outdoor', base_price: 3800.00, warranty_months: 3, duration_hours: 2.0, desc: 'Outdoor fogging and standing-water larvicidal barrier treatment.' }
+      {
+        slug: 'termite-control',
+        name: 'Termite Radar Inspection & Barrier',
+        category: 'Structural',
+        price: 3999.00,
+        base_price: 3999.00,
+        warranty_months: 60,
+        duration: '3 - 5 Hours',
+        duration_hours: 4.5,
+        image: 'assets/images/termite.jpg',
+        shortDescription: 'Ultrasonic acoustic radar detection & drill-fill-seal non-repellent chemical barrier for foundational woodwork.',
+        description: 'Advanced sub-surface barrier protection utilizing Bayer Premise non-repellent termiticide. Our acoustic radar maps subterranean colony tunnels without tile breaking, sealing access points for a guaranteed 5-year defense.',
+        benefits: JSON.stringify([
+          'Sub-surface acoustic radar scanning',
+          'Non-destructive aesthetic hole sealing',
+          '5-Year Government-backed written warranty',
+          'Odorless, child and pet-safe formulation'
+        ]),
+        process: JSON.stringify([
+          { step: '01', title: 'Ultrasonic Radar Detection', desc: 'Scan wall interiors and floorboards without breaking tiles.' },
+          { step: '02', title: 'Drill-Fill-Seal Barrier', desc: 'Precision 12mm holes drilled at 45-degree angles at 1-foot intervals.' },
+          { step: '03', title: 'Chemical Infiltration', desc: 'Pressurized injection of Bayer Premise termiticide.' },
+          { step: '04', title: 'Invisible Aesthetic Sealing', desc: 'Holes sealed with color-matched wax chalk matching your flooring.' }
+        ]),
+        faq: JSON.stringify([
+          { question: 'Will drilling damage our marble or wooden flooring?', answer: 'No. We use surgical 12mm diamond core drill bits and seal each injection point with specialized pigment-matched filler chalk.' },
+          { question: 'Do we need to vacate our home during treatment?', answer: 'No. Our termiticides are completely odorless and non-volatile.' }
+        ]),
+        seoTitle: 'Termite Control Pune | Radar Detection & Drill-Fill-Seal Warranty',
+        seoDescription: 'Eliminate termite colonies with non-destructive radar scanning and Bayer drill-fill-seal barrier. 5-Year warranty included.',
+        status: 'ACTIVE'
+      },
+      {
+        slug: 'cockroach-control',
+        name: 'German Cockroach Odorless Gel',
+        category: 'Residential',
+        price: 1499.00,
+        base_price: 1499.00,
+        warranty_months: 12,
+        duration: '45 - 60 Mins',
+        duration_hours: 1.0,
+        image: 'assets/images/hero.jpg',
+        shortDescription: '100% odorless herbal & synthetic gel baiting. Zero need to empty kitchen cupboards or vacate.',
+        description: 'Targeted German cockroach eradication utilizing micro-dot gel baiting inside cabinet hinges, electrical fixtures, and drain pipelines. Creates a Domino Effect that eliminates the entire colony within 72 hours.',
+        benefits: JSON.stringify([
+          'Bayer Maxforce Gel Technology',
+          'No cupboard emptying or cleaning required',
+          'Safe around infants, elderly, and pets',
+          '1-Year Comprehensive Clearance Warranty'
+        ]),
+        process: JSON.stringify([
+          { step: '01', title: 'Infestation Assessment', desc: 'Identify nesting hubs, moisture points, and cracks.' },
+          { step: '02', title: 'Bayer Maxforce Gel Baiting', desc: 'Micro-dot application inside hinges, electrical points, and appliances.' },
+          { step: '03', title: 'Drain Treatment', desc: 'Biological enzyme drain flush to eliminate breeding in pipelines.' },
+          { step: '04', title: 'Preventive Barrier', desc: 'Residual perimeter spray along balcony and utility lines.' }
+        ]),
+        faq: JSON.stringify([
+          { question: 'Do I need to wash utensils after gel treatment?', answer: 'No. The gel is applied in minute dots on non-food contact hinges and electrical points with zero airborne fumes.' }
+        ]),
+        seoTitle: 'Odorless Cockroach Pest Control Pune | Bayer Gel Technology',
+        seoDescription: 'Get rid of cockroaches with 100% odorless gel treatment. Zero kitchen emptying required. Same-day service.',
+        status: 'ACTIVE'
+      },
+      {
+        slug: 'bed-bug-control',
+        name: 'Bed Bug Thermal Steam & Cryo',
+        category: 'Residential',
+        price: 2499.00,
+        base_price: 2499.00,
+        warranty_months: 6,
+        duration: '2 - 3 Hours',
+        duration_hours: 2.5,
+        image: 'assets/images/pantry_clean.jpg',
+        shortDescription: '180°C superheated dry steam combined with micro-aerosol residual spray to eradicate adult bugs and eggs.',
+        description: 'Two-stage scientific thermal steam eradication penetrating mattress seams, headboards, and sofa crevices. Followed by a 14-day free second visit to guarantee elimination of all emergent nymphs.',
+        benefits: JSON.stringify([
+          'High-pressure 180°C dry thermal steaming',
+          'Kills nymphs, adults and eggs instantaneously',
+          'Free 14-day secondary follow-up visit',
+          'No mattress disposal needed'
+        ]),
+        process: JSON.stringify([
+          { step: '01', title: 'Thermal Steam Disinfestation', desc: 'Superheated steam applied directly onto mattress seams and headboards.' },
+          { step: '02', title: 'Deep Crack Infiltration', desc: 'Targeted aerosol injection into wooden joint seams and switchboards.' },
+          { step: '03', title: 'Residual Barrier Layer', desc: 'Micro-encapsulated spray along baseboards.' },
+          { step: '04', title: 'Day-14 Follow-up Clearance', desc: 'Second complimentary inspection to eradicate secondary egg hatches.' }
+        ]),
+        faq: JSON.stringify([
+          { question: 'Will steam wet or damage our mattress?', answer: 'No. Superheated dry steam operates at high temperature with ultra-low moisture, drying within 20 minutes.' }
+        ]),
+        seoTitle: 'Bed Bug Treatment Pune | High Temp Thermal Steaming Guarantee',
+        seoDescription: 'Destroy bed bugs and eggs with 180°C dry steam. Free 2nd visit warranty included.',
+        status: 'ACTIVE'
+      },
+      {
+        slug: 'commercial-pest-control',
+        name: 'Commercial Pest AMC (HACCP/FSSAI)',
+        category: 'Commercial',
+        price: 4999.00,
+        base_price: 4999.00,
+        warranty_months: 12,
+        duration: '3 - 4 Hours',
+        duration_hours: 3.0,
+        image: 'assets/images/commercial.jpg',
+        shortDescription: 'Integrated Pest Management for restaurants, hotels, IT parks, and retail outlets with full audit compliance.',
+        description: 'Complete compliance pest defense engineered for commercial facilities. Includes tamper-resistant bait stations, digital trend analysis logs, chemical safety MSDS records, and scheduled IPM visits.',
+        benefits: JSON.stringify([
+          'Zero business operational downtime',
+          'Digital inspection trend reports & audit dossier',
+          'Tamper-resistant bait stations & barcode scanning',
+          'Full FSSAI, HACCP, and ISO 22000 compliance'
+        ]),
+        process: JSON.stringify([
+          { step: '01', title: 'Facility Risk Assessment', desc: 'Mapping entry points, garbage chutes, and food prep areas.' },
+          { step: '02', title: 'IPM Station Deployment', desc: 'Install numbered tamper-proof bait stations and insect light traps.' },
+          { step: '03', title: 'Targeted Non-Food Treatment', desc: 'Eco-grade treatment after business closing hours.' },
+          { step: '04', title: 'Digital Audit Certification', desc: 'Monthly audit report stamped for food safety authorities.' }
+        ]),
+        faq: JSON.stringify([
+          { question: 'Do you provide audit certificates for food inspectors?', answer: 'Yes. Every client receives an official compliance audit folder with MSDS certificates and technician logs.' }
+        ]),
+        seoTitle: 'Commercial Pest Control Pune | FSSAI & HACCP Certified AMC',
+        seoDescription: 'Enterprise pest control for restaurants, cafes, IT parks, and warehouses. Digital reporting & audits.',
+        status: 'ACTIVE'
+      },
+      {
+        slug: 'rodent-control',
+        name: 'Rodent Bait Station & Sonic Exclusion',
+        category: 'General',
+        price: 2199.00,
+        base_price: 2199.00,
+        warranty_months: 12,
+        duration: '1.5 - 2 Hours',
+        duration_hours: 2.0,
+        image: 'assets/images/hero.jpg',
+        shortDescription: 'Tamper-resistant bait stations, physical entry point exclusion, and ultrasonic perimeter barriers.',
+        description: 'Multi-tiered rodent management targeting roof rats, Norway rats, and field mice. Prevents wire gnawing, stock contamination, and pantry infestation with safe non-spill bait stations.',
+        benefits: JSON.stringify([
+          'Tamper-resistant lockable bait boxes',
+          'Entry-hole wire mesh sealing',
+          'Non-secondary poisoning safe rodenticides',
+          'Odorless carcass recovery assistance'
+        ]),
+        process: JSON.stringify([
+          { step: '01', title: 'Runway Mapping', desc: 'Identify grease marks, droppings, and entry burrows.' },
+          { step: '02', title: 'Physical Exclusion', desc: 'Seal pipe gaps and door sweeps with steel wire mesh.' },
+          { step: '03', title: 'Lockable Station Setup', desc: 'Position tamper-proof bait boxes along perimeter runways.' },
+          { step: '04', title: 'Monitoring & Replenishment', desc: 'Scheduled inspections to verify total clearance.' }
+        ]),
+        faq: [
+          { question: 'Will rodents die inside false ceilings?', answer: 'Our anticoagulant baits induce dehydration that instinctively drives rodents outdoors toward open air before demise.' }
+        ],
+        seoTitle: 'Rodent & Rat Pest Control Pune | Lockable Bait Stations',
+        seoDescription: 'Stop rat and mouse infestations with professional exclusion and baiting systems.',
+        status: 'ACTIVE'
+      },
+      {
+        slug: 'mosquito-management',
+        name: 'Mosquito Thermal Fogging & Larvicide',
+        category: 'Outdoor',
+        price: 1899.00,
+        base_price: 1899.00,
+        warranty_months: 3,
+        duration: '1 - 2 Hours',
+        duration_hours: 1.5,
+        image: 'assets/images/hero.jpg',
+        shortDescription: 'Outdoor thermal fogging and standing-water larvicidal barrier treatment for societies and gardens.',
+        description: 'Comprehensive mosquito eradication targeting dengue, malaria, and chikungunya vectors. Employs cold ULV fogging and biological larvicide granules across garden drains and basements.',
+        benefits: JSON.stringify([
+          'Cold ULV and thermal fogging capabilities',
+          'Biological larvicide prevents egg-to-pupa development',
+          'Targets dengue & chikungunya mosquito species',
+          'Society and housing colony discounts available'
+        ]),
+        process: JSON.stringify([
+          { step: '01', title: 'Breeding Site Inspection', desc: 'Identify stagnant water pooling in flowerbeds and basement drains.' },
+          { step: '02', title: 'Biological Larvicide Application', desc: 'Treat water bodies with eco-friendly larvicide granules.' },
+          { step: '03', title: 'Perimeter Thermal Fogging', desc: 'Dense thermal fogging along shrubs, compound walls, and corridors.' }
+        ]),
+        faq: [
+          { question: 'How long does mosquito fogging protection last?', answer: 'Larvicidal applications remain potent for 21-30 days against new breeding cycles.' }
+        ],
+        seoTitle: 'Mosquito Fogging Service Pune | Dengue Prevention Society AMC',
+        seoDescription: 'Combat mosquitoes with safe thermal fogging and standing water larvicide treatment in Pune.',
+        status: 'ACTIVE'
+      }
     ];
 
     for (const s of services) {
       await conn.query(
-        `INSERT INTO services (slug, name, category, base_price, warranty_months, duration_hours, description)
-         VALUES (?, ?, ?, ?, ?, ?, ?)
-         ON DUPLICATE KEY UPDATE name = VALUES(name), category = VALUES(category), base_price = VALUES(base_price)`,
-        [s.slug, s.name, s.category, s.base_price, s.warranty_months, s.duration_hours, s.desc]
+        `INSERT INTO services (
+          slug, name, category, price, base_price, warranty_months, duration, duration_hours,
+          image, short_description, description, benefits, process, faq,
+          seo_title, seo_description, status, is_active
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+          name = VALUES(name),
+          category = VALUES(category),
+          price = VALUES(price),
+          base_price = VALUES(base_price),
+          warranty_months = VALUES(warranty_months),
+          duration = VALUES(duration),
+          duration_hours = VALUES(duration_hours),
+          image = VALUES(image),
+          short_description = VALUES(short_description),
+          description = VALUES(description),
+          benefits = VALUES(benefits),
+          process = VALUES(process),
+          faq = VALUES(faq),
+          seo_title = VALUES(seo_title),
+          seo_description = VALUES(seo_description),
+          status = VALUES(status),
+          is_active = VALUES(is_active)`,
+        [
+          s.slug, s.name, s.category, s.price, s.base_price, s.warranty_months, s.duration, s.duration_hours,
+          s.image, s.shortDescription, s.description,
+          typeof s.benefits === 'string' ? s.benefits : JSON.stringify(s.benefits),
+          typeof s.process === 'string' ? s.process : JSON.stringify(s.process),
+          typeof s.faq === 'string' ? s.faq : JSON.stringify(s.faq),
+          s.seoTitle, s.seoDescription, s.status, s.status === 'ACTIVE'
+        ]
       );
     }
 
@@ -499,6 +815,302 @@ async function runMigrationAndSeed() {
         `INSERT INTO notifications (title, message, type) VALUES (?, ?, ?)`,
         [notif.title, notif.message, notif.type]
       );
+    }
+
+    // Step 13: Seed Phase 4 Offers
+    const sampleOffers = [
+      {
+        title: 'First Time Customer 20% Off',
+        description: 'Exclusive welcome concession on all residential cockroach gel, bed bug steaming, and general pest treatments.',
+        service: 'German Cockroach Odorless Gel',
+        discount: '20% OFF',
+        validFrom: '2026-01-01',
+        validUntil: '2026-12-31',
+        image: 'assets/images/hero.jpg',
+        cta: 'WELCOME20',
+        terms: 'Applicable for residential properties only. One coupon per household.',
+        status: 'ACTIVE'
+      },
+      {
+        title: 'Free Termite Radar Inspection',
+        description: 'Complimentary acoustic radar scan of all baseboards, door frames, and wooden fixtures worth ₹1,500.',
+        service: 'Termite Radar Inspection & Barrier',
+        discount: 'FREE INSPECTION',
+        validFrom: '2026-01-01',
+        validUntil: '2026-12-31',
+        image: 'assets/images/termite.jpg',
+        cta: 'FREETEST',
+        terms: 'Valid on properties within Pune metro service radius.',
+        status: 'ACTIVE'
+      },
+      {
+        title: 'Commercial Audit AMC 25% Off',
+        description: 'Complete FSSAI documentation, 12 scheduled monthly inspections, and zero-downtime treatment.',
+        service: 'Commercial Pest AMC (HACCP/FSSAI)',
+        discount: '25% OFF AMC',
+        validFrom: '2026-01-01',
+        validUntil: '2026-12-31',
+        image: 'assets/images/commercial.jpg',
+        cta: 'CORP25',
+        terms: 'Minimum 1-year annual maintenance contract required for commercial kitchens or warehouses.',
+        status: 'ACTIVE'
+      },
+      {
+        title: 'Monsoon Mosquito Shield 15% Off',
+        description: 'Dual thermal fogging and standing water larvicide treatment for housing societies and bungalows.',
+        service: 'Mosquito Thermal Fogging & Larvicide',
+        discount: '15% OFF',
+        validFrom: '2026-06-01',
+        validUntil: '2026-11-30',
+        image: 'assets/images/hero.jpg',
+        cta: 'MONSOON15',
+        terms: 'Applicable for society compound areas up to 2 acres.',
+        status: 'ACTIVE'
+      }
+    ];
+
+    for (const o of sampleOffers) {
+      const [existingOffer] = await conn.query(`SELECT id FROM offers WHERE cta = ? LIMIT 1`, [o.cta]);
+      if (existingOffer.length === 0) {
+        await conn.query(
+          `INSERT INTO offers (title, description, service, discount, valid_from, valid_until, image, cta, terms, status)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [o.title, o.description, o.service, o.discount, o.validFrom, o.validUntil, o.image, o.cta, o.terms, o.status]
+        );
+      }
+    }
+
+    // Step 14: Seed Phase 4 CMS Reviews (Testimonials & Moderation)
+    const sampleReviews = [
+      {
+        customer: 'Anjali Mehta',
+        rating: 5.0,
+        review: "We had severe German cockroaches in our modular kitchen drawers. Universal's team applied odorless gel in 40 minutes. We didn't even have to unpack groceries! Within 4 days, zero cockroaches. Highly recommend.",
+        service: 'German Cockroach Odorless Gel',
+        location: 'Kalyani Nagar, Pune • 3 BHK Apartment',
+        image: 'AM',
+        status: 'APPROVED',
+        featured: true
+      },
+      {
+        customer: 'Rohan Kulkarni',
+        rating: 5.0,
+        review: 'Our restaurant requires strict FSSAI and HACCP compliance. Universal Pest Control handles our monthly IPM audits and digital logging. The inspectors are impressed with their bait station mapping.',
+        service: 'Commercial Pest AMC (HACCP/FSSAI)',
+        location: 'Owner, Cafe Marz-o-Rin • Baner High St',
+        image: 'RK',
+        status: 'APPROVED',
+        featured: true
+      },
+      {
+        customer: 'Suresh Shah',
+        rating: 5.0,
+        review: 'Termites were destroying our Burma teak door frames. Their radar device detected underground tunnels without damaging anything. Drill-fill-seal was seamless and color-matched to perfection.',
+        service: 'Termite Radar Inspection & Barrier',
+        location: 'Aundh Villa, Pune • 5-Year Termite Warranty',
+        image: 'SS',
+        status: 'APPROVED',
+        featured: true
+      },
+      {
+        customer: 'Meera Deshmukh',
+        rating: 4.8,
+        review: 'High pressure thermal steam eradicated bed bugs completely from our master bed. The team gave us instructions on hot laundering and came back on day 14 for free follow-up clearance.',
+        service: 'Bed Bug Thermal Steam & Cryo',
+        location: 'Kothrud, Pune',
+        image: 'MD',
+        status: 'APPROVED',
+        featured: false
+      },
+      {
+        customer: 'Sameer Joshi',
+        rating: 4.5,
+        review: 'Polite technician who explained the rodent bait box mapping clearly. Good punctuality.',
+        service: 'Rodent Bait Station & Sonic Exclusion',
+        location: 'Wakad, Pune',
+        image: 'SJ',
+        status: 'PENDING',
+        featured: false
+      },
+      {
+        customer: 'Spam Bot Test Entry',
+        rating: 1.0,
+        review: 'Inappropriate commercial spam link detected in review submission.',
+        service: 'General',
+        location: 'Unknown',
+        image: 'SB',
+        status: 'REJECTED',
+        featured: false
+      }
+    ];
+
+    for (const r of sampleReviews) {
+      const [existingRev] = await conn.query(`SELECT id FROM reviews WHERE customer = ? AND service = ? LIMIT 1`, [r.customer, r.service]);
+      if (existingRev.length === 0) {
+        await conn.query(
+          `INSERT INTO reviews (customer, rating, review, service, location, image, status, featured)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          [r.customer, r.rating, r.review, r.service, r.location, r.image, r.status, r.featured]
+        );
+      }
+    }
+
+    // Step 15: Seed Phase 4 CMS Blogs
+    const sampleBlogs = [
+      {
+        title: 'How to Detect Subterranean Termites Before Wood Hollows',
+        slug: 'how-to-detect-subterranean-termites',
+        excerpt: 'Recognize the subtle acoustic signs, mud tubes along baseboards, and monsoon swarmers before structural woodwork is permanently destroyed.',
+        content: `### Detecting Subterranean Termites Early
+
+Subterranean termites (*Coptotermes gestroi*) cause hundreds of crores in property damage across India every year. Because they consume cellulose from the inside out, extensive architectural damage often remains invisible until door frames collapse or laminate veneers bubble.
+
+#### Key Symptoms to Inspect:
+1. **Acoustic Hollow Sounds**: Lightly tap baseboards and door casings with a knuckle or coin. A papery, hollow rattle indicates tunneling beneath the surface.
+2. **Mud Tubes (Shelter Tubes)**: Termites require continuous humidity and build pencil-thick earthen tunnels across concrete walls, foundation slabs, and electrical conduits.
+3. **Monsoon Swarmers (Alates)**: During the first heavy monsoon showers, winged reproductive termites emerge to mate. Piles of shed translucent wings near window ledges are a definitive alert.
+
+#### Why Surface Chemical Spraying Fails
+Surface insecticides merely kill foragers on contact, triggering the remaining colony to reroute deeper into your sub-floor foundation. Non-repellent termiticides (such as Imidacloprid) are undetectable to termites, allowing foragers to unwittingly transport the active compound directly to the queen.`,
+        featuredImage: 'assets/images/termite.jpg',
+        category: 'Termite Science',
+        author: 'Dr. S. Rao (Entomologist)',
+        seoTitle: 'How to Detect Termites Early | Pest Science Guide',
+        seoDescription: 'Identify early termite infestation symptoms, acoustic detection methods, and scientific eradication techniques.',
+        status: 'PUBLISHED',
+        publishedAt: '2026-10-04 10:00:00'
+      },
+      {
+        title: 'Why Store-Bought Sprays Fail Against German Cockroaches',
+        slug: 'why-sprays-fail-against-cockroaches',
+        excerpt: 'Commercial aerosol sprays act as repellents that scatter nests deeper into electrical conduits. Discover why non-repellent transfer gels deliver total colony collapse.',
+        content: `### The Myth of Over-the-Counter Cockroach Sprays
+
+Most homeowners reach for retail aerosol bug sprays the moment a German cockroach (*Blattella germanica*) scuttles across the kitchen counter. While the spray kills the single cockroach on contact, it exacerbates the broader infestation.
+
+#### 1. Chemical Repellency & Nest Budding
+Most aerosol insecticides contain fast-acting pyrethroids. These chemicals emit strong olfactory warnings to the colony. Rather than eliminating nests, sprays cause colonies to fragment ("bud") and flee into electrical sockets, microwave housings, and false ceilings.
+
+#### 2. The Horizontal Transfer Domino Effect
+Professional pest scientists utilize fipronil or indoxacarb micro-gel formulations. Cockroaches consume the irresistible gel bait, return to the harboring nest, and share the toxin through grooming and fecal consumption (coprophagy). This domino mechanism collapses up to 40 additional cockroaches per single feeding.`,
+        featuredImage: 'assets/images/pantry_clean.jpg',
+        category: 'Kitchen Hygiene',
+        author: 'Vikram Shinde',
+        seoTitle: 'Why Sprays Fail Against Cockroaches | Scientific Baiting Guide',
+        seoDescription: 'Understand the biological behavior of German cockroaches and why micro-gel domino baiting outperforms aerosol sprays.',
+        status: 'PUBLISHED',
+        publishedAt: '2026-10-02 14:30:00'
+      },
+      {
+        title: 'HACCP & FSSAI Pest Management Checklist for Commercial Kitchens',
+        slug: 'haccp-fssai-pest-management-checklist',
+        excerpt: 'Everything food safety officers and restaurant managers must document: bait station mapping, chemical MSDS safety certificates, and fly trap positioning.',
+        content: `### Commercial Kitchen Pest Audit Readiness
+
+Under FSSAI regulations and HACCP standard ISO 22000, any trace of pest harborage in a commercial food establishment triggers punitive audit findings and license suspension.
+
+#### Core Audit Requirements:
+- **Tamper-Resistant Perimeter Bait Stations**: Numbered, locked, anchored stations placed along exterior walls at 15-meter intervals.
+- **Insect Light Trap (ILT) Calibration**: Shatterproof UV-A adhesive glue boards installed away from open preparation tables and direct daylight.
+- **Digital Trend Reports**: Monthly catch rate counts analyzed to spot seasonal rodent or fly spikes before auditors arrive.
+- **Chemical Safety Data Sheets (MSDS)**: On-demand documentation of food-grade approved odorless compounds.`,
+        featuredImage: 'assets/images/commercial.jpg',
+        category: 'B2B Compliance',
+        author: 'Amit Kulkarni',
+        seoTitle: 'HACCP Pest Control Checklist Pune | FSSAI Kitchen Audits',
+        seoDescription: 'Comprehensive checklist for commercial food preparation facilities to achieve 100% compliance during safety audits.',
+        status: 'PUBLISHED',
+        publishedAt: '2026-09-28 09:15:00'
+      },
+      {
+        title: 'Monsoon Pest Prevention Strategies for Societies and High-Rises',
+        slug: 'monsoon-pest-prevention-strategies',
+        excerpt: 'A comprehensive guide for society management committees on managing storm water drains, basement sumps, and shaft fumigation.',
+        content: `### Preparing High-Rise Societies for Monsoon Invasions
+
+Draft article detailing preventive measures for residential housing societies during heavy rainfall seasons...`,
+        featuredImage: 'assets/images/hero.jpg',
+        category: 'Society Management',
+        author: 'Pooja Patil',
+        seoTitle: 'Monsoon Pest Control for Societies | Drain & Sump Guide',
+        seoDescription: 'Prevent monsoon mosquito, drain fly, and rodent surges in high-rise buildings and residential societies.',
+        status: 'DRAFT',
+        publishedAt: null
+      }
+    ];
+
+    for (const b of sampleBlogs) {
+      const [existingBlog] = await conn.query(`SELECT id FROM blogs WHERE slug = ? LIMIT 1`, [b.slug]);
+      if (existingBlog.length === 0) {
+        await conn.query(
+          `INSERT INTO blogs (title, slug, excerpt, content, featured_image, category, author, seo_title, seo_description, status, published_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [b.title, b.slug, b.excerpt, b.content, b.featuredImage, b.category, b.author, b.seoTitle, b.seoDescription, b.status, b.publishedAt]
+        );
+      }
+    }
+
+    // Step 16: Seed Phase 4 Service Areas
+    const sampleAreas = [
+      {
+        city: 'Pune',
+        area: 'Baner & Balewadi (High Street, Pancard Club Rd)',
+        status: 'ACTIVE',
+        serviceAvailability: 'All Services (Termite, Cockroach, Bedbug, Commercial, Rodent, Mosquito)',
+        seoTitle: 'Pest Control Baner & Balewadi Pune | Rapid 45-Min Arrival',
+        seoDescription: 'Certified odorless pest control and termite inspection in Baner and Balewadi, Pune.'
+      },
+      {
+        city: 'Pune',
+        area: 'Hinjawadi Infotech Park (Phase 1, Phase 2, Phase 3)',
+        status: 'ACTIVE',
+        serviceAvailability: 'Commercial HACCP, Office IPM, Residential Gel',
+        seoTitle: 'Pest Control Hinjawadi Pune | IT Park Office & Flat Disinfestation',
+        seoDescription: 'Enterprise pest management and residential cockroach gel treatment across Hinjawadi Phase 1, 2, 3.'
+      },
+      {
+        city: 'Pune',
+        area: 'Wakad, Pimple Saudagar & Ravet',
+        status: 'ACTIVE',
+        serviceAvailability: 'Residential Odorless Gel, Bed Bug Steaming, Termite Drill-Fill-Seal',
+        seoTitle: 'Pest Control Wakad & Pimple Saudagar | Top Rated Service',
+        seoDescription: 'Eco-safe termite and pest treatment for apartments in Wakad and Pimple Saudagar.'
+      },
+      {
+        city: 'Pune',
+        area: 'Aundh, Pashan & Pune University',
+        status: 'ACTIVE',
+        serviceAvailability: 'All Services (Residential, Commercial, Villa Termite Radar)',
+        seoTitle: 'Pest Control Aundh & Pashan Pune | 5-Year Warranty',
+        seoDescription: 'Bayer certified termite protection and herbal pest control in Aundh and Pashan.'
+      },
+      {
+        city: 'Pune',
+        area: 'Koregaon Park (North & South Main Rd) & Kalyani Nagar',
+        status: 'ACTIVE',
+        serviceAvailability: 'All Services (Luxury Homes, Cafes, HACCP Audits)',
+        seoTitle: 'Pest Control Koregaon Park & Kalyani Nagar Pune',
+        seoDescription: 'Premium odorless pest management for luxury apartments and cafes in Koregaon Park.'
+      },
+      {
+        city: 'Pune',
+        area: 'Kharadi EON IT Free Zone & Viman Nagar',
+        status: 'ACTIVE',
+        serviceAvailability: 'Commercial Food Safety, Residential Herbal Gel, Mosquito Fogging',
+        seoTitle: 'Pest Control Kharadi & Viman Nagar Pune | Near Airport',
+        seoDescription: 'Specialized pest eradication for IT establishments and societies in Kharadi and Viman Nagar.'
+      }
+    ];
+
+    for (const a of sampleAreas) {
+      const [existingArea] = await conn.query(`SELECT id FROM service_areas WHERE city = ? AND area = ? LIMIT 1`, [a.city, a.area]);
+      if (existingArea.length === 0) {
+        await conn.query(
+          `INSERT INTO service_areas (city, area, status, service_availability, seo_title, seo_description)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [a.city, a.area, a.status, a.serviceAvailability, a.seoTitle, a.seoDescription]
+        );
+      }
     }
 
     logger.info('Database migration and seeding completed successfully!');

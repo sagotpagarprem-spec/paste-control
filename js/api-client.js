@@ -274,6 +274,116 @@ class UPCApiClient {
 
     getById: async (id) => {
       return await this.request(`/services/${id}`, { method: 'GET' });
+    },
+
+    create: async (data) => {
+      return await this.request('/services', { method: 'POST', body: data });
+    },
+
+    update: async (id, data) => {
+      return await this.request(`/services/${id}`, { method: 'PUT', body: data });
+    },
+
+    delete: async (id) => {
+      return await this.request(`/services/${id}`, { method: 'DELETE' });
+    }
+  };
+
+  // Content Management System (CMS) API
+  cms = {
+    // Services
+    getServices: async (params = {}) => {
+      const q = new URLSearchParams(params).toString();
+      return await this.request(`/cms/services${q ? `?${q}` : ''}`, { method: 'GET' });
+    },
+    getService: async (idOrSlug) => {
+      return await this.request(`/cms/services/${idOrSlug}`, { method: 'GET' });
+    },
+    createService: async (data) => {
+      return await this.request('/cms/services', { method: 'POST', body: data });
+    },
+    updateService: async (id, data) => {
+      return await this.request(`/cms/services/${id}`, { method: 'PUT', body: data });
+    },
+    deleteService: async (id) => {
+      return await this.request(`/cms/services/${id}`, { method: 'DELETE' });
+    },
+
+    // Offers
+    getOffers: async (params = {}) => {
+      const q = new URLSearchParams(params).toString();
+      return await this.request(`/cms/offers${q ? `?${q}` : ''}`, { method: 'GET' });
+    },
+    getOffer: async (id) => {
+      return await this.request(`/cms/offers/${id}`, { method: 'GET' });
+    },
+    createOffer: async (data) => {
+      return await this.request('/cms/offers', { method: 'POST', body: data });
+    },
+    updateOffer: async (id, data) => {
+      return await this.request(`/cms/offers/${id}`, { method: 'PUT', body: data });
+    },
+    deleteOffer: async (id) => {
+      return await this.request(`/cms/offers/${id}`, { method: 'DELETE' });
+    },
+
+    // Reviews
+    getReviews: async (params = {}) => {
+      const q = new URLSearchParams(params).toString();
+      return await this.request(`/cms/reviews${q ? `?${q}` : ''}`, { method: 'GET' });
+    },
+    createReview: async (data) => {
+      return await this.request('/cms/reviews', { method: 'POST', body: data });
+    },
+    updateReviewStatus: async (id, status) => {
+      return await this.request(`/cms/reviews/${id}/status`, { method: 'PUT', body: { status } });
+    },
+    updateReview: async (id, data) => {
+      return await this.request(`/cms/reviews/${id}`, { method: 'PUT', body: data });
+    },
+    deleteReview: async (id) => {
+      return await this.request(`/cms/reviews/${id}`, { method: 'DELETE' });
+    },
+
+    // Blog
+    getBlogPosts: async (params = {}) => {
+      const q = new URLSearchParams(params).toString();
+      return await this.request(`/cms/blog${q ? `?${q}` : ''}`, { method: 'GET' });
+    },
+    getBlogPost: async (slugOrId) => {
+      return await this.request(`/cms/blog/${slugOrId}`, { method: 'GET' });
+    },
+    createBlogPost: async (data) => {
+      return await this.request('/cms/blog', { method: 'POST', body: data });
+    },
+    updateBlogPost: async (id, data) => {
+      return await this.request(`/cms/blog/${id}`, { method: 'PUT', body: data });
+    },
+    deleteBlogPost: async (id) => {
+      return await this.request(`/cms/blog/${id}`, { method: 'DELETE' });
+    },
+
+    // Service Areas
+    getServiceAreas: async (params = {}) => {
+      const q = new URLSearchParams(params).toString();
+      return await this.request(`/cms/service-areas${q ? `?${q}` : ''}`, { method: 'GET' });
+    },
+    getServiceArea: async (id) => {
+      return await this.request(`/cms/service-areas/${id}`, { method: 'GET' });
+    },
+    createServiceArea: async (data) => {
+      return await this.request('/cms/service-areas', { method: 'POST', body: data });
+    },
+    updateServiceArea: async (id, data) => {
+      return await this.request(`/cms/service-areas/${id}`, { method: 'PUT', body: data });
+    },
+    deleteServiceArea: async (id) => {
+      return await this.request(`/cms/service-areas/${id}`, { method: 'DELETE' });
+    },
+
+    // Overview Stats
+    getOverview: async () => {
+      return await this.request('/cms/admin/overview', { method: 'GET' });
     }
   };
 

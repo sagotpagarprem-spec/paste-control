@@ -109,14 +109,25 @@ CREATE TABLE IF NOT EXISTS `services` (
   `name` VARCHAR(150) NOT NULL,
   `category` VARCHAR(50) NOT NULL DEFAULT 'General',
   `description` TEXT NULL,
+  `short_description` TEXT NULL,
+  `image` VARCHAR(255) NULL,
+  `price` DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
   `base_price` DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
-  `warranty_months` INT NOT NULL DEFAULT 12,
+  `duration` VARCHAR(100) NULL DEFAULT '2 Hours',
   `duration_hours` DECIMAL(3, 1) NOT NULL DEFAULT 2.0,
+  `warranty_months` INT NOT NULL DEFAULT 12,
+  `benefits` JSON NULL,
+  `process` JSON NULL,
+  `faq` JSON NULL,
+  `seo_title` VARCHAR(255) NULL,
+  `seo_description` TEXT NULL,
+  `status` VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
   `is_active` BOOLEAN NOT NULL DEFAULT TRUE,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX `idx_services_slug` (`slug`),
   INDEX `idx_services_category` (`category`),
+  INDEX `idx_services_status` (`status`),
   INDEX `idx_services_is_active` (`is_active`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -352,3 +363,88 @@ CREATE TABLE IF NOT EXISTS `audit_logs` (
   INDEX `idx_audit_entity` (`entity_type`),
   INDEX `idx_audit_created_at` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------
+-- 16. OFFERS TABLE (Phase 4 CMS)
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `offers` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `title` VARCHAR(150) NOT NULL,
+  `description` TEXT NULL,
+  `service` VARCHAR(100) NULL,
+  `service_id` INT NULL,
+  `discount` VARCHAR(50) NOT NULL,
+  `valid_from` DATE NULL,
+  `valid_until` DATE NULL,
+  `image` VARCHAR(255) NULL,
+  `cta` VARCHAR(100) NOT NULL DEFAULT 'Book Now',
+  `terms` TEXT NULL,
+  `status` VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT `fk_offers_service` FOREIGN KEY (`service_id`) REFERENCES `services` (`id`) ON DELETE SET NULL,
+  INDEX `idx_offers_status` (`status`),
+  INDEX `idx_offers_valid_until` (`valid_until`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------
+-- 17. REVIEWS TABLE (Phase 4 Public Reviews & Moderation CMS)
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `reviews` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `customer` VARCHAR(100) NOT NULL,
+  `rating` DECIMAL(2, 1) NOT NULL DEFAULT 5.0,
+  `review` TEXT NOT NULL,
+  `service` VARCHAR(100) NULL,
+  `location` VARCHAR(150) NULL,
+  `image` VARCHAR(255) NULL,
+  `status` VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+  `featured` BOOLEAN NOT NULL DEFAULT FALSE,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX `idx_reviews_status` (`status`),
+  INDEX `idx_reviews_featured` (`featured`),
+  INDEX `idx_reviews_rating` (`rating`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------
+-- 18. BLOGS TABLE (Phase 4 Blog CMS)
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `blogs` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `title` VARCHAR(200) NOT NULL,
+  `slug` VARCHAR(200) NOT NULL UNIQUE,
+  `excerpt` TEXT NULL,
+  `content` LONGTEXT NOT NULL,
+  `featured_image` VARCHAR(255) NULL,
+  `category` VARCHAR(100) NOT NULL DEFAULT 'General',
+  `author` VARCHAR(100) NOT NULL DEFAULT 'Universal Pest Specialist',
+  `seo_title` VARCHAR(255) NULL,
+  `seo_description` TEXT NULL,
+  `status` VARCHAR(50) NOT NULL DEFAULT 'DRAFT',
+  `published_at` TIMESTAMP NULL DEFAULT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX `idx_blogs_slug` (`slug`),
+  INDEX `idx_blogs_status` (`status`),
+  INDEX `idx_blogs_category` (`category`),
+  INDEX `idx_blogs_published` (`published_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------
+-- 19. SERVICE_AREAS TABLE (Phase 4 Service Coverage CMS)
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `service_areas` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `city` VARCHAR(100) NOT NULL DEFAULT 'Pune',
+  `area` VARCHAR(150) NOT NULL,
+  `status` VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
+  `service_availability` TEXT NULL,
+  `seo_title` VARCHAR(255) NULL,
+  `seo_description` TEXT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX `idx_areas_city` (`city`),
+  INDEX `idx_areas_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+

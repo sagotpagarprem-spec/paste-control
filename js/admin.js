@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initWhatsAppHub();
   initTechnicianDispatch();
   initNotificationDrawer();
+  initCmsAdminListeners();
 
   // Subscribe to store updates for real-time reactive sync
   window.upcStore.subscribe(() => {
@@ -132,6 +133,11 @@ function switchAdminSection(viewKey) {
   if (viewKey === 'followups') renderAdminFollowups();
   if (viewKey === 'customers') renderAdminCustomers();
   if (viewKey === 'leads' || viewKey === 'crm') { renderCrmKanban(); renderCrmTable(); }
+  if (viewKey === 'cms-services') renderAdminCmsServices();
+  if (viewKey === 'cms-offers') renderAdminCmsOffers();
+  if (viewKey === 'cms-reviews') renderAdminCmsReviews();
+  if (viewKey === 'cms-blog') renderAdminCmsBlogs();
+  if (viewKey === 'cms-service-areas') renderAdminCmsAreas();
 }
 
 /* 2. OVERVIEW KPI CARDS & CHARTS */
@@ -1699,3 +1705,903 @@ window.markFollowupDone = markFollowupDone;
 window.renderAdminBookings = renderAdminBookings;
 window.renderAdminFollowups = renderAdminFollowups;
 window.renderAdminCustomers = renderAdminCustomers;
+
+/* =====================================================================
+   PHASE 4: MASTER CMS MANAGEMENT (SERVICES, OFFERS, REVIEWS, BLOG, AREAS)
+   ===================================================================== */
+let adminCmsCache = {
+  services: [],
+  offers: [],
+  reviews: [],
+  blogs: [],
+  areas: [],
+  activeReviewTab: 'ALL',
+  activeBlogTab: 'ALL'
+};
+
+function initCmsAdminListeners() {
+  // --- 1. Services Listeners ---
+  const btnAddService = document.getElementById('btnOpenAddServiceModal');
+  const btnCloseService = document.getElementById('btnCloseServiceModal');
+  const btnSaveService = document.getElementById('btnSaveCmsService');
+  const catFilter = document.getElementById('cmsServiceCategoryFilter');
+  const statusFilter = document.getElementById('cmsServiceStatusFilter');
+  const searchService = document.getElementById('cmsServiceSearchInput');
+
+  if (btnAddService) btnAddService.addEventListener('click', () => openCmsServiceModal());
+  if (btnCloseService) btnCloseService.addEventListener('click', () => closeCmsModal('modalCmsService'));
+  if (btnSaveService) btnSaveService.addEventListener('click', saveCmsService);
+  if (catFilter) catFilter.addEventListener('change', () => renderAdminCmsServices());
+  if (statusFilter) statusFilter.addEventListener('change', () => renderAdminCmsServices());
+  if (searchService) searchService.addEventListener('input', () => renderAdminCmsServices());
+
+  // --- 2. Offers Listeners ---
+  const btnAddOffer = document.getElementById('btnOpenAddOfferModal');
+  const btnCloseOffer = document.getElementById('btnCloseOfferModal');
+  const btnSaveOffer = document.getElementById('btnSaveCmsOffer');
+
+  if (btnAddOffer) btnAddOffer.addEventListener('click', () => openCmsOfferModal());
+  if (btnCloseOffer) btnCloseOffer.addEventListener('click', () => closeCmsModal('modalCmsOffer'));
+  if (btnSaveOffer) btnSaveOffer.addEventListener('click', saveCmsOffer);
+
+  // --- 3. Reviews Listeners ---
+  const btnAddReview = document.getElementById('btnOpenAddReviewModal');
+  const btnCloseReview = document.getElementById('btnCloseReviewModal');
+  const btnSaveReview = document.getElementById('btnSaveCmsReview');
+  const reviewTabs = document.querySelectorAll('[data-cms-review-tab]');
+
+  if (btnAddReview) btnAddReview.addEventListener('click', () => openCmsReviewModal());
+  if (btnCloseReview) btnCloseReview.addEventListener('click', () => closeCmsModal('modalCmsReview'));
+  if (btnSaveReview) btnSaveReview.addEventListener('click', saveCmsReview);
+
+  reviewTabs.forEach(tab => {
+    tab.addEventListener('click', (e) => {
+      e.preventDefault();
+      reviewTabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      adminCmsCache.activeReviewTab = tab.getAttribute('data-cms-review-tab');
+      renderAdminCmsReviews();
+    });
+  });
+
+  // --- 4. Blog Listeners ---
+  const btnAddBlog = document.getElementById('btnOpenAddBlogModal');
+  const btnCloseBlog = document.getElementById('btnCloseBlogModal');
+  const btnSaveBlog = document.getElementById('btnSaveCmsBlog');
+  const blogTabs = document.querySelectorAll('[data-cms-blog-tab]');
+
+  if (btnAddBlog) btnAddBlog.addEventListener('click', () => openCmsBlogModal());
+  if (btnCloseBlog) btnCloseBlog.addEventListener('click', () => closeCmsModal('modalCmsBlog'));
+  if (btnSaveBlog) btnSaveBlog.addEventListener('click', saveCmsBlog);
+
+  blogTabs.forEach(tab => {
+    tab.addEventListener('click', (e) => {
+      e.preventDefault();
+      blogTabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      adminCmsCache.activeBlogTab = tab.getAttribute('data-cms-blog-tab');
+      renderAdminCmsBlogs();
+    });
+  });
+
+  // --- 5. Service Areas Listeners ---
+  const btnAddArea = document.getElementById('btnOpenAddAreaModal');
+  const btnCloseArea = document.getElementById('btnCloseAreaModal');
+  const btnSaveArea = document.getElementById('btnSaveCmsArea');
+
+  if (btnAddArea) btnAddArea.addEventListener('click', () => openCmsAreaModal());
+  if (btnCloseArea) btnCloseArea.addEventListener('click', () => closeCmsModal('modalCmsArea'));
+  if (btnSaveArea) btnSaveArea.addEventListener('click', saveCmsArea);
+}
+
+function closeCmsModal(modalId) {
+  const m = document.getElementById(modalId);
+  if (m) m.style.display = 'none';
+}
+
+// ---------------------------------------------------------------------
+// 1. SERVICES CMS
+// ---------------------------------------------------------------------
+async function renderAdminCmsServices() {
+  const tbody = document.getElementById('adminCmsServicesTableBody');
+  if (!tbody || !window.upcApi) return;
+
+  try {
+    const res = await window.upcApi.cms.getServices({ all: 'true' });
+    if (!res || !res.data) return;
+
+    adminCmsCache.services = res.data;
+    let list = res.data;
+
+    const cat = document.getElementById('cmsServiceCategoryFilter')?.value || 'All';
+    const st = document.getElementById('cmsServiceStatusFilter')?.value || 'All';
+    const q = (document.getElementById('cmsServiceSearchInput')?.value || '').toLowerCase().trim();
+
+    if (cat !== 'All') list = list.filter(s => s.category === cat);
+    if (st !== 'All') list = list.filter(s => s.status === st);
+    if (q) list = list.filter(s => s.name.toLowerCase().includes(q) || s.slug.toLowerCase().includes(q));
+
+    if (list.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:2rem; color:#94A3B8;">No services match current filters.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = list.map(s => {
+      const statusBadge = s.status === 'ACTIVE'
+        ? '<span class="badge badge-success">ACTIVE</span>'
+        : s.status === 'ARCHIVED'
+        ? '<span class="badge badge-neutral">ARCHIVED</span>'
+        : '<span class="badge badge-warning">INACTIVE</span>';
+
+      return `
+        <tr>
+          <td>
+            <div style="display:flex; align-items:center; gap:0.75rem;">
+              <img src="${s.image || 'assets/images/hero.jpg'}" alt="${escapeHtml(s.name)}" style="width:40px; height:40px; border-radius:8px; object-fit:cover;">
+              <div>
+                <strong style="color:#0F172A; display:block;">${escapeHtml(s.name)}</strong>
+                <small style="color:#64748B;">${escapeHtml(s.shortDescription || '').substring(0, 45)}...</small>
+              </div>
+            </div>
+          </td>
+          <td><code style="font-size:0.8rem; color:#064E3B;">${escapeHtml(s.slug)}</code></td>
+          <td><span class="badge badge-primary">${escapeHtml(s.category)}</span></td>
+          <td><strong style="color:#064E3B;">₹${(s.price || 0).toLocaleString()}</strong></td>
+          <td><span style="font-size:0.85rem; color:#475569;">${escapeHtml(s.duration || '2 Hours')}</span></td>
+          <td>${statusBadge}</td>
+          <td style="text-align:right;">
+            <button class="btn btn-white btn-sm" onclick="openCmsServiceModal(${s.id})">Edit ✏️</button>
+            ${s.status !== 'ARCHIVED' ? `<button class="btn btn-outline btn-sm" style="color:#DC2626; border-color:#FCA5A5; margin-left:0.35rem;" onclick="deleteCmsServiceLive(${s.id})">Archive</button>` : ''}
+          </td>
+        </tr>
+      `;
+    }).join('');
+  } catch (err) {
+    console.error('Failed to render admin services:', err);
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#DC2626; padding:1.5rem;">Error loading services: ${escapeHtml(err.message)}</td></tr>`;
+  }
+}
+
+function openCmsServiceModal(serviceId = null) {
+  const modal = document.getElementById('modalCmsService');
+  if (!modal) return;
+
+  const titleEl = document.getElementById('modalServiceTitle');
+  const editIdEl = document.getElementById('serviceEditId');
+  const nameEl = document.getElementById('serviceInputName');
+  const slugEl = document.getElementById('serviceInputSlug');
+  const catEl = document.getElementById('serviceInputCategory');
+  const priceEl = document.getElementById('serviceInputPrice');
+  const statusEl = document.getElementById('serviceInputStatus');
+  const durationEl = document.getElementById('serviceInputDuration');
+  const warrantyEl = document.getElementById('serviceInputWarranty');
+  const imageEl = document.getElementById('serviceInputImage');
+  const shortDescEl = document.getElementById('serviceInputShortDesc');
+  const descEl = document.getElementById('serviceInputDesc');
+  const benefitsEl = document.getElementById('serviceInputBenefits');
+  const seoTitleEl = document.getElementById('serviceInputSeoTitle');
+  const seoDescEl = document.getElementById('serviceInputSeoDesc');
+
+  if (serviceId) {
+    const s = adminCmsCache.services.find(item => item.id == serviceId);
+    if (!s) return;
+
+    if (titleEl) titleEl.textContent = `Edit Service: ${s.name}`;
+    if (editIdEl) editIdEl.value = s.id;
+    if (nameEl) nameEl.value = s.name || '';
+    if (slugEl) slugEl.value = s.slug || '';
+    if (catEl) catEl.value = s.category || 'Residential';
+    if (priceEl) priceEl.value = s.price || 0;
+    if (statusEl) statusEl.value = s.status || 'ACTIVE';
+    if (durationEl) durationEl.value = s.duration || '';
+    if (warrantyEl) warrantyEl.value = s.warrantyMonths || 12;
+    if (imageEl) imageEl.value = s.image || '';
+    if (shortDescEl) shortDescEl.value = s.shortDescription || '';
+    if (descEl) descEl.value = s.description || '';
+    if (benefitsEl) benefitsEl.value = Array.isArray(s.benefits) ? s.benefits.join('\n') : '';
+    if (seoTitleEl) seoTitleEl.value = s.seoTitle || '';
+    if (seoDescEl) seoDescEl.value = s.seoDescription || '';
+  } else {
+    if (titleEl) titleEl.textContent = 'Add New Service';
+    if (editIdEl) editIdEl.value = '';
+    if (nameEl) nameEl.value = '';
+    if (slugEl) slugEl.value = '';
+    if (catEl) catEl.value = 'Residential';
+    if (priceEl) priceEl.value = '';
+    if (statusEl) statusEl.value = 'ACTIVE';
+    if (durationEl) durationEl.value = '2 Hours';
+    if (warrantyEl) warrantyEl.value = '12';
+    if (imageEl) imageEl.value = 'assets/images/hero.jpg';
+    if (shortDescEl) shortDescEl.value = '';
+    if (descEl) descEl.value = '';
+    if (benefitsEl) benefitsEl.value = '';
+    if (seoTitleEl) seoTitleEl.value = '';
+    if (seoDescEl) seoDescEl.value = '';
+  }
+
+  modal.style.display = 'flex';
+}
+
+async function saveCmsService(e) {
+  if (e) e.preventDefault();
+  const id = document.getElementById('serviceEditId')?.value;
+  const name = document.getElementById('serviceInputName')?.value.trim();
+  const slug = document.getElementById('serviceInputSlug')?.value.trim();
+  const price = document.getElementById('serviceInputPrice')?.value;
+
+  if (!name || !price) {
+    showToast('Service name and price are required.', 'error');
+    return;
+  }
+
+  const benefitsRaw = document.getElementById('serviceInputBenefits')?.value || '';
+  const benefits = benefitsRaw.split('\n').map(b => b.trim()).filter(Boolean);
+
+  const payload = {
+    name,
+    slug: slug || name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+    category: document.getElementById('serviceInputCategory')?.value || 'General',
+    price: parseFloat(price),
+    status: document.getElementById('serviceInputStatus')?.value || 'ACTIVE',
+    duration: document.getElementById('serviceInputDuration')?.value.trim() || '2 Hours',
+    warrantyMonths: parseInt(document.getElementById('serviceInputWarranty')?.value || '12', 10),
+    image: document.getElementById('serviceInputImage')?.value.trim() || 'assets/images/hero.jpg',
+    shortDescription: document.getElementById('serviceInputShortDesc')?.value.trim(),
+    description: document.getElementById('serviceInputDesc')?.value.trim(),
+    benefits,
+    seoTitle: document.getElementById('serviceInputSeoTitle')?.value.trim(),
+    seoDescription: document.getElementById('serviceInputSeoDesc')?.value.trim()
+  };
+
+  try {
+    if (id) {
+      await window.upcApi.cms.updateService(id, payload);
+      showToast('Service updated successfully!', 'success');
+    } else {
+      await window.upcApi.cms.createService(payload);
+      showToast('New service added successfully!', 'success');
+    }
+    closeCmsModal('modalCmsService');
+    renderAdminCmsServices();
+  } catch (err) {
+    showToast(err.message || 'Failed to save service.', 'error');
+  }
+}
+
+async function deleteCmsServiceLive(id) {
+  if (!confirm('Are you sure you want to archive this service from the public catalog?')) return;
+  try {
+    await window.upcApi.cms.deleteService(id);
+    showToast('Service archived.', 'info');
+    renderAdminCmsServices();
+  } catch (err) {
+    showToast(err.message || 'Failed to archive service.', 'error');
+  }
+}
+
+// ---------------------------------------------------------------------
+// 2. OFFERS CMS
+// ---------------------------------------------------------------------
+async function renderAdminCmsOffers() {
+  const tbody = document.getElementById('adminCmsOffersTableBody');
+  if (!tbody || !window.upcApi) return;
+
+  try {
+    const res = await window.upcApi.cms.getOffers({ all: 'true' });
+    if (!res || !res.data) return;
+
+    adminCmsCache.offers = res.data;
+
+    if (res.data.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:2rem; color:#94A3B8;">No promotional offers configured.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = res.data.map(o => {
+      const statusBadge = o.status === 'ACTIVE'
+        ? '<span class="badge badge-success">ACTIVE</span>'
+        : o.status === 'EXPIRED'
+        ? '<span class="badge badge-danger">EXPIRED</span>'
+        : '<span class="badge badge-warning">INACTIVE</span>';
+
+      const validStr = o.validUntil ? `Until ${o.validUntil}` : 'No expiry';
+
+      return `
+        <tr>
+          <td>
+            <strong style="color:#0F172A; display:block;">${escapeHtml(o.title)}</strong>
+            <small style="color:#64748B;">${escapeHtml(o.description || '').substring(0, 50)}</small>
+          </td>
+          <td><span class="badge badge-neutral">${escapeHtml(o.service || 'All Services')}</span></td>
+          <td><span class="badge badge-warning" style="font-weight:800;">${escapeHtml(o.discount)}</span></td>
+          <td><code style="font-size:0.9rem; font-weight:800; color:#064E3B;">${escapeHtml(o.cta)}</code></td>
+          <td><span style="font-size:0.85rem; color:#64748B;">${validStr}</span></td>
+          <td>${statusBadge}</td>
+          <td style="text-align:right;">
+            <button class="btn btn-white btn-sm" onclick="openCmsOfferModal(${o.id})">Edit ✏️</button>
+            <button class="btn btn-outline btn-sm" style="color:#DC2626; border-color:#FCA5A5; margin-left:0.35rem;" onclick="deleteCmsOfferLive(${o.id})">Delete</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  } catch (err) {
+    console.error('Failed to render admin offers:', err);
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#DC2626; padding:1.5rem;">Error loading offers: ${escapeHtml(err.message)}</td></tr>`;
+  }
+}
+
+function openCmsOfferModal(offerId = null) {
+  const modal = document.getElementById('modalCmsOffer');
+  if (!modal) return;
+
+  const titleEl = document.getElementById('modalOfferTitle');
+  const editIdEl = document.getElementById('offerEditId');
+  const titleInput = document.getElementById('offerInputTitle');
+  const discInput = document.getElementById('offerInputDiscount');
+  const ctaInput = document.getElementById('offerInputCta');
+  const srvInput = document.getElementById('offerInputService');
+  const stInput = document.getElementById('offerInputStatus');
+  const vfInput = document.getElementById('offerInputValidFrom');
+  const vuInput = document.getElementById('offerInputValidUntil');
+  const descInput = document.getElementById('offerInputDesc');
+  const termsInput = document.getElementById('offerInputTerms');
+
+  if (offerId) {
+    const o = adminCmsCache.offers.find(item => item.id == offerId);
+    if (!o) return;
+
+    if (titleEl) titleEl.textContent = `Edit Offer: ${o.title}`;
+    if (editIdEl) editIdEl.value = o.id;
+    if (titleInput) titleInput.value = o.title || '';
+    if (discInput) discInput.value = o.discount || '';
+    if (ctaInput) ctaInput.value = o.cta || '';
+    if (srvInput) srvInput.value = o.service || '';
+    if (stInput) stInput.value = o.status || 'ACTIVE';
+    if (vfInput) vfInput.value = o.validFrom || '';
+    if (vuInput) vuInput.value = o.validUntil || '';
+    if (descInput) descInput.value = o.description || '';
+    if (termsInput) termsInput.value = o.terms || '';
+  } else {
+    if (titleEl) titleEl.textContent = 'Create New Offer';
+    if (editIdEl) editIdEl.value = '';
+    if (titleInput) titleInput.value = '';
+    if (discInput) discInput.value = '20% OFF';
+    if (ctaInput) ctaInput.value = 'UPC20';
+    if (srvInput) srvInput.value = '';
+    if (stInput) stInput.value = 'ACTIVE';
+    if (vfInput) vfInput.value = '';
+    if (vuInput) vuInput.value = '';
+    if (descInput) descInput.value = '';
+    if (termsInput) termsInput.value = 'Valid on residential bookings.';
+  }
+
+  modal.style.display = 'flex';
+}
+
+async function saveCmsOffer(e) {
+  if (e) e.preventDefault();
+  const id = document.getElementById('offerEditId')?.value;
+  const title = document.getElementById('offerInputTitle')?.value.trim();
+  const discount = document.getElementById('offerInputDiscount')?.value.trim();
+  const cta = document.getElementById('offerInputCta')?.value.trim();
+
+  if (!title || !discount || !cta) {
+    showToast('Title, discount, and coupon CTA code are required.', 'error');
+    return;
+  }
+
+  const payload = {
+    title,
+    discount,
+    cta,
+    service: document.getElementById('offerInputService')?.value.trim() || null,
+    status: document.getElementById('offerInputStatus')?.value || 'ACTIVE',
+    validFrom: document.getElementById('offerInputValidFrom')?.value || null,
+    validUntil: document.getElementById('offerInputValidUntil')?.value || null,
+    description: document.getElementById('offerInputDesc')?.value.trim() || null,
+    terms: document.getElementById('offerInputTerms')?.value.trim() || null,
+    image: 'assets/images/hero.jpg'
+  };
+
+  try {
+    if (id) {
+      await window.upcApi.cms.updateOffer(id, payload);
+      showToast('Offer updated successfully!', 'success');
+    } else {
+      await window.upcApi.cms.createOffer(payload);
+      showToast('Offer created successfully!', 'success');
+    }
+    closeCmsModal('modalCmsOffer');
+    renderAdminCmsOffers();
+  } catch (err) {
+    showToast(err.message || 'Failed to save offer.', 'error');
+  }
+}
+
+async function deleteCmsOfferLive(id) {
+  if (!confirm('Are you sure you want to delete this promotional offer?')) return;
+  try {
+    await window.upcApi.cms.deleteOffer(id);
+    showToast('Offer removed.', 'info');
+    renderAdminCmsOffers();
+  } catch (err) {
+    showToast(err.message || 'Failed to delete offer.', 'error');
+  }
+}
+
+// ---------------------------------------------------------------------
+// 3. REVIEWS CMS (MODERATION & TESTIMONIALS)
+// ---------------------------------------------------------------------
+async function renderAdminCmsReviews() {
+  const tbody = document.getElementById('adminCmsReviewsTableBody');
+  if (!tbody || !window.upcApi) return;
+
+  try {
+    const res = await window.upcApi.cms.getReviews({ all: 'true' });
+    if (!res || !res.data) return;
+
+    adminCmsCache.reviews = res.data;
+
+    // Update pending moderation badge
+    const pendingCount = res.data.filter(r => r.status === 'PENDING').length;
+    const badge = document.getElementById('cmsReviewPendingBadge');
+    if (badge) badge.textContent = pendingCount;
+    const sidebarBadge = document.getElementById('sidebarReviewsBadge');
+    if (sidebarBadge) {
+      sidebarBadge.textContent = pendingCount > 0 ? `${pendingCount} Pending` : 'All Clear';
+      sidebarBadge.className = pendingCount > 0 ? 'badge badge-warning' : 'badge badge-success';
+    }
+
+    let list = res.data;
+    if (adminCmsCache.activeReviewTab !== 'ALL') {
+      list = list.filter(r => r.status === adminCmsCache.activeReviewTab);
+    }
+
+    if (list.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:2rem; color:#94A3B8;">No reviews in this queue.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = list.map(r => {
+      const stars = '★'.repeat(Math.round(r.rating)) + '☆'.repeat(Math.max(0, 5 - Math.round(r.rating)));
+      const statusBadge = r.status === 'APPROVED'
+        ? '<span class="badge badge-success">APPROVED</span>'
+        : r.status === 'REJECTED'
+        ? '<span class="badge badge-danger">REJECTED</span>'
+        : '<span class="badge badge-warning">PENDING APPROVAL</span>';
+
+      const featuredTag = r.featured ? '<span class="badge badge-primary">Featured ⭐</span>' : '<span style="color:#94A3B8; font-size:0.75rem;">Normal</span>';
+
+      return `
+        <tr>
+          <td><strong style="color:#0F172A;">${escapeHtml(r.customer)}</strong></td>
+          <td><span style="color:#F59E0B; font-weight:700;">${stars}</span></td>
+          <td style="max-width:320px;">
+            <p style="margin:0; font-size:0.875rem; color:#334155; line-height:1.5;">"${escapeHtml(r.review)}"</p>
+          </td>
+          <td>
+            <div style="font-size:0.85rem; font-weight:600; color:#0F172A;">${escapeHtml(r.service || 'General')}</div>
+            <small style="color:#64748B;">${escapeHtml(r.location || 'Pune')}</small>
+          </td>
+          <td>${statusBadge}</td>
+          <td>${featuredTag}</td>
+          <td style="text-align:right;">
+            <div style="display:flex; justify-content:flex-end; gap:0.35rem;">
+              ${r.status !== 'APPROVED' ? `<button class="btn btn-primary btn-sm" style="background:#059669; padding:0.25rem 0.5rem; font-size:0.75rem;" onclick="updateCmsReviewStatusLive(${r.id}, 'APPROVED')">Approve ✓</button>` : ''}
+              ${r.status !== 'REJECTED' ? `<button class="btn btn-outline btn-sm" style="color:#DC2626; border-color:#FCA5A5; padding:0.25rem 0.5rem; font-size:0.75rem;" onclick="updateCmsReviewStatusLive(${r.id}, 'REJECTED')">Reject ✕</button>` : ''}
+              <button class="btn btn-white btn-sm" style="padding:0.25rem 0.5rem; font-size:0.75rem;" onclick="openCmsReviewModal(${r.id})">Edit</button>
+              <button class="btn btn-white btn-sm" style="padding:0.25rem 0.5rem; font-size:0.75rem; color:#94A3B8;" onclick="deleteCmsReviewLive(${r.id})">🗑️</button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  } catch (err) {
+    console.error('Failed to render admin reviews:', err);
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#DC2626; padding:1.5rem;">Error loading reviews: ${escapeHtml(err.message)}</td></tr>`;
+  }
+}
+
+function openCmsReviewModal(reviewId = null) {
+  const modal = document.getElementById('modalCmsReview');
+  if (!modal) return;
+
+  const titleEl = document.getElementById('modalReviewTitle');
+  const editIdEl = document.getElementById('reviewEditId');
+  const custInput = document.getElementById('reviewInputCustomer');
+  const ratingInput = document.getElementById('reviewInputRating');
+  const srvInput = document.getElementById('reviewInputService');
+  const locInput = document.getElementById('reviewInputLocation');
+  const textInput = document.getElementById('reviewInputText');
+  const stInput = document.getElementById('reviewInputStatus');
+  const featInput = document.getElementById('reviewInputFeatured');
+
+  if (reviewId) {
+    const r = adminCmsCache.reviews.find(item => item.id == reviewId);
+    if (!r) return;
+
+    if (titleEl) titleEl.textContent = `Edit Review: ${r.customer}`;
+    if (editIdEl) editIdEl.value = r.id;
+    if (custInput) custInput.value = r.customer || '';
+    if (ratingInput) ratingInput.value = (r.rating || 5.0).toFixed(1);
+    if (srvInput) srvInput.value = r.service || '';
+    if (locInput) locInput.value = r.location || '';
+    if (textInput) textInput.value = r.review || '';
+    if (stInput) stInput.value = r.status || 'APPROVED';
+    if (featInput) featInput.checked = Boolean(r.featured);
+  } else {
+    if (titleEl) titleEl.textContent = 'Add Manual Review';
+    if (editIdEl) editIdEl.value = '';
+    if (custInput) custInput.value = '';
+    if (ratingInput) ratingInput.value = '5.0';
+    if (srvInput) srvInput.value = 'Termite Radar Inspection & Barrier';
+    if (locInput) locInput.value = 'Kalyani Nagar, Pune';
+    if (textInput) textInput.value = '';
+    if (stInput) stInput.value = 'APPROVED';
+    if (featInput) featInput.checked = true;
+  }
+
+  modal.style.display = 'flex';
+}
+
+async function saveCmsReview(e) {
+  if (e) e.preventDefault();
+  const id = document.getElementById('reviewEditId')?.value;
+  const customer = document.getElementById('reviewInputCustomer')?.value.trim();
+  const review = document.getElementById('reviewInputText')?.value.trim();
+
+  if (!customer || !review) {
+    showToast('Customer name and review content are required.', 'error');
+    return;
+  }
+
+  const payload = {
+    customer,
+    review,
+    rating: parseFloat(document.getElementById('reviewInputRating')?.value || '5'),
+    service: document.getElementById('reviewInputService')?.value.trim() || 'General',
+    location: document.getElementById('reviewInputLocation')?.value.trim() || 'Pune',
+    status: document.getElementById('reviewInputStatus')?.value || 'APPROVED',
+    featured: Boolean(document.getElementById('reviewInputFeatured')?.checked)
+  };
+
+  try {
+    if (id) {
+      await window.upcApi.cms.updateReview(id, payload);
+      showToast('Review updated.', 'success');
+    } else {
+      await window.upcApi.cms.createReview(payload);
+      showToast('Review added to catalog.', 'success');
+    }
+    closeCmsModal('modalCmsReview');
+    renderAdminCmsReviews();
+  } catch (err) {
+    showToast(err.message || 'Failed to save review.', 'error');
+  }
+}
+
+async function updateCmsReviewStatusLive(id, status) {
+  try {
+    await window.upcApi.cms.updateReviewStatus(id, status);
+    showToast(`Review marked as ${status}.`, 'success');
+    renderAdminCmsReviews();
+  } catch (err) {
+    showToast(err.message || 'Failed to update review status.', 'error');
+  }
+}
+
+async function deleteCmsReviewLive(id) {
+  if (!confirm('Are you sure you want to permanently delete this review?')) return;
+  try {
+    await window.upcApi.cms.deleteReview(id);
+    showToast('Review deleted.', 'info');
+    renderAdminCmsReviews();
+  } catch (err) {
+    showToast(err.message || 'Failed to delete review.', 'error');
+  }
+}
+
+// ---------------------------------------------------------------------
+// 4. BLOG CMS
+// ---------------------------------------------------------------------
+async function renderAdminCmsBlogs() {
+  const tbody = document.getElementById('adminCmsBlogsTableBody');
+  if (!tbody || !window.upcApi) return;
+
+  try {
+    const res = await window.upcApi.cms.getBlogPosts({ all: 'true' });
+    if (!res || !res.data) return;
+
+    adminCmsCache.blogs = res.data;
+
+    let list = res.data;
+    if (adminCmsCache.activeBlogTab !== 'ALL') {
+      list = list.filter(b => b.status === adminCmsCache.activeBlogTab);
+    }
+
+    if (list.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:2rem; color:#94A3B8;">No blog articles found.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = list.map(b => {
+      const statusBadge = b.status === 'PUBLISHED'
+        ? '<span class="badge badge-success">PUBLISHED (PUBLIC)</span>'
+        : b.status === 'DRAFT'
+        ? '<span class="badge badge-warning">DRAFT</span>'
+        : '<span class="badge badge-neutral">ARCHIVED</span>';
+
+      const pubDate = b.publishedAt ? new Date(b.publishedAt).toLocaleDateString() : 'Unpublished';
+
+      return `
+        <tr>
+          <td>
+            <strong style="color:#0F172A; display:block;">${escapeHtml(b.title)}</strong>
+            <small style="color:#64748B;">${escapeHtml(b.excerpt || '').substring(0, 50)}...</small>
+          </td>
+          <td><code style="font-size:0.8rem; color:#064E3B;">${escapeHtml(b.slug)}</code></td>
+          <td><span class="badge badge-primary">${escapeHtml(b.category)}</span></td>
+          <td><span style="font-size:0.85rem; color:#334155;">${escapeHtml(b.author)}</span></td>
+          <td><span style="font-size:0.85rem; color:#64748B;">${pubDate}</span></td>
+          <td>${statusBadge}</td>
+          <td style="text-align:right;">
+            <button class="btn btn-white btn-sm" onclick="openCmsBlogModal(${b.id})">Edit ✏️</button>
+            <button class="btn btn-outline btn-sm" style="color:#DC2626; border-color:#FCA5A5; margin-left:0.35rem;" onclick="deleteCmsBlogLive(${b.id})">Delete</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  } catch (err) {
+    console.error('Failed to render admin blogs:', err);
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#DC2626; padding:1.5rem;">Error loading blogs: ${escapeHtml(err.message)}</td></tr>`;
+  }
+}
+
+function openCmsBlogModal(blogId = null) {
+  const modal = document.getElementById('modalCmsBlog');
+  if (!modal) return;
+
+  const titleEl = document.getElementById('modalBlogTitle');
+  const editIdEl = document.getElementById('blogEditId');
+  const titleInput = document.getElementById('blogInputTitle');
+  const slugInput = document.getElementById('blogInputSlug');
+  const catInput = document.getElementById('blogInputCategory');
+  const stInput = document.getElementById('blogInputStatus');
+  const authorInput = document.getElementById('blogInputAuthor');
+  const imgInput = document.getElementById('blogInputImage');
+  const excInput = document.getElementById('blogInputExcerpt');
+  const contentInput = document.getElementById('blogInputContent');
+  const seoTitleInput = document.getElementById('blogInputSeoTitle');
+  const seoDescInput = document.getElementById('blogInputSeoDesc');
+
+  if (blogId) {
+    const b = adminCmsCache.blogs.find(item => item.id == blogId);
+    if (!b) return;
+
+    if (titleEl) titleEl.textContent = `Edit Article: ${b.title}`;
+    if (editIdEl) editIdEl.value = b.id;
+    if (titleInput) titleInput.value = b.title || '';
+    if (slugInput) slugInput.value = b.slug || '';
+    if (catInput) catInput.value = b.category || 'Termite Science';
+    if (stInput) stInput.value = b.status || 'PUBLISHED';
+    if (authorInput) authorInput.value = b.author || '';
+    if (imgInput) imgInput.value = b.featuredImage || '';
+    if (excInput) excInput.value = b.excerpt || '';
+    if (contentInput) contentInput.value = b.content || '';
+    if (seoTitleInput) seoTitleInput.value = b.seoTitle || '';
+    if (seoDescInput) seoDescInput.value = b.seoDescription || '';
+  } else {
+    if (titleEl) titleEl.textContent = 'New Blog Article';
+    if (editIdEl) editIdEl.value = '';
+    if (titleInput) titleInput.value = '';
+    if (slugInput) slugInput.value = '';
+    if (catInput) catInput.value = 'General Pest Prevention';
+    if (stInput) stInput.value = 'PUBLISHED';
+    if (authorInput) authorInput.value = 'Universal Pest Specialist';
+    if (imgInput) imgInput.value = 'assets/images/hero.jpg';
+    if (excInput) excInput.value = '';
+    if (contentInput) contentInput.value = '';
+    if (seoTitleInput) seoTitleInput.value = '';
+    if (seoDescInput) seoDescInput.value = '';
+  }
+
+  modal.style.display = 'flex';
+}
+
+async function saveCmsBlog(e) {
+  if (e) e.preventDefault();
+  const id = document.getElementById('blogEditId')?.value;
+  const title = document.getElementById('blogInputTitle')?.value.trim();
+  const content = document.getElementById('blogInputContent')?.value.trim();
+
+  if (!title || !content) {
+    showToast('Article title and content are required.', 'error');
+    return;
+  }
+
+  const payload = {
+    title,
+    slug: document.getElementById('blogInputSlug')?.value.trim() || title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+    category: document.getElementById('blogInputCategory')?.value.trim() || 'General',
+    status: document.getElementById('blogInputStatus')?.value || 'PUBLISHED',
+    author: document.getElementById('blogInputAuthor')?.value.trim() || 'Universal Pest Specialist',
+    featuredImage: document.getElementById('blogInputImage')?.value.trim() || 'assets/images/hero.jpg',
+    excerpt: document.getElementById('blogInputExcerpt')?.value.trim() || null,
+    content,
+    seoTitle: document.getElementById('blogInputSeoTitle')?.value.trim() || null,
+    seoDescription: document.getElementById('blogInputSeoDesc')?.value.trim() || null
+  };
+
+  try {
+    if (id) {
+      await window.upcApi.cms.updateBlogPost(id, payload);
+      showToast('Article updated.', 'success');
+    } else {
+      await window.upcApi.cms.createBlogPost(payload);
+      showToast('Article published.', 'success');
+    }
+    closeCmsModal('modalCmsBlog');
+    renderAdminCmsBlogs();
+  } catch (err) {
+    showToast(err.message || 'Failed to save blog post.', 'error');
+  }
+}
+
+async function deleteCmsBlogLive(id) {
+  if (!confirm('Are you sure you want to delete this article?')) return;
+  try {
+    await window.upcApi.cms.deleteBlogPost(id);
+    showToast('Article deleted.', 'info');
+    renderAdminCmsBlogs();
+  } catch (err) {
+    showToast(err.message || 'Failed to delete article.', 'error');
+  }
+}
+
+// ---------------------------------------------------------------------
+// 5. SERVICE AREAS CMS
+// ---------------------------------------------------------------------
+async function renderAdminCmsAreas() {
+  const tbody = document.getElementById('adminCmsAreasTableBody');
+  if (!tbody || !window.upcApi) return;
+
+  try {
+    const res = await window.upcApi.cms.getServiceAreas({ all: 'true' });
+    if (!res || !res.data) return;
+
+    adminCmsCache.areas = res.data;
+
+    if (res.data.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:2rem; color:#94A3B8;">No service areas configured.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = res.data.map(a => {
+      const statusBadge = a.status === 'ACTIVE'
+        ? '<span class="badge badge-success">ACTIVE</span>'
+        : a.status === 'COMING_SOON'
+        ? '<span class="badge badge-warning">COMING SOON</span>'
+        : '<span class="badge badge-neutral">INACTIVE</span>';
+
+      return `
+        <tr>
+          <td><strong style="color:#064E3B;">${escapeHtml(a.city)}</strong></td>
+          <td><strong style="color:#0F172A;">${escapeHtml(a.area)}</strong></td>
+          <td><span style="font-size:0.85rem; color:#475569;">${escapeHtml(a.serviceAvailability || 'All Services')}</span></td>
+          <td>${statusBadge}</td>
+          <td><small style="color:#64748B;">${escapeHtml(a.seoTitle || '—')}</small></td>
+          <td style="text-align:right;">
+            <button class="btn btn-white btn-sm" onclick="openCmsAreaModal(${a.id})">Edit ✏️</button>
+            <button class="btn btn-outline btn-sm" style="color:#DC2626; border-color:#FCA5A5; margin-left:0.35rem;" onclick="deleteCmsAreaLive(${a.id})">Delete</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  } catch (err) {
+    console.error('Failed to render admin service areas:', err);
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#DC2626; padding:1.5rem;">Error loading areas: ${escapeHtml(err.message)}</td></tr>`;
+  }
+}
+
+function openCmsAreaModal(areaId = null) {
+  const modal = document.getElementById('modalCmsArea');
+  if (!modal) return;
+
+  const titleEl = document.getElementById('modalAreaTitle');
+  const editIdEl = document.getElementById('areaEditId');
+  const cityInput = document.getElementById('areaInputCity');
+  const nameInput = document.getElementById('areaInputName');
+  const stInput = document.getElementById('areaInputStatus');
+  const availInput = document.getElementById('areaInputAvailability');
+  const seoTitleInput = document.getElementById('areaInputSeoTitle');
+  const seoDescInput = document.getElementById('areaInputSeoDesc');
+
+  if (areaId) {
+    const a = adminCmsCache.areas.find(item => item.id == areaId);
+    if (!a) return;
+
+    if (titleEl) titleEl.textContent = `Edit Area: ${a.area}`;
+    if (editIdEl) editIdEl.value = a.id;
+    if (cityInput) cityInput.value = a.city || 'Pune';
+    if (nameInput) nameInput.value = a.area || '';
+    if (stInput) stInput.value = a.status || 'ACTIVE';
+    if (availInput) availInput.value = a.serviceAvailability || '';
+    if (seoTitleInput) seoTitleInput.value = a.seoTitle || '';
+    if (seoDescInput) seoDescInput.value = a.seoDescription || '';
+  } else {
+    if (titleEl) titleEl.textContent = 'Add Coverage Area';
+    if (editIdEl) editIdEl.value = '';
+    if (cityInput) cityInput.value = 'Pune';
+    if (nameInput) nameInput.value = '';
+    if (stInput) stInput.value = 'ACTIVE';
+    if (availInput) availInput.value = 'All Services';
+    if (seoTitleInput) seoTitleInput.value = '';
+    if (seoDescInput) seoDescInput.value = '';
+  }
+
+  modal.style.display = 'flex';
+}
+
+async function saveCmsArea(e) {
+  if (e) e.preventDefault();
+  const id = document.getElementById('areaEditId')?.value;
+  const area = document.getElementById('areaInputName')?.value.trim();
+
+  if (!area) {
+    showToast('Area / Locality name is required.', 'error');
+    return;
+  }
+
+  const payload = {
+    city: document.getElementById('areaInputCity')?.value.trim() || 'Pune',
+    area,
+    status: document.getElementById('areaInputStatus')?.value || 'ACTIVE',
+    serviceAvailability: document.getElementById('areaInputAvailability')?.value.trim() || 'All Services',
+    seoTitle: document.getElementById('areaInputSeoTitle')?.value.trim() || null,
+    seoDescription: document.getElementById('areaInputSeoDesc')?.value.trim() || null
+  };
+
+  try {
+    if (id) {
+      await window.upcApi.cms.updateServiceArea(id, payload);
+      showToast('Coverage area updated.', 'success');
+    } else {
+      await window.upcApi.cms.createServiceArea(payload);
+      showToast('Coverage area added.', 'success');
+    }
+    closeCmsModal('modalCmsArea');
+    renderAdminCmsAreas();
+  } catch (err) {
+    showToast(err.message || 'Failed to save area.', 'error');
+  }
+}
+
+async function deleteCmsAreaLive(id) {
+  if (!confirm('Are you sure you want to delete this coverage area?')) return;
+  try {
+    await window.upcApi.cms.deleteServiceArea(id);
+    showToast('Coverage area deleted.', 'info');
+    renderAdminCmsAreas();
+  } catch (err) {
+    showToast(err.message || 'Failed to delete area.', 'error');
+  }
+}
+
+// Global CMS Window Exports
+window.openCmsServiceModal = openCmsServiceModal;
+window.deleteCmsServiceLive = deleteCmsServiceLive;
+window.openCmsOfferModal = openCmsOfferModal;
+window.deleteCmsOfferLive = deleteCmsOfferLive;
+window.openCmsReviewModal = openCmsReviewModal;
+window.updateCmsReviewStatusLive = updateCmsReviewStatusLive;
+window.deleteCmsReviewLive = deleteCmsReviewLive;
+window.openCmsBlogModal = openCmsBlogModal;
+window.deleteCmsBlogLive = deleteCmsBlogLive;
+window.openCmsAreaModal = openCmsAreaModal;
+window.deleteCmsAreaLive = deleteCmsAreaLive;
+window.renderAdminCmsServices = renderAdminCmsServices;
+window.renderAdminCmsOffers = renderAdminCmsOffers;
+window.renderAdminCmsReviews = renderAdminCmsReviews;
+window.renderAdminCmsBlogs = renderAdminCmsBlogs;
+window.renderAdminCmsAreas = renderAdminCmsAreas;
+
