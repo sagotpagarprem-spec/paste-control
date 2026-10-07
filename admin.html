@@ -282,18 +282,41 @@
           <!-- TABLE VIEW CONTAINER -->
           <div id="crmTableWrapper" style="display:none;">
             <div class="crm-table-card">
-              <div class="table-toolbar">
-                <div class="table-filters">
-                  <span style="font-size:0.85rem; font-weight:700;">Filter:</span>
-                  <select class="form-control" style="padding:0.4rem 0.8rem; font-size:0.85rem; width:180px;">
-                    <option>All Services</option>
-                    <option>Termite Control</option>
-                    <option>Cockroach Gel</option>
-                    <option>Commercial</option>
+              <div class="table-toolbar" style="flex-wrap:wrap; gap:1rem;">
+                <div class="table-filters" style="display:flex; flex-wrap:wrap; gap:0.75rem; align-items:center;">
+                  <span style="font-size:0.85rem; font-weight:700;">Filters:</span>
+                  <select id="crmFilterStatus" class="form-control" style="padding:0.4rem 0.8rem; font-size:0.85rem; width:160px;">
+                    <option value="">All Statuses</option>
+                    <option value="NEW">New Leads</option>
+                    <option value="CONTACTED">Contacted</option>
+                    <option value="QUALIFIED">Qualified</option>
+                    <option value="SITE_VISIT">Site Visit</option>
+                    <option value="QUOTATION">Quotation</option>
+                    <option value="FOLLOW_UP">Follow-Up</option>
+                    <option value="BOOKED">Booked</option>
+                    <option value="COMPLETED">Completed</option>
+                    <option value="LOST">Lost</option>
+                  </select>
+                  <select id="crmFilterService" class="form-control" style="padding:0.4rem 0.8rem; font-size:0.85rem; width:180px;">
+                    <option value="">All Services</option>
+                    <option value="Termite">Termite Control</option>
+                    <option value="Cockroach">Cockroach Control</option>
+                    <option value="Commercial">Commercial Pest</option>
+                    <option value="Bed Bug">Bed Bug Control</option>
+                    <option value="Mosquito">Mosquito Control</option>
+                    <option value="Rodent">Rodent Control</option>
+                  </select>
+                  <select id="crmFilterSource" class="form-control" style="padding:0.4rem 0.8rem; font-size:0.85rem; width:170px;">
+                    <option value="">All Sources</option>
+                    <option value="Website">Website Form/Wizard</option>
+                    <option value="Meta">Meta / Instagram Ads</option>
+                    <option value="Google">Google Ads / Search</option>
+                    <option value="Direct">Direct / Callback</option>
                   </select>
                 </div>
-                <div>
-                  <button class="btn btn-white btn-sm">Export CSV</button>
+                <div style="display:flex; gap:0.5rem; align-items:center;">
+                  <button class="btn btn-white btn-sm" id="btnRefreshLeads">🔄 Refresh</button>
+                  <button class="btn btn-white btn-sm" onclick="exportCrmLeadsCsv()">Export CSV</button>
                 </div>
               </div>
               <table class="crm-data-table">
@@ -306,6 +329,7 @@
                     <th>Locality</th>
                     <th>Source</th>
                     <th>Status</th>
+                    <th>Assigned To</th>
                     <th>Est. Value</th>
                     <th>Action</th>
                   </tr>
@@ -314,6 +338,16 @@
                   <!-- Populated via JS -->
                 </tbody>
               </table>
+
+              <!-- Table Pagination -->
+              <div class="table-pagination" style="display:flex; justify-content:space-between; align-items:center; padding:1rem 1.5rem; border-top:1px solid #E2E8F0; font-size:0.85rem; color:#64748B;">
+                <div id="crmPaginationInfo">Showing leads</div>
+                <div style="display:flex; gap:0.5rem; align-items:center;">
+                  <button id="btnPrevPage" class="btn btn-white btn-sm">Previous</button>
+                  <span id="crmCurrentPageBadge" class="badge badge-neutral" style="padding:0.4rem 0.75rem;">Page 1</span>
+                  <button id="btnNextPage" class="btn btn-white btn-sm">Next</button>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -819,18 +853,23 @@
     </div>
 
     <div class="drawer-body">
-      <!-- Status Changer -->
-      <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:12px; padding:1.25rem; margin-bottom:1.5rem; display:flex; justify-content:space-between; align-items:center;">
-        <div>
-          <span style="font-size:0.75rem; text-transform:uppercase; font-weight:700; color:#64748B;">Current Pipeline Stage</span>
-          <div style="margin-top:0.25rem;">
+      <!-- Duplicate Warning Alert (Hidden by default) -->
+      <div id="drawerDuplicateAlert" style="display:none; background:#FFFBEB; border:1px solid #FCD34D; color:#92400E; border-radius:10px; padding:0.85rem 1rem; margin-bottom:1.25rem; font-size:0.825rem;">
+        ⚠️ <strong>Duplicate Lead Notice:</strong> Repeat submission linked to active parent lead <strong id="drawerDuplicateOf"></strong> (<span id="drawerDuplicateCount"></span> repeat inquiries recorded).
+      </div>
+
+      <!-- Status & Deal Value Bar -->
+      <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:12px; padding:1.25rem; margin-bottom:1.25rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+        <div style="flex:1; min-width:200px;">
+          <span style="font-size:0.75rem; text-transform:uppercase; font-weight:700; color:#64748B;">Pipeline Stage</span>
+          <div style="margin-top:0.35rem;">
             <select id="drawerStatusSelect" class="form-control" style="font-weight:700; color:#064E3B;">
               <option value="NEW">NEW LEAD</option>
               <option value="CONTACTED">CONTACTED</option>
               <option value="QUALIFIED">QUALIFIED</option>
-              <option value="SITE VISIT">SITE VISIT SCHEDULED</option>
+              <option value="SITE_VISIT">SITE VISIT SCHEDULED</option>
               <option value="QUOTATION">QUOTATION SENT</option>
-              <option value="FOLLOW-UP">FOLLOW-UP DUE</option>
+              <option value="FOLLOW_UP">FOLLOW-UP DUE</option>
               <option value="BOOKED">BOOKED SERVICE</option>
               <option value="COMPLETED">COMPLETED</option>
               <option value="LOST">LOST / CANCELLED</option>
@@ -838,8 +877,25 @@
           </div>
         </div>
         <div style="text-align:right;">
-          <span style="font-size:0.75rem; text-transform:uppercase; font-weight:700; color:#64748B;">Deal Value</span>
-          <div id="drawerLeadValue" style="font-size:1.25rem; font-weight:800; color:#064E3B;">₹14,500</div>
+          <span style="font-size:0.75rem; text-transform:uppercase; font-weight:700; color:#64748B;">Deal Value (₹)</span>
+          <div style="display:flex; align-items:center; gap:0.35rem; margin-top:0.35rem;">
+            <input type="number" id="drawerLeadValueInput" class="form-control" style="width:120px; font-weight:800; color:#064E3B; font-size:1.1rem; text-align:right;" placeholder="0">
+            <button id="btnSaveLeadValue" class="btn btn-white btn-sm" title="Save deal value">Save</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lead Assignment & Follow-Up Bar -->
+      <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:12px; padding:1rem 1.25rem; margin-bottom:1.25rem; display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+        <div>
+          <span style="font-size:0.75rem; text-transform:uppercase; font-weight:700; color:#64748B;">Assigned Sales Representative</span>
+          <select id="drawerAssignedSelect" class="form-control" style="font-size:0.85rem; margin-top:0.35rem; font-weight:600;">
+            <option value="">-- Unassigned --</option>
+          </select>
+        </div>
+        <div>
+          <span style="font-size:0.75rem; text-transform:uppercase; font-weight:700; color:#64748B;">Scheduled Follow-Up</span>
+          <input type="datetime-local" id="drawerFollowUpInput" class="form-control" style="font-size:0.85rem; margin-top:0.35rem;">
         </div>
       </div>
 
@@ -856,39 +912,54 @@
         </button>
       </div>
 
-      <!-- Lead Attributes -->
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1.5rem; font-size:0.875rem;">
+      <!-- Core Lead Attributes -->
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1.25rem; font-size:0.875rem;">
         <div>
           <strong style="color:#64748B; font-size:0.75rem; text-transform:uppercase;">Phone:</strong>
-          <div id="drawerLeadPhone" style="font-weight:600;">+91 98230 44129</div>
+          <div id="drawerLeadPhone" style="font-weight:600;">-</div>
         </div>
         <div>
           <strong style="color:#64748B; font-size:0.75rem; text-transform:uppercase;">Email:</strong>
-          <div id="drawerLeadEmail" style="font-weight:600;">rajiv@gmail.com</div>
+          <div id="drawerLeadEmail" style="font-weight:600;">-</div>
         </div>
         <div>
           <strong style="color:#64748B; font-size:0.75rem; text-transform:uppercase;">Service:</strong>
-          <div id="drawerLeadService" style="font-weight:600; color:#064E3B;">Termite Control</div>
+          <div id="drawerLeadService" style="font-weight:600; color:#064E3B;">-</div>
         </div>
         <div>
           <strong style="color:#64748B; font-size:0.75rem; text-transform:uppercase;">Property Type:</strong>
-          <div id="drawerLeadProperty" style="font-weight:600;">Villa (4 BHK)</div>
+          <div id="drawerLeadProperty" style="font-weight:600;">-</div>
         </div>
         <div>
           <strong style="color:#64748B; font-size:0.75rem; text-transform:uppercase;">Location:</strong>
-          <div id="drawerLeadLocation" style="font-weight:600;">Koregaon Park, Pune</div>
+          <div id="drawerLeadLocation" style="font-weight:600;">-</div>
         </div>
         <div>
           <strong style="color:#64748B; font-size:0.75rem; text-transform:uppercase;">Lead Source:</strong>
-          <div id="drawerLeadSource" style="font-weight:600;">Instagram Lead Ad</div>
+          <div id="drawerLeadSource" style="font-weight:600;">-</div>
+        </div>
+      </div>
+
+      <!-- Customer Message & Address -->
+      <div style="background:#FFFFFF; border:1px solid #E2E8F0; border-radius:10px; padding:1rem; margin-bottom:1.25rem; font-size:0.85rem;">
+        <div style="margin-bottom:0.5rem;">
+          <strong style="color:#64748B; font-size:0.75rem; text-transform:uppercase;">Specific Customer Note / Address:</strong>
+          <div id="drawerLeadAddress" style="color:#334155; margin-top:0.25rem; line-height:1.4;">None provided</div>
+        </div>
+        <div id="drawerLeadBookingWrap" style="margin-top:0.5rem; display:none;">
+          <strong style="color:#059669; font-size:0.75rem; text-transform:uppercase;">Linked Booking:</strong>
+          <div id="drawerLeadBooking" style="font-weight:600; color:#064E3B;">-</div>
         </div>
       </div>
 
       <!-- UTM Tracking & Ad Attribution Box -->
-      <div style="background:#F1F5F9; border-radius:10px; padding:1rem; margin-bottom:1.5rem; font-size:0.8rem;">
-        <strong style="text-transform:uppercase; color:#475569; display:block; margin-bottom:0.5rem;">Campaign & UTM Attribution:</strong>
-        <div>Campaign: <span id="drawerLeadCampaign" style="font-weight:600;">Termite Monsoon Shield 2026</span></div>
-        <div>Ad Creative: <span id="drawerLeadAdName" style="font-weight:600;">Reel_Infestation_Detection_v2</span></div>
+      <div style="background:#F1F5F9; border-radius:10px; padding:1rem; margin-bottom:1.5rem; font-size:0.8rem; line-height:1.6;">
+        <strong style="text-transform:uppercase; color:#475569; display:block; margin-bottom:0.35rem;">Campaign & Attribution Metadata:</strong>
+        <div>Campaign: <span id="drawerLeadCampaign" style="font-weight:600;">-</span></div>
+        <div>Ad / Creative: <span id="drawerLeadAdName" style="font-weight:600;">-</span></div>
+        <div id="drawerUtmDetails" style="color:#64748B; font-size:0.75rem; margin-top:0.35rem;">
+          <!-- Dynamically populated UTMs -->
+        </div>
       </div>
 
       <!-- Add Note Input -->

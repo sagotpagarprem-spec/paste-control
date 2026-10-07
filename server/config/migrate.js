@@ -94,26 +94,69 @@ async function runMigrationAndSeed() {
       }
     }
 
-    // Step 5: Seed Default Admin User
-    const adminEmail = 'admin@universalpestcontrol.com';
-    const [existingAdmin] = await conn.query(`SELECT id FROM users WHERE email = ? LIMIT 1`, [adminEmail]);
+    // Step 4.5: Ensure Phase 2 Columns on leads table
+    const leadColumnsToAdd = [
+      { name: 'address', def: 'TEXT NULL' },
+      { name: 'message', def: 'TEXT NULL' },
+      { name: 'utm_source', def: 'VARCHAR(100) NULL' },
+      { name: 'utm_medium', def: 'VARCHAR(100) NULL' },
+      { name: 'utm_campaign', def: 'VARCHAR(150) NULL' },
+      { name: 'utm_content', def: 'VARCHAR(150) NULL' },
+      { name: 'utm_term', def: 'VARCHAR(150) NULL' },
+      { name: 'fbclid', def: 'VARCHAR(255) NULL' },
+      { name: 'gclid', def: 'VARCHAR(255) NULL' },
+      { name: 'landing_page', def: 'VARCHAR(500) NULL' },
+      { name: 'referrer', def: 'VARCHAR(500) NULL' },
+      { name: 'is_duplicate', def: 'BOOLEAN NOT NULL DEFAULT FALSE' },
+      { name: 'duplicate_count', def: 'INT NOT NULL DEFAULT 0' },
+      { name: 'duplicate_of_id', def: 'INT NULL' }
+    ];
 
-    let adminUserId;
-    if (existingAdmin.length === 0) {
-      const passwordHash = await bcrypt.hash('Admin@1234', 10);
-      const [insertRes] = await conn.query(
-        `INSERT INTO users (uuid, name, email, password_hash, phone, is_active)
-         VALUES (?, ?, ?, ?, ?, TRUE)`,
-        [crypto.randomUUID(), 'Vikram Shinde', adminEmail, passwordHash, '+91 98230 44129']
+    for (const col of leadColumnsToAdd) {
+      const [colExists] = await conn.query(
+        `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'leads' AND COLUMN_NAME = ?`,
+        [database, col.name]
       );
-      adminUserId = insertRes.insertId;
-      logger.info(`Default admin user created: ${adminEmail} (password: Admin@1234)`);
-    } else {
-      adminUserId = existingAdmin[0].id;
+      if (colExists.length === 0) {
+        await conn.query(`ALTER TABLE leads ADD COLUMN \`${col.name}\` ${col.def}`);
+        logger.info(`Added column ${col.name} to leads table.`);
+      }
     }
+    // Widen status column to VARCHAR(50) so all phase statuses are accepted
+    try {
+      await conn.query(`ALTER TABLE leads MODIFY COLUMN status VARCHAR(50) NOT NULL DEFAULT 'NEW'`);
+    } catch (e) {}
 
-    if (adminRoleId && adminUserId) {
-      await conn.query(`INSERT IGNORE INTO user_roles (user_id, role_id) VALUES (?, ?)`, [adminUserId, adminRoleId]);
+    // Step 5: Seed Default Admin & Sales Staff Users
+    const staffMembers = [
+      { name: 'Vikram Shinde', email: 'admin@universalpestcontrol.com', role: 'admin', phone: '+91 98230 44129' },
+      { name: 'Pooja Patil', email: 'pooja@universalpestcontrol.com', role: 'sales_agent', phone: '+91 97654 22091' },
+      { name: 'Amit Kulkarni', email: 'amit@universalpestcontrol.com', role: 'manager', phone: '+91 98901 88320' },
+      { name: 'Rahul Shinde', email: 'rahul@universalpestcontrol.com', role: 'sales_agent', phone: '+91 99220 11984' }
+    ];
+
+    const defaultPasswordHash = await bcrypt.hash('Admin@1234', 10);
+
+    for (const staff of staffMembers) {
+      const [existingUser] = await conn.query(`SELECT id FROM users WHERE email = ? LIMIT 1`, [staff.email]);
+      let userId;
+      if (existingUser.length === 0) {
+        const [insertRes] = await conn.query(
+          `INSERT INTO users (uuid, name, email, password_hash, phone, is_active)
+           VALUES (?, ?, ?, ?, ?, TRUE)`,
+          [crypto.randomUUID(), staff.name, staff.email, defaultPasswordHash, staff.phone]
+        );
+        userId = insertRes.insertId;
+        logger.info(`Created staff user: ${staff.name} (${staff.email})`);
+      } else {
+        userId = existingUser[0].id;
+      }
+
+      const [roleRow] = await conn.query(`SELECT id FROM roles WHERE name = ? LIMIT 1`, [staff.role]);
+      if (roleRow.length > 0 && userId) {
+        await conn.query(`INSERT IGNORE INTO user_roles (user_id, role_id) VALUES (?, ?)`, [userId, roleRow[0].id]);
+      }
     }
 
     // Step 6: Seed Services

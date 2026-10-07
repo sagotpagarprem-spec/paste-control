@@ -7,7 +7,8 @@
     "start": "node server.js",
     "dev": "node server.js",
     "db:migrate": "node server/config/migrate.js",
-    "db:seed": "node server/config/migrate.js"
+    "db:seed": "node server/config/migrate.js",
+    "test": "node server/test_phase2.js"
   },
   "keywords": [
     "pest-control",

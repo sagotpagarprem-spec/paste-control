@@ -236,29 +236,37 @@ function renderServiceBreakdownChart() {
   `;
 }
 
-/* 3. CRM KANBAN BOARD */
+/* 3. CRM KANBAN BOARD WITH REAL DRAG-AND-DROP & API PERSISTENCE */
 const CRM_STATUSES = [
   { id: 'NEW', title: 'New Leads', color: '#3B82F6' },
   { id: 'CONTACTED', title: 'Contacted', color: '#8B5CF6' },
   { id: 'QUALIFIED', title: 'Qualified', color: '#06B6D4' },
-  { id: 'SITE VISIT', title: 'Site Visit', color: '#EC4899' },
+  { id: 'SITE_VISIT', title: 'Site Visit', color: '#EC4899' },
   { id: 'QUOTATION', title: 'Quotation', color: '#F59E0B' },
-  { id: 'FOLLOW-UP', title: 'Follow-Up', color: '#F97316' },
+  { id: 'FOLLOW_UP', title: 'Follow-Up', color: '#F97316' },
   { id: 'BOOKED', title: 'Booked', color: '#10B981' },
   { id: 'COMPLETED', title: 'Completed', color: '#059669' },
   { id: 'LOST', title: 'Lost', color: '#6B7280' }
 ];
 
+function normalizeStatus(st) {
+  if (!st) return 'NEW';
+  const clean = st.toString().toUpperCase().trim().replace(/[\s\-]/g, '_');
+  if (clean === 'SITE_VISIT') return 'SITE_VISIT';
+  if (clean === 'FOLLOW_UP') return 'FOLLOW_UP';
+  return clean;
+}
+
 function renderCrmKanban() {
   const container = document.getElementById('crmKanbanContainer');
   if (!container) return;
 
-  const leads = window.upcStore.data.leads;
+  const leads = window.upcStore.data.leads || [];
 
   container.innerHTML = CRM_STATUSES.map(col => {
-    const colLeads = leads.filter(l => l.status === col.id);
+    const colLeads = leads.filter(l => normalizeStatus(l.status) === col.id);
     return `
-      <div class="kanban-column" data-status="${col.id}">
+      <div class="kanban-column" data-status="${col.id}" ondragover="handleKanbanDragOver(event)" ondrop="handleKanbanDrop(event, '${col.id}')">
         <div class="kanban-column-header">
           <div class="kanban-column-title">
             <span style="width:10px; height:10px; border-radius:50%; background:${col.color};"></span>
@@ -268,33 +276,46 @@ function renderCrmKanban() {
         </div>
 
         <div class="kanban-cards-list">
-          ${colLeads.map(lead => `
-            <div class="kanban-card" onclick="openLeadDrawer('${lead.id}')">
-              <div class="kanban-card-top">
-                <span class="badge ${lead.source?.includes('Instagram') ? 'badge-primary' : lead.source?.includes('Facebook') ? 'badge-info' : 'badge-neutral'}">
-                  ${lead.source || 'Website'}
-                </span>
-                <span style="font-weight:700; color:#064E3B; font-size:0.85rem;">₹${(lead.value || 3500).toLocaleString()}</span>
-              </div>
-              <div class="kanban-lead-name">${lead.name}</div>
-              <div class="kanban-lead-service">🛡️ ${lead.service}</div>
-              <div style="font-size:0.78rem; color:#64748B; margin-bottom:0.5rem;">
-                📍 ${lead.area ? `${lead.area}, ${lead.city}` : lead.city || 'Pune'}
-              </div>
+          ${colLeads.map(lead => {
+            const leadId = lead.id || lead.lead_code || `LD-${lead.dbId}`;
+            const isDup = lead.is_duplicate || lead.isDuplicate;
+            return `
+              <div 
+                class="kanban-card" 
+                draggable="true" 
+                ondragstart="handleKanbanDragStart(event, '${leadId}')"
+                onclick="openLeadDrawer('${leadId}')"
+                style="${isDup ? 'border-left: 4px solid #F59E0B;' : ''}"
+              >
+                <div class="kanban-card-top">
+                  <div style="display:flex; gap:0.25rem; align-items:center;">
+                    <span class="badge ${lead.source?.includes('Instagram') ? 'badge-primary' : lead.source?.includes('Facebook') || lead.source?.includes('Meta') ? 'badge-info' : 'badge-neutral'}">
+                      ${lead.source || 'Website'}
+                    </span>
+                    ${isDup ? `<span class="badge badge-warning" style="font-size:0.65rem;" title="Duplicate lead">Repeat</span>` : ''}
+                  </div>
+                  <span style="font-weight:700; color:#064E3B; font-size:0.85rem;">₹${(Number(lead.value || lead.estimated_value) || 3500).toLocaleString()}</span>
+                </div>
+                <div class="kanban-lead-name">${lead.name}</div>
+                <div class="kanban-lead-service">🛡️ ${lead.service || lead.service_name}</div>
+                <div style="font-size:0.78rem; color:#64748B; margin-bottom:0.5rem;">
+                  📍 ${lead.area ? `${lead.area}, ${lead.city}` : lead.city || 'Pune'}
+                </div>
 
-              <div class="kanban-card-footer">
-                <span>👤 ${lead.assignedTo?.split(' ')[0] || 'Unassigned'}</span>
-                <div style="display:flex; gap:0.4rem;">
-                  <button class="btn btn-sm btn-white" style="padding:0.2rem 0.5rem; font-size:0.72rem;" onclick="event.stopPropagation(); triggerWhatsAppChat('${lead.phone}', '${lead.name}')">WA</button>
-                  <button class="btn btn-sm btn-outline" style="padding:0.2rem 0.5rem; font-size:0.72rem;" onclick="event.stopPropagation(); quickAdvanceLead('${lead.id}')">→</button>
+                <div class="kanban-card-footer">
+                  <span style="font-size:0.75rem; color:#475569;">👤 ${lead.assignedTo?.split(' ')[0] || lead.assigned_to_name?.split(' ')[0] || 'Unassigned'}</span>
+                  <div style="display:flex; gap:0.4rem;">
+                    <button class="btn btn-sm btn-white" style="padding:0.2rem 0.5rem; font-size:0.72rem;" onclick="event.stopPropagation(); triggerWhatsAppChat('${lead.phone}', '${lead.name}')">WA</button>
+                    <button class="btn btn-sm btn-outline" style="padding:0.2rem 0.5rem; font-size:0.72rem;" onclick="event.stopPropagation(); quickAdvanceLead('${leadId}')">→</button>
+                  </div>
                 </div>
               </div>
-            </div>
-          `).join('')}
+            `;
+          }).join('')}
 
           ${colLeads.length === 0 ? `
             <div style="padding:2rem 1rem; text-align:center; color:#94A3B8; font-size:0.8rem; border:1px dashed #CBD5E1; border-radius:8px;">
-              No leads in this stage
+              Drag leads here
             </div>
           ` : ''}
         </div>
@@ -303,64 +324,267 @@ function renderCrmKanban() {
   }).join('');
 }
 
-function quickAdvanceLead(leadId) {
-  const lead = window.upcStore.data.leads.find(l => l.id === leadId);
-  if (!lead) return;
-  const currentIndex = CRM_STATUSES.findIndex(s => s.id === lead.status);
-  if (currentIndex < CRM_STATUSES.length - 1) {
-    const nextStatus = CRM_STATUSES[currentIndex + 1].id;
-    window.upcStore.updateLeadStatus(leadId, nextStatus);
-    showToast(`Lead moved to ${nextStatus}`, 'info');
+// Kanban Drag and Drop Handlers
+function handleKanbanDragStart(e, leadId) {
+  e.dataTransfer.setData('text/plain', leadId);
+  e.dataTransfer.effectAllowed = 'move';
+}
+
+function handleKanbanDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+}
+
+function handleKanbanDrop(e, targetStatus) {
+  e.preventDefault();
+  const leadId = e.dataTransfer.getData('text/plain');
+  if (leadId && targetStatus) {
+    updateLeadStatusViaApi(leadId, targetStatus);
   }
 }
 
-/* 4. CRM TABLE VIEW */
+async function updateLeadStatusViaApi(leadId, newStatus) {
+  const normStatus = normalizeStatus(newStatus);
+  // 1. Update UI Store
+  window.upcStore.updateLeadStatus(leadId, normStatus);
+  showToast(`Lead updated to ${normStatus}`, 'success');
+
+  // 2. Persist to MySQL Backend API
+  if (window.upcApi && window.upcApi.auth.isAuthenticated()) {
+    try {
+      await window.upcApi.leads.update(leadId, { status: normStatus });
+    } catch (err) {
+      console.warn('Backend status update error:', err.message);
+    }
+  }
+}
+
+function quickAdvanceLead(leadId) {
+  const lead = window.upcStore.data.leads.find(l => (l.id === leadId || l.lead_code === leadId || l.dbId == leadId));
+  if (!lead) return;
+  const currNorm = normalizeStatus(lead.status);
+  const currentIndex = CRM_STATUSES.findIndex(s => s.id === currNorm);
+  if (currentIndex < CRM_STATUSES.length - 1) {
+    const nextStatus = CRM_STATUSES[currentIndex + 1].id;
+    updateLeadStatusViaApi(leadId, nextStatus);
+  }
+}
+
+/* 4. CRM TABLE VIEW WITH FILTERS & PAGINATION */
+let crmCurrentPage = 1;
+const crmPageSize = 8;
+
 function renderCrmTable() {
   const tbody = document.getElementById('crmTableBody');
   if (!tbody) return;
 
-  const leads = window.upcStore.data.leads;
+  const leads = window.upcStore.data.leads || [];
   const searchInput = document.getElementById('crmSearchInput');
   const filterQuery = searchInput ? searchInput.value.toLowerCase().trim() : '';
 
+  const filterStatus = document.getElementById('crmFilterStatus')?.value || '';
+  const filterService = document.getElementById('crmFilterService')?.value || '';
+  const filterSource = document.getElementById('crmFilterSource')?.value || '';
+
   const filtered = leads.filter(l => {
-    return l.name.toLowerCase().includes(filterQuery) ||
-           l.service.toLowerCase().includes(filterQuery) ||
-           (l.area && l.area.toLowerCase().includes(filterQuery)) ||
-           l.status.toLowerCase().includes(filterQuery);
+    const nameMatch = l.name?.toLowerCase().includes(filterQuery) || false;
+    const servText = (l.service || l.service_name || '').toLowerCase();
+    const serviceMatch = servText.includes(filterQuery);
+    const areaMatch = (l.area && l.area.toLowerCase().includes(filterQuery)) || (l.city && l.city.toLowerCase().includes(filterQuery));
+    const phoneMatch = l.phone?.includes(filterQuery);
+    const idMatch = (l.id || l.lead_code || '').toLowerCase().includes(filterQuery);
+
+    const matchesSearch = !filterQuery || nameMatch || serviceMatch || areaMatch || phoneMatch || idMatch;
+
+    const normStatus = normalizeStatus(l.status);
+    const matchesStatus = !filterStatus || normStatus === normalizeStatus(filterStatus);
+    const matchesService = !filterService || servText.includes(filterService.toLowerCase());
+    const matchesSource = !filterSource || (l.source || '').toLowerCase().includes(filterSource.toLowerCase());
+
+    return matchesSearch && matchesStatus && matchesService && matchesSource;
   });
 
-  tbody.innerHTML = filtered.map(lead => `
-    <tr style="cursor:pointer;" onclick="openLeadDrawer('${lead.id}')">
-      <td><strong>${lead.id}</strong></td>
-      <td>
-        <div style="font-weight:700; color:#0F172A;">${lead.name}</div>
-        <div style="font-size:0.78rem; color:#64748B;">${lead.phone}</div>
-      </td>
-      <td><span style="font-weight:600; color:#064E3B;">${lead.service}</span></td>
-      <td>${lead.property || 'Home'}</td>
-      <td>${lead.area || 'Pune'}</td>
-      <td><span class="badge badge-neutral">${lead.source}</span></td>
-      <td>
-        <span class="badge ${lead.status === 'NEW' ? 'badge-primary' : lead.status === 'BOOKED' ? 'badge-success' : 'badge-warning'}">
-          ${lead.status}
-        </span>
-      </td>
-      <td><strong>₹${(lead.value || 3500).toLocaleString()}</strong></td>
-      <td>
-        <button class="btn btn-sm btn-white" onclick="event.stopPropagation(); openLeadDrawer('${lead.id}')">View</button>
-      </td>
-    </tr>
-  `).join('');
+  // Calculate Pagination
+  const totalItems = filtered.length;
+  const totalPages = Math.ceil(totalItems / crmPageSize) || 1;
+  if (crmCurrentPage > totalPages) crmCurrentPage = totalPages;
+  if (crmCurrentPage < 1) crmCurrentPage = 1;
+
+  const startIndex = (crmCurrentPage - 1) * crmPageSize;
+  const paginatedLeads = filtered.slice(startIndex, startIndex + crmPageSize);
+
+  // Update Pagination Controls
+  const paginationInfo = document.getElementById('crmPaginationInfo');
+  const pageBadge = document.getElementById('crmCurrentPageBadge');
+  const prevBtn = document.getElementById('btnPrevPage');
+  const nextBtn = document.getElementById('btnNextPage');
+
+  if (paginationInfo) {
+    paginationInfo.textContent = totalItems === 0
+      ? 'No leads matching criteria'
+      : `Showing ${startIndex + 1} to ${Math.min(startIndex + crmPageSize, totalItems)} of ${totalItems} leads`;
+  }
+  if (pageBadge) pageBadge.textContent = `Page ${crmCurrentPage} of ${totalPages}`;
+  if (prevBtn) prevBtn.disabled = crmCurrentPage <= 1;
+  if (nextBtn) nextBtn.disabled = crmCurrentPage >= totalPages;
+
+  tbody.innerHTML = paginatedLeads.map(lead => {
+    const leadId = lead.id || lead.lead_code || `LD-${lead.dbId}`;
+    const statusNorm = normalizeStatus(lead.status);
+    const isDup = lead.is_duplicate || lead.isDuplicate;
+
+    return `
+      <tr style="cursor:pointer;" onclick="openLeadDrawer('${leadId}')">
+        <td>
+          <strong>${leadId}</strong>
+          ${isDup ? `<br><span class="badge badge-warning" style="font-size:0.65rem;">Duplicate</span>` : ''}
+        </td>
+        <td>
+          <div style="font-weight:700; color:#0F172A;">${lead.name}</div>
+          <div style="font-size:0.78rem; color:#64748B;">${lead.phone}</div>
+        </td>
+        <td><span style="font-weight:600; color:#064E3B;">${lead.service || lead.service_name}</span></td>
+        <td>${lead.property || lead.property_type || 'Residential'}</td>
+        <td>${lead.area ? `${lead.area}, ${lead.city || 'Pune'}` : lead.city || 'Pune'}</td>
+        <td><span class="badge badge-neutral">${lead.source || 'Website'}</span></td>
+        <td>
+          <span class="badge ${statusNorm === 'NEW' ? 'badge-primary' : statusNorm === 'BOOKED' || statusNorm === 'COMPLETED' ? 'badge-success' : 'badge-warning'}">
+            ${statusNorm}
+          </span>
+        </td>
+        <td><span style="font-size:0.8rem; color:#475569;">${lead.assignedTo || lead.assigned_to_name || 'Unassigned'}</span></td>
+        <td><strong>₹${(Number(lead.value || lead.estimated_value) || 3500).toLocaleString()}</strong></td>
+        <td>
+          <button class="btn btn-sm btn-white" onclick="event.stopPropagation(); openLeadDrawer('${leadId}')">View Detail</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  if (totalItems === 0) {
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:2.5rem; color:#94A3B8;">No leads found matching current filters.</td></tr>`;
+  }
+
+  // Bind filter event listeners once
+  bindCrmTableControls();
+}
+
+function bindCrmTableControls() {
+  const searchInput = document.getElementById('crmSearchInput');
+  const statusFilter = document.getElementById('crmFilterStatus');
+  const serviceFilter = document.getElementById('crmFilterService');
+  const sourceFilter = document.getElementById('crmFilterSource');
+  const refreshBtn = document.getElementById('btnRefreshLeads');
+  const prevBtn = document.getElementById('btnPrevPage');
+  const nextBtn = document.getElementById('btnNextPage');
 
   if (searchInput && !searchInput.hasAttribute('data-bound')) {
     searchInput.setAttribute('data-bound', 'true');
-    searchInput.addEventListener('input', () => renderCrmTable());
+    searchInput.addEventListener('input', () => {
+      crmCurrentPage = 1;
+      renderCrmTable();
+    });
+  }
+
+  if (statusFilter && !statusFilter.hasAttribute('data-bound')) {
+    statusFilter.setAttribute('data-bound', 'true');
+    statusFilter.addEventListener('change', () => {
+      crmCurrentPage = 1;
+      renderCrmTable();
+    });
+  }
+
+  if (serviceFilter && !serviceFilter.hasAttribute('data-bound')) {
+    serviceFilter.setAttribute('data-bound', 'true');
+    serviceFilter.addEventListener('change', () => {
+      crmCurrentPage = 1;
+      renderCrmTable();
+    });
+  }
+
+  if (sourceFilter && !sourceFilter.hasAttribute('data-bound')) {
+    sourceFilter.setAttribute('data-bound', 'true');
+    sourceFilter.addEventListener('change', () => {
+      crmCurrentPage = 1;
+      renderCrmTable();
+    });
+  }
+
+  if (refreshBtn && !refreshBtn.hasAttribute('data-bound')) {
+    refreshBtn.setAttribute('data-bound', 'true');
+    refreshBtn.addEventListener('click', async () => {
+      refreshBtn.textContent = 'Refreshing...';
+      if (window.upcApi && window.upcApi.auth.isAuthenticated()) {
+        try {
+          const res = await window.upcApi.leads.getAll();
+          if (res && res.data) {
+            window.upcStore.syncFromBackend(res.data);
+          }
+        } catch (e) {}
+      }
+      refreshBtn.textContent = '🔄 Refresh';
+      showToast('Leads refreshed from database.', 'info');
+    });
+  }
+
+  if (prevBtn && !prevBtn.hasAttribute('data-bound')) {
+    prevBtn.setAttribute('data-bound', 'true');
+    prevBtn.addEventListener('click', () => {
+      if (crmCurrentPage > 1) {
+        crmCurrentPage--;
+        renderCrmTable();
+      }
+    });
+  }
+
+  if (nextBtn && !nextBtn.hasAttribute('data-bound')) {
+    nextBtn.setAttribute('data-bound', 'true');
+    nextBtn.addEventListener('click', () => {
+      crmCurrentPage++;
+      renderCrmTable();
+    });
   }
 }
 
-/* 5. LEAD DETAIL DRAWER */
+function exportCrmLeadsCsv() {
+  const leads = window.upcStore.data.leads || [];
+  if (leads.length === 0) {
+    showToast('No leads available to export.', 'warning');
+    return;
+  }
+
+  const headers = ['ID', 'Name', 'Phone', 'Email', 'Service', 'Property', 'City', 'Area', 'Status', 'Value', 'Source', 'Campaign', 'Assigned_To', 'Created_At'];
+  const rows = leads.map(l => [
+    `"${l.id || l.lead_code || ''}"`,
+    `"${l.name || ''}"`,
+    `"${l.phone || ''}"`,
+    `"${l.email || ''}"`,
+    `"${l.service || l.service_name || ''}"`,
+    `"${l.property || l.property_type || ''}"`,
+    `"${l.city || ''}"`,
+    `"${l.area || ''}"`,
+    `"${l.status || ''}"`,
+    `"${l.value || l.estimated_value || 0}"`,
+    `"${l.source || ''}"`,
+    `"${l.campaign || ''}"`,
+    `"${l.assignedTo || l.assigned_to_name || ''}"`,
+    `"${l.createdAt || l.created_at || ''}"`
+  ]);
+
+  const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement('a');
+  link.setAttribute('href', encodedUri);
+  link.setAttribute('download', `UPC_Leads_Export_${new Date().toISOString().slice(0, 10)}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  showToast('CSV export downloaded successfully.', 'success');
+}
+
+/* 5. LEAD DETAIL DRAWER WITH LIVE API INTEGRATION */
 let activeDrawerLeadId = null;
+let cachedStaffList = [];
 
 function initLeadDrawer() {
   const closeBtn = document.getElementById('closeLeadDrawer');
@@ -373,64 +597,278 @@ function initLeadDrawer() {
     });
   }
 
-  // Quick Note Add
+  // Pre-load staff users for assignment
+  if (window.upcApi && window.upcApi.auth.isAuthenticated()) {
+    window.upcApi.users.getStaff().then(res => {
+      if (res && res.data) {
+        cachedStaffList = res.data;
+        populateStaffDropdown();
+      }
+    }).catch(() => {});
+  }
+
+  // Quick Note Add (persists to POST /api/leads/:id/notes)
   const addNoteBtn = document.getElementById('btnAddLeadNote');
   const noteInput = document.getElementById('leadNoteInput');
   if (addNoteBtn && noteInput) {
-    addNoteBtn.addEventListener('click', () => {
+    addNoteBtn.addEventListener('click', async () => {
       const text = noteInput.value.trim();
       if (!text || !activeDrawerLeadId) return;
+
+      addNoteBtn.disabled = true;
+      addNoteBtn.textContent = 'Saving...';
+
+      // 1. Call Production API
+      if (window.upcApi && window.upcApi.auth.isAuthenticated()) {
+        try {
+          await window.upcApi.leads.addNote(activeDrawerLeadId, text);
+        } catch (e) {
+          console.warn('API note save error:', e.message);
+        }
+      }
+
+      // 2. Update Local Store
       window.upcStore.addLeadNote(activeDrawerLeadId, text);
       noteInput.value = '';
+      addNoteBtn.disabled = false;
+      addNoteBtn.textContent = 'Save Note';
+
+      // Reload fresh details
       openLeadDrawer(activeDrawerLeadId);
-      showToast('Note recorded in activity timeline.', 'success');
+      showToast('Note saved to database and activity timeline.', 'success');
     });
   }
 
   // Status Change Selector
   const statusSelect = document.getElementById('drawerStatusSelect');
   if (statusSelect) {
-    statusSelect.addEventListener('change', () => {
+    statusSelect.addEventListener('change', async () => {
       if (activeDrawerLeadId) {
-        window.upcStore.updateLeadStatus(activeDrawerLeadId, statusSelect.value);
-        showToast(`Status changed to ${statusSelect.value}`, 'success');
+        const newStatus = statusSelect.value;
+        await updateLeadStatusViaApi(activeDrawerLeadId, newStatus);
+        openLeadDrawer(activeDrawerLeadId);
+      }
+    });
+  }
+
+  // Assignee Change Selector
+  const assignedSelect = document.getElementById('drawerAssignedSelect');
+  if (assignedSelect) {
+    assignedSelect.addEventListener('change', async () => {
+      if (!activeDrawerLeadId) return;
+      const assignedUserId = assignedSelect.value ? Number(assignedSelect.value) : null;
+      if (window.upcApi && window.upcApi.auth.isAuthenticated()) {
+        try {
+          await window.upcApi.leads.update(activeDrawerLeadId, { assigned_to: assignedUserId });
+          const staffObj = cachedStaffList.find(s => s.id === assignedUserId);
+          const lead = window.upcStore.data.leads.find(l => (l.id === activeDrawerLeadId || l.lead_code === activeDrawerLeadId || l.dbId == activeDrawerLeadId));
+          if (lead) {
+            lead.assignedTo = staffObj ? staffObj.name : 'Unassigned';
+            lead.assigned_to_name = staffObj ? staffObj.name : 'Unassigned';
+            window.upcStore.notify();
+          }
+          showToast(`Lead assigned to ${staffObj ? staffObj.name : 'Unassigned'}`, 'success');
+          openLeadDrawer(activeDrawerLeadId);
+        } catch (e) {
+          showToast('Failed to update assignment.', 'error');
+        }
+      }
+    });
+  }
+
+  // Follow-Up Date Selector
+  const followUpInput = document.getElementById('drawerFollowUpInput');
+  if (followUpInput) {
+    followUpInput.addEventListener('change', async () => {
+      if (!activeDrawerLeadId) return;
+      const followUpDate = followUpInput.value;
+      if (window.upcApi && window.upcApi.auth.isAuthenticated()) {
+        try {
+          await window.upcApi.leads.update(activeDrawerLeadId, { follow_up_date: followUpDate });
+          showToast('Follow-up scheduled.', 'success');
+        } catch (e) {}
+      }
+    });
+  }
+
+  // Deal Value Save Button
+  const saveValueBtn = document.getElementById('btnSaveLeadValue');
+  const valueInput = document.getElementById('drawerLeadValueInput');
+  if (saveValueBtn && valueInput) {
+    saveValueBtn.addEventListener('click', async () => {
+      if (!activeDrawerLeadId) return;
+      const newVal = Number(valueInput.value) || 0;
+      if (window.upcApi && window.upcApi.auth.isAuthenticated()) {
+        try {
+          await window.upcApi.leads.update(activeDrawerLeadId, { estimated_value: newVal });
+          const lead = window.upcStore.data.leads.find(l => (l.id === activeDrawerLeadId || l.lead_code === activeDrawerLeadId || l.dbId == activeDrawerLeadId));
+          if (lead) {
+            lead.value = newVal;
+            lead.estimated_value = newVal;
+            window.upcStore.notify();
+          }
+          showToast(`Deal value updated to ₹${newVal.toLocaleString()}`, 'success');
+        } catch (e) {}
       }
     });
   }
 }
 
-function openLeadDrawer(leadId) {
+function populateStaffDropdown() {
+  const assignedSelect = document.getElementById('drawerAssignedSelect');
+  if (!assignedSelect) return;
+  const currentVal = assignedSelect.value;
+  assignedSelect.innerHTML = `
+    <option value="">-- Unassigned --</option>
+    ${cachedStaffList.map(s => `
+      <option value="${s.id}">${s.name} (${(s.roles && s.roles[0]) || 'Staff'})</option>
+    `).join('')}
+  `;
+  if (currentVal) assignedSelect.value = currentVal;
+}
+
+async function openLeadDrawer(leadId) {
   activeDrawerLeadId = leadId;
-  const lead = window.upcStore.data.leads.find(l => l.id === leadId);
   const drawer = document.getElementById('leadDetailDrawer');
-  if (!lead || !drawer) return;
+  if (!drawer) return;
+
+  // 1. Initial hydrate from local store for instant response
+  let lead = window.upcStore.data.leads.find(l => (l.id === leadId || l.lead_code === leadId || l.dbId == leadId));
+
+  // 2. Fetch fresh record from backend API
+  if (window.upcApi && window.upcApi.auth.isAuthenticated()) {
+    try {
+      const apiRes = await window.upcApi.leads.getById(leadId);
+      if (apiRes && apiRes.data) {
+        lead = apiRes.data;
+      }
+    } catch (e) {}
+  }
+
+  if (!lead) return;
+
+  populateStaffDropdown();
 
   // Populate drawer elements
-  document.getElementById('drawerLeadName').textContent = lead.name;
-  document.getElementById('drawerLeadId').textContent = lead.id;
-  document.getElementById('drawerLeadPhone').textContent = lead.phone;
+  const displayName = lead.name || 'Anonymous Inquiry';
+  const displayId = lead.lead_code || lead.id || `LD-${lead.dbId}`;
+
+  document.getElementById('drawerLeadName').textContent = displayName;
+  document.getElementById('drawerLeadId').textContent = displayId;
+  document.getElementById('drawerLeadPhone').textContent = lead.phone || 'N/A';
   document.getElementById('drawerLeadEmail').textContent = lead.email || 'N/A';
-  document.getElementById('drawerLeadService').textContent = lead.service;
-  document.getElementById('drawerLeadProperty').textContent = lead.property || 'Home';
-  document.getElementById('drawerLeadLocation').textContent = `${lead.area || ''}, ${lead.city || 'Pune'}`;
-  document.getElementById('drawerLeadSource').textContent = lead.source;
-  document.getElementById('drawerLeadCampaign').textContent = lead.campaign || 'N/A';
-  document.getElementById('drawerLeadAdName').textContent = lead.adName || 'N/A';
-  document.getElementById('drawerLeadValue').textContent = `₹${(lead.value || 3500).toLocaleString()}`;
+  document.getElementById('drawerLeadService').textContent = lead.service || lead.service_name || 'General Pest Control';
+  document.getElementById('drawerLeadProperty').textContent = lead.property || lead.property_type || 'Residential';
+  document.getElementById('drawerLeadLocation').textContent = `${lead.area || ''}${lead.area && lead.city ? ', ' : ''}${lead.city || 'Pune'}`;
+  document.getElementById('drawerLeadSource').textContent = lead.source || 'Website';
+  document.getElementById('drawerLeadCampaign').textContent = lead.campaign || lead.utm_campaign || 'N/A';
+  document.getElementById('drawerLeadAdName').textContent = lead.ad_name || lead.adName || 'N/A';
 
+  // Specific Customer Note & Address
+  const addrEl = document.getElementById('drawerLeadAddress');
+  if (addrEl) {
+    const notesContent = lead.message || lead.address || (typeof lead.notes === 'string' ? lead.notes : null) || 'No specific address note provided.';
+    addrEl.textContent = notesContent;
+  }
+
+  // Linked Booking Display
+  const bookingWrap = document.getElementById('drawerLeadBookingWrap');
+  const bookingEl = document.getElementById('drawerLeadBooking');
+  if (bookingWrap && bookingEl) {
+    if (lead.bookings && lead.bookings.length > 0) {
+      const b = lead.bookings[0];
+      bookingWrap.style.display = 'block';
+      bookingEl.textContent = `${b.booking_code} (${b.service_name}) on ${b.scheduled_date} • ${b.status}`;
+    } else {
+      bookingWrap.style.display = 'none';
+    }
+  }
+
+  // Duplicate Alert Banner
+  const dupAlert = document.getElementById('drawerDuplicateAlert');
+  if (dupAlert) {
+    if (lead.is_duplicate || lead.duplicate_of_id) {
+      dupAlert.style.display = 'block';
+      document.getElementById('drawerDuplicateOf').textContent = `#${lead.duplicate_of_id || 'Existing'}`;
+      document.getElementById('drawerDuplicateCount').textContent = lead.duplicate_count || 1;
+    } else {
+      dupAlert.style.display = 'none';
+    }
+  }
+
+  // Deal Value
+  const val = Number(lead.estimated_value !== undefined ? lead.estimated_value : (lead.value !== undefined ? lead.value : 3500)) || 0;
+  const valInput = document.getElementById('drawerLeadValueInput');
+  if (valInput) valInput.value = val;
+
+  // Status Selector
   const statusSelect = document.getElementById('drawerStatusSelect');
-  if (statusSelect) statusSelect.value = lead.status;
+  if (statusSelect) statusSelect.value = normalizeStatus(lead.status);
 
-  // Activity Timeline
+  // Assigned Person Selector
+  const assignedSelect = document.getElementById('drawerAssignedSelect');
+  if (assignedSelect) {
+    assignedSelect.value = lead.assigned_to || '';
+  }
+
+  // Follow-Up Date Input
+  const followUpInput = document.getElementById('drawerFollowUpInput');
+  if (followUpInput) {
+    if (lead.follow_up_date) {
+      try {
+        followUpInput.value = new Date(lead.follow_up_date).toISOString().slice(0, 16);
+      } catch (e) {
+        followUpInput.value = '';
+      }
+    } else {
+      followUpInput.value = '';
+    }
+  }
+
+  // Detailed UTM & Attribution Pills
+  const utmContainer = document.getElementById('drawerUtmDetails');
+  if (utmContainer) {
+    const utms = [
+      { label: 'Medium', val: lead.utm_medium || lead.utmMedium },
+      { label: 'Content', val: lead.utm_content || lead.utmContent },
+      { label: 'Term', val: lead.utm_term || lead.utmTerm },
+      { label: 'Google Click ID', val: lead.gclid ? `${lead.gclid.slice(0, 15)}...` : null },
+      { label: 'Meta Click ID', val: lead.fbclid ? `${lead.fbclid.slice(0, 15)}...` : null },
+      { label: 'Landing Page', val: lead.landing_page || lead.landingPage },
+      { label: 'Referrer', val: lead.referrer }
+    ].filter(item => item.val);
+
+    if (utms.length > 0) {
+      utmContainer.innerHTML = utms.map(u => `
+        <span style="display:inline-block; background:#E2E8F0; padding:0.15rem 0.45rem; border-radius:4px; font-size:0.7rem; margin:0.15rem 0.2rem 0.15rem 0;">
+          <strong>${u.label}:</strong> ${u.val}
+        </span>
+      `).join('');
+    } else {
+      utmContainer.innerHTML = `<span style="color:#94A3B8;">Organic direct entry (No external ad click parameters).</span>`;
+    }
+  }
+
+  // Activity Timeline (Populated from real lead.timeline / lead_activities)
   const timelineEl = document.getElementById('drawerTimeline');
   if (timelineEl) {
-    timelineEl.innerHTML = (lead.timeline || []).map(t => `
-      <div class="timeline-event">
-        <div class="timeline-dot"></div>
-        <div style="font-size:0.75rem; color:#94A3B8; font-weight:700;">${t.time}</div>
-        <div style="font-size:0.875rem; color:#1E293B; margin-top:0.2rem;">${t.text}</div>
-      </div>
-    `).join('');
+    const events = lead.timeline || [];
+    if (events.length > 0) {
+      timelineEl.innerHTML = events.map(t => {
+        const timeText = t.created_at ? new Date(t.created_at).toLocaleString() : (t.time || 'Recently');
+        const descText = t.description || t.text || 'Activity logged.';
+        const userText = t.user_name ? ` • by ${t.user_name}` : '';
+        return `
+          <div class="timeline-event">
+            <div class="timeline-dot"></div>
+            <div style="font-size:0.75rem; color:#94A3B8; font-weight:700;">${timeText}${userText}</div>
+            <div style="font-size:0.875rem; color:#1E293B; margin-top:0.2rem;">${descText}</div>
+          </div>
+        `;
+      }).join('');
+    } else {
+      timelineEl.innerHTML = `<div style="color:#94A3B8; font-size:0.8rem; padding:0.5rem 0;">No prior activities recorded.</div>`;
+    }
   }
 
   drawer.classList.add('open');

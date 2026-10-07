@@ -8,6 +8,7 @@ function apiSuccess(res, data = null, message = 'Success', statusCode = 200, met
   };
   if (meta) {
     payload.meta = meta;
+    payload.pagination = meta;
   }
   return res.status(statusCode).json(payload);
 }

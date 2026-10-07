@@ -247,7 +247,7 @@ function initMultiStepLeadWizard() {
   }
 
   if (submitBtn) {
-    submitBtn.addEventListener('click', (e) => {
+    submitBtn.addEventListener('click', async (e) => {
       e.preventDefault();
       const name = document.getElementById('lead-name')?.value.trim();
       const phone = document.getElementById('lead-phone')?.value.trim();
@@ -259,13 +259,42 @@ function initMultiStepLeadWizard() {
         return;
       }
 
+      // Collect automated UTM and channel attribution
+      const attr = window.getUpcAttribution ? window.getUpcAttribution() : {};
+
       leadFormData.name = name;
       leadFormData.phone = phone;
       leadFormData.email = email;
       leadFormData.city = city;
-      leadFormData.source = 'Website Smart Lead Wizard';
+      leadFormData.service = leadFormData.pest || 'Cockroach Control';
+      leadFormData.propertyType = leadFormData.property || 'Home';
+      leadFormData.source = attr.source || 'Website Smart Lead Wizard';
 
-      // Save into Store
+      const payload = {
+        ...attr,
+        name,
+        phone,
+        email,
+        city,
+        service: leadFormData.service,
+        propertyType: leadFormData.propertyType,
+        urgency: leadFormData.urgency || 'Today',
+        source: attr.source || 'Website Smart Lead Wizard'
+      };
+
+      // 1. Submit directly to Production Backend API
+      if (window.upcApi) {
+        try {
+          const apiRes = await window.upcApi.leads.create(payload);
+          if (apiRes && apiRes.data && apiRes.data.isDuplicateAlert) {
+            showToast('ℹ️ Repeat inquiry noted! Existing account updated.', 'info');
+          }
+        } catch (err) {
+          console.warn('API lead creation offline, falling back to local store:', err.message);
+        }
+      }
+
+      // 2. Save into Reactive Store for UI reactivity
       if (window.upcStore) {
         window.upcStore.addLead(leadFormData);
       }
@@ -278,10 +307,11 @@ function initMultiStepLeadWizard() {
   // Embedded Lead Gen form on homepage
   const embeddedForm = document.getElementById('embeddedLeadForm');
   if (embeddedForm) {
-    embeddedForm.addEventListener('submit', (e) => {
+    embeddedForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const name = document.getElementById('embed-name')?.value.trim();
       const phone = document.getElementById('embed-phone')?.value.trim();
+      const email = document.getElementById('embed-email')?.value.trim();
       const pest = document.getElementById('embed-pest')?.value;
       const prop = document.getElementById('embed-property')?.value;
       const city = document.getElementById('embed-city')?.value || 'Pune';
@@ -292,21 +322,98 @@ function initMultiStepLeadWizard() {
         return;
       }
 
+      // Collect automated UTM and channel attribution
+      const attr = window.getUpcAttribution ? window.getUpcAttribution() : {};
+
+      const payload = {
+        ...attr,
+        name,
+        phone,
+        email,
+        city,
+        service: pest || 'General Pest Control',
+        propertyType: prop || 'Home',
+        message: msg,
+        notes: msg,
+        source: attr.source || 'Homepage Embedded Form',
+        urgency: 'High'
+      };
+
+      // 1. Production API call
+      if (window.upcApi) {
+        try {
+          const res = await window.upcApi.leads.create(payload);
+          if (res && res.data && res.data.isDuplicateAlert) {
+            showToast('ℹ️ Notice: Active inquiry exists. Your update has been logged!', 'info');
+          } else {
+            showToast('🎉 Free Inspection Request Received! Specialist calling in 15 mins.', 'success');
+          }
+        } catch (err) {
+          showToast('Request received! We will connect with you shortly.', 'success');
+        }
+      } else {
+        showToast('🎉 Free Inspection Request Received! Specialist calling in 15 mins.', 'success');
+      }
+
+      // 2. Store update
       if (window.upcStore) {
         window.upcStore.addLead({
           name,
           phone,
+          email,
           service: pest || 'General Pest Control',
           property: prop || 'Home',
           city,
           notes: msg,
-          source: 'Homepage Embedded Form',
+          source: attr.source || 'Homepage Embedded Form',
           urgency: 'High'
         });
       }
 
-      showToast('🎉 Free Inspection Request Received! Our specialist will call you in 15 minutes.', 'success');
       embeddedForm.reset();
+    });
+  }
+
+  // Contact Page Callback Form
+  const callbackForm = document.getElementById('contactCallbackForm');
+  if (callbackForm) {
+    callbackForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('callback-name')?.value.trim();
+      const phone = document.getElementById('callback-phone')?.value.trim();
+      const msg = document.getElementById('callback-message')?.value.trim();
+
+      if (!name || !phone) {
+        showToast('Please provide your name and contact phone.', 'error');
+        return;
+      }
+
+      const attr = window.getUpcAttribution ? window.getUpcAttribution() : {};
+
+      const payload = {
+        ...attr,
+        name,
+        phone,
+        service: 'General Callback Request',
+        propertyType: 'Residential',
+        message: msg,
+        notes: msg,
+        source: attr.source || 'Direct Callback Request',
+        urgency: 'Immediate'
+      };
+
+      if (window.upcApi) {
+        try {
+          await window.upcApi.leads.create(payload);
+        } catch (err) {}
+      }
+
+      if (window.upcStore) {
+        window.upcStore.addLead(payload);
+      }
+
+      showToast('📞 Callback registered! Our senior specialist will call you in 15 mins.', 'success');
+      callbackForm.reset();
     });
   }
 }

@@ -236,6 +236,13 @@ class UPCApiClient {
     }
   };
 
+  // Users & Staff API
+  users = {
+    getStaff: async () => {
+      return await this.request('/users', { method: 'GET' });
+    }
+  };
+
   // Health API
   health = {
     check: async () => {

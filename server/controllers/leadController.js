@@ -5,9 +5,17 @@ const { apiSuccess, apiError } = require('../utils/response');
 const leadController = {
   async getLeads(req, res, next) {
     try {
-      const { search, status, limit, offset } = req.query;
-      const leads = await leadService.getLeads({ search, status, limit, offset });
-      return apiSuccess(res, leads, 'Leads retrieved successfully.');
+      const { search, status, service, source, assignedTo, page, limit } = req.query;
+      const result = await leadService.getLeads({
+        search,
+        status,
+        service,
+        source,
+        assignedTo,
+        page: page || 1,
+        limit: limit || 100
+      });
+      return apiSuccess(res, result.leads || result, 'Leads retrieved successfully.', 200, result.pagination);
     } catch (error) {
       next(error);
     }
@@ -58,7 +66,7 @@ const leadController = {
 
       const ipAddress = req.ip || req.connection.remoteAddress;
       const updated = await leadService.addNote(id, note.trim(), req.user, ipAddress);
-      return apiSuccess(res, updated, 'Note added successfully.');
+      return apiSuccess(res, updated, 'Note added successfully.', 201);
     } catch (error) {
       next(error);
     }
