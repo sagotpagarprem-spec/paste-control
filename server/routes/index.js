@@ -12,7 +12,8 @@ const notificationRoutes = require('./notificationRoutes');
 const userRoutes = require('./userRoutes');
 const followupRoutes = require('./followupRoutes');
 const cmsRoutes = require('./cmsRoutes');
-const { metaRouter, whatsappRouter, campaignsRouter, analyticsRouter } = require('./futureRoutes');
+const whatsappRoutes = require('./whatsappRoutes');
+const { metaRouter, campaignsRouter, analyticsRouter } = require('./futureRoutes');
 
 const { apiSuccess } = require('../utils/response');
 const { isConnected, dbConfig } = require('../config/database');
@@ -44,9 +45,11 @@ router.use('/technicians', technicianRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/users', userRoutes);
 
+// Mount WhatsApp Business Cloud API & Webhooks
+router.use('/whatsapp', whatsappRoutes);
+
 // Mount Future Integration Stubs
 router.use('/meta', metaRouter);
-router.use('/whatsapp', whatsappRouter);
 router.use('/campaigns', campaignsRouter);
 router.use('/analytics', analyticsRouter);
 

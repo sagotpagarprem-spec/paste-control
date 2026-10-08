@@ -3,6 +3,8 @@ const leadModel = require('../models/leadModel');
 const customerModel = require('../models/customerModel');
 const notificationModel = require('../models/notificationModel');
 const auditLogModel = require('../models/auditLogModel');
+const whatsappService = require('./whatsappService');
+const logger = require('../utils/logger');
 
 class LeadService {
   async getLeads(filters) {
@@ -106,6 +108,13 @@ class LeadService {
         duplicateOfId
       }
     });
+
+    // 7. Phase 6 WhatsApp Business Automation: Send approved welcome inspection template
+    if (newLead.phone && !isDuplicate) {
+      whatsappService.sendLeadWelcome(newLead).catch(err => {
+        logger.warn(`[WhatsApp Auto] Lead welcome template failed for ${newLead.phone}: ${err.message}`);
+      });
+    }
 
     return {
       ...newLead,

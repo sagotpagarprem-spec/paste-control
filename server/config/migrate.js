@@ -1268,6 +1268,351 @@ Draft article detailing preventive measures for residential housing societies du
       }
     }
 
+    // Step 18: Phase 6 WhatsApp Business Integration Migrations & Seeds
+    logger.info('Checking Phase 6 WhatsApp Business tables and templates...');
+
+    // 18a. Permissions
+    const waPerms = [
+      { name: 'whatsapp:read', module: 'whatsapp', description: 'View WhatsApp customer conversations and messages' },
+      { name: 'whatsapp:manage', module: 'whatsapp', description: 'Send approved WhatsApp templates and replies' }
+    ];
+
+    for (const p of waPerms) {
+      await conn.query(
+        `INSERT INTO permissions (name, module, description) VALUES (?, ?, ?)
+         ON DUPLICATE KEY UPDATE description = VALUES(description)`,
+        [p.name, p.module, p.description]
+      );
+    }
+
+    if (adminRoleId) {
+      const [allPermRows] = await conn.query(`SELECT id FROM permissions WHERE name LIKE 'whatsapp:%'`);
+      for (const perm of allPermRows) {
+        await conn.query(
+          `INSERT IGNORE INTO role_permissions (role_id, permission_id) VALUES (?, ?)`,
+          [adminRoleId, perm.id]
+        );
+      }
+    }
+
+    // 18b. Ensure whatsapp_templates table
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS \`whatsapp_templates\` (
+        \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+        \`name\` VARCHAR(100) NOT NULL UNIQUE,
+        \`category\` VARCHAR(50) NOT NULL DEFAULT 'UTILITY',
+        \`language\` VARCHAR(10) NOT NULL DEFAULT 'en',
+        \`status\` VARCHAR(30) NOT NULL DEFAULT 'APPROVED',
+        \`header_text\` VARCHAR(255) NULL,
+        \`body_text\` TEXT NOT NULL,
+        \`footer_text\` VARCHAR(150) NULL,
+        \`buttons\` JSON NULL,
+        \`variables_sample\` JSON NULL,
+        \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        \`updated_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX \`idx_wat_name\` (\`name\`),
+        INDEX \`idx_wat_status\` (\`status\`),
+        INDEX \`idx_wat_category\` (\`category\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    // 18c. Ensure whatsapp_messages table
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS \`whatsapp_messages\` (
+        \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+        \`wam_id\` VARCHAR(128) NULL UNIQUE,
+        \`direction\` ENUM('OUTBOUND', 'INBOUND') NOT NULL DEFAULT 'OUTBOUND',
+        \`to_phone\` VARCHAR(30) NOT NULL,
+        \`from_phone\` VARCHAR(30) NOT NULL,
+        \`customer_id\` INT NULL,
+        \`lead_id\` INT NULL,
+        \`booking_id\` INT NULL,
+        \`template_name\` VARCHAR(100) NULL,
+        \`template_language\` VARCHAR(10) DEFAULT 'en',
+        \`message_type\` VARCHAR(30) NOT NULL DEFAULT 'TEMPLATE',
+        \`body\` TEXT NOT NULL,
+        \`status\` ENUM('QUEUED', 'SENT', 'DELIVERED', 'READ', 'FAILED') NOT NULL DEFAULT 'QUEUED',
+        \`error_message\` TEXT NULL,
+        \`metadata\` JSON NULL,
+        \`delivered_at\` TIMESTAMP NULL DEFAULT NULL,
+        \`read_at\` TIMESTAMP NULL DEFAULT NULL,
+        \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        \`updated_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        CONSTRAINT \`fk_wam_customer\` FOREIGN KEY (\`customer_id\`) REFERENCES \`customers\` (\`id\`) ON DELETE SET NULL,
+        CONSTRAINT \`fk_wam_lead\` FOREIGN KEY (\`lead_id\`) REFERENCES \`leads\` (\`id\`) ON DELETE SET NULL,
+        CONSTRAINT \`fk_wam_booking\` FOREIGN KEY (\`booking_id\`) REFERENCES \`bookings\` (\`id\`) ON DELETE SET NULL,
+        INDEX \`idx_wam_to_phone\` (\`to_phone\`),
+        INDEX \`idx_wam_from_phone\` (\`from_phone\`),
+        INDEX \`idx_wam_status\` (\`status\`),
+        INDEX \`idx_wam_direction\` (\`direction\`),
+        INDEX \`idx_wam_template\` (\`template_name\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    // 18d. Seed Official Approved WhatsApp Templates
+    const approvedTemplates = [
+      {
+        name: 'lead_welcome_inspection',
+        category: 'UTILITY',
+        headerText: '🛡️ Universal Pest Control — Inquiry Received',
+        bodyText: 'Hi {{1}}, thank you for contacting Universal Pest Control. We have received your inquiry for {{2}} in {{3}}. A certified senior specialist will call you shortly to confirm your free inspection slot. Reference: #{{4}}.',
+        footerText: 'Certified Odorless & Child-Safe Pest Treatments',
+        variablesSample: JSON.stringify(['Aakash', 'Termite Radar Inspection', 'Pune', 'LEAD-101']),
+        buttons: JSON.stringify([
+          { type: 'QUICK_REPLY', text: 'Confirm Slot' },
+          { type: 'PHONE_NUMBER', text: 'Call Desk', phone_number: '+919823001122' }
+        ])
+      },
+      {
+        name: 'booking_confirmed_v1',
+        category: 'UTILITY',
+        headerText: '📋 Booking Confirmed — Universal Pest Control',
+        bodyText: 'Hello {{1}}, your service booking #{{2}} for {{3}} is confirmed for {{4}} (Slot: {{5}}) at {{6}}. Our technician will arrive with sanitized equipment and digital audit kit.',
+        footerText: 'Need to reschedule? Reply directly to this chat.',
+        variablesSample: JSON.stringify(['Dr. Rajiv', 'UPC-2026-1001', 'Termite Barrier', 'Tomorrow', '11:00 AM - 01:00 PM', 'Koregaon Park']),
+        buttons: JSON.stringify([
+          { type: 'URL', text: 'Track Dispatch', url: 'https://universalpestcontrol.com/track' }
+        ])
+      },
+      {
+        name: 'technician_assigned_v1',
+        category: 'UTILITY',
+        headerText: '👷 Field Technician Dispatched',
+        bodyText: 'Update for Booking #{{1}}: Certified technician {{2}} (📞 {{3}}) has been assigned to your service appointment scheduled for {{4}}. Real-time status: {{5}}.',
+        footerText: 'GPS Route Activated • Masked & Sanitized Protocol',
+        variablesSample: JSON.stringify(['UPC-2026-1001', 'Vikram Shinde', '+91 98230 44129', 'Today 11:00 AM', 'On The Way']),
+        buttons: JSON.stringify([
+          { type: 'PHONE_NUMBER', text: 'Call Technician', phone_number: '+919823044129' }
+        ])
+      },
+      {
+        name: 'service_completed_v1',
+        category: 'UTILITY',
+        headerText: '✅ Treatment Completed & Certified',
+        bodyText: 'Hello {{1}}, your {{2}} treatment under Booking #{{3}} has been successfully completed and certified. Your scientific warranty certificate has been generated. Thank you for choosing Universal Pest Control!',
+        footerText: 'Universal Pest Control — Pune Metro Care',
+        variablesSample: JSON.stringify(['Dr. Rajiv', 'Termite Radar & Drill-Fill', 'UPC-2026-1001']),
+        buttons: JSON.stringify([
+          { type: 'QUICK_REPLY', text: 'Download Certificate' }
+        ])
+      },
+      {
+        name: 'review_request_v1',
+        category: 'UTILITY',
+        headerText: '⭐ Rate Your Pest Treatment Experience',
+        bodyText: 'Hi {{1}}, we hope you loved the treatment provided by {{2}} today! How was your experience with Universal Pest Control? Please share your quick rating and review: {{3}}',
+        footerText: 'Helps us maintain 4.9★ service standards.',
+        variablesSample: JSON.stringify(['Dr. Rajiv', 'Vikram Shinde', 'https://universalpestcontrol.com/#reviews']),
+        buttons: JSON.stringify([
+          { type: 'URL', text: 'Leave Review', url: 'https://universalpestcontrol.com/#reviews' }
+        ])
+      },
+      {
+        name: 'followup_reminder_v1',
+        category: 'UTILITY',
+        headerText: '📅 Free Inspection Slot Reminder',
+        bodyText: 'Hi {{1}}, this is a gentle reminder from Universal Pest Control regarding your scheduled pest assessment for {{2}}. Our expert is available today at {{3}}. Please reply YES to confirm or RESCHEDULE if you need another time.',
+        footerText: 'Universal Pest Control Automated Scheduling',
+        variablesSample: JSON.stringify(['Pooja', 'Cockroach Herbal Gel', '04:00 PM']),
+        buttons: JSON.stringify([
+          { type: 'QUICK_REPLY', text: 'YES Confirm' },
+          { type: 'QUICK_REPLY', text: 'Reschedule' }
+        ])
+      }
+    ];
+
+    for (const tmpl of approvedTemplates) {
+      await conn.query(
+        `INSERT INTO whatsapp_templates (name, category, language, status, header_text, body_text, footer_text, buttons, variables_sample)
+         VALUES (?, ?, 'en', 'APPROVED', ?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE 
+          header_text = VALUES(header_text),
+          body_text = VALUES(body_text),
+          footer_text = VALUES(footer_text),
+          buttons = VALUES(buttons),
+          variables_sample = VALUES(variables_sample)`,
+        [tmpl.name, tmpl.category, tmpl.headerText, tmpl.bodyText, tmpl.footerText, tmpl.buttons, tmpl.variablesSample]
+      );
+    }
+
+    // 18e. Seed Sample Initial Conversations
+    const sampleChatThreads = [
+      {
+        wamId: 'wamid.HBgMOTE5ODIzMDQ0MTI5FQIAERgSMzE4MjU3OTk4NDgzOTc3OTA5AA==',
+        direction: 'OUTBOUND',
+        toPhone: '+91 98230 44129',
+        fromPhone: '+91 98230 01122',
+        templateName: 'booking_confirmed_v1',
+        body: 'Hello Dr. Rajiv Malhotra, your service booking #UPC-2026-1001 for Termite Control is confirmed for Today (Slot: 11:00 AM - 01:00 PM) at Koregaon Park. Our technician will arrive with sanitized equipment and digital audit kit.',
+        status: 'READ',
+        deliveredAt: new Date(Date.now() - 3600000),
+        readAt: new Date(Date.now() - 3000000)
+      },
+      {
+        wamId: 'wamid.HBgMOTE5ODIzMDQ0MTI5FQIAEhgUM0VBMDJEMkZGNTUxNzQ1OUFCMTMA',
+        direction: 'INBOUND',
+        toPhone: '+91 98230 01122',
+        fromPhone: '+91 98230 44129',
+        templateName: null,
+        messageType: 'TEXT',
+        body: 'Thank you! Please inform technician Vikram to ring the main doorbell twice, as our pet dog will be in the backyard.',
+        status: 'DELIVERED',
+        deliveredAt: new Date(Date.now() - 2800000),
+        readAt: new Date(Date.now() - 2800000)
+      },
+      {
+        wamId: 'wamid.HBgMOTE5ODkwMTg4MzIwFQIAERgSNTAzMjQ1NTE4OTAyMzQ1NjYwAA==',
+        direction: 'OUTBOUND',
+        toPhone: '+91 98901 88320',
+        fromPhone: '+91 98230 01122',
+        templateName: 'lead_welcome_inspection',
+        body: 'Hi Chef Ananya, thank you for contacting Universal Pest Control. We have received your inquiry for Commercial Kitchen AMC in Baner High Street. A certified senior specialist will call you shortly to confirm your free inspection slot. Reference: #LEAD-204.',
+        status: 'DELIVERED',
+        deliveredAt: new Date(Date.now() - 7200000),
+        readAt: null
+      }
+    ];
+
+    for (const msg of sampleChatThreads) {
+      const [existingMsg] = await conn.query(`SELECT id FROM whatsapp_messages WHERE wam_id = ? LIMIT 1`, [msg.wamId]);
+      if (existingMsg.length === 0) {
+        await conn.query(
+          `INSERT INTO whatsapp_messages (wam_id, direction, to_phone, from_phone, template_name, message_type, body, status, delivered_at, read_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [msg.wamId, msg.direction, msg.toPhone, msg.fromPhone, msg.templateName, msg.messageType || 'TEMPLATE', msg.body, msg.status, msg.deliveredAt, msg.readAt]
+        );
+      }
+    }
+
+    // Step 19: Phase 7 Meta (Facebook & Instagram) Lead Ads Integration Migrations & Seeds
+    logger.info('Checking Phase 7 Meta Lead Ads tables and columns...');
+
+    // 19a. Permissions
+    const metaPerms = [
+      { name: 'meta:read', module: 'meta', description: 'View Meta ad accounts, lead campaigns, and webhook logs' },
+      { name: 'meta:manage', module: 'meta', description: 'Configure Meta connection, trigger sync, and retry webhook events' }
+    ];
+
+    for (const p of metaPerms) {
+      await conn.query(
+        `INSERT INTO permissions (name, module, description) VALUES (?, ?, ?)
+         ON DUPLICATE KEY UPDATE description = VALUES(description)`,
+        [p.name, p.module, p.description]
+      );
+    }
+
+    if (adminRoleId) {
+      const [allMetaPerms] = await conn.query(`SELECT id FROM permissions WHERE name LIKE 'meta:%'`);
+      for (const perm of allMetaPerms) {
+        await conn.query(
+          `INSERT IGNORE INTO role_permissions (role_id, permission_id) VALUES (?, ?)`,
+          [adminRoleId, perm.id]
+        );
+      }
+    }
+
+    // 19b. Alter leads table to support Meta Lead Ad fields if missing
+    const metaLeadColumnsToAdd = [
+      { name: 'campaign_id', def: 'VARCHAR(100) NULL AFTER campaign' },
+      { name: 'adset_name', def: 'VARCHAR(150) NULL AFTER campaign_id' },
+      { name: 'adset_id', def: 'VARCHAR(100) NULL AFTER adset_name' },
+      { name: 'ad_id', def: 'VARCHAR(100) NULL AFTER ad_name' },
+      { name: 'platform', def: 'VARCHAR(50) NULL AFTER source' },
+      { name: 'leadgen_id', def: 'VARCHAR(100) NULL AFTER ad_id' },
+      { name: 'raw_meta_payload', def: 'JSON NULL AFTER leadgen_id' }
+    ];
+
+    for (const col of metaLeadColumnsToAdd) {
+      const [colCheck] = await conn.query(
+        `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'leads' AND COLUMN_NAME = ?`,
+        [col.name]
+      );
+      if (colCheck.length === 0) {
+        try {
+          await conn.query(`ALTER TABLE \`leads\` ADD COLUMN \`${col.name}\` ${col.def}`);
+          logger.info(`Added column ${col.name} to leads table.`);
+        } catch (e) {
+          // If placement fails, try appending
+          await conn.query(`ALTER TABLE \`leads\` ADD COLUMN \`${col.name}\` ${col.def.replace(/AFTER\s+\w+/, '')}`);
+        }
+      }
+    }
+
+    // 19c. Ensure meta_configurations table
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS \`meta_configurations\` (
+        \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+        \`account_name\` VARCHAR(150) NOT NULL DEFAULT 'Universal Pest Control Primary Meta Account',
+        \`business_account_id\` VARCHAR(100) NULL,
+        \`ad_account_id\` VARCHAR(100) NULL,
+        \`page_id\` VARCHAR(100) NULL,
+        \`page_name\` VARCHAR(150) NULL,
+        \`instagram_actor_id\` VARCHAR(100) NULL,
+        \`app_id\` VARCHAR(100) NULL,
+        \`app_secret\` VARCHAR(255) NULL,
+        \`access_token\` TEXT NULL,
+        \`pixel_id\` VARCHAR(100) NULL,
+        \`webhook_verify_token\` VARCHAR(150) NULL,
+        \`status\` ENUM('CONNECTED', 'DISCONNECTED', 'PENDING', 'ERROR') DEFAULT 'CONNECTED',
+        \`last_synced_at\` TIMESTAMP NULL DEFAULT NULL,
+        \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        \`updated_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX \`idx_meta_status\` (\`status\`),
+        INDEX \`idx_meta_page\` (\`page_id\`),
+        INDEX \`idx_meta_ad_account\` (\`ad_account_id\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    // 19d. Ensure meta_lead_events table
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS \`meta_lead_events\` (
+        \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+        \`event_id\` VARCHAR(128) NOT NULL UNIQUE,
+        \`leadgen_id\` VARCHAR(100) NOT NULL,
+        \`page_id\` VARCHAR(100) NULL,
+        \`form_id\` VARCHAR(100) NULL,
+        \`adgroup_id\` VARCHAR(100) NULL,
+        \`ad_id\` VARCHAR(100) NULL,
+        \`platform\` VARCHAR(50) NULL,
+        \`status\` ENUM('RECEIVED', 'PROCESSED', 'FAILED', 'RETRYING') DEFAULT 'RECEIVED',
+        \`lead_id\` INT NULL,
+        \`payload\` JSON NOT NULL,
+        \`error_message\` TEXT NULL,
+        \`retry_count\` INT NOT NULL DEFAULT 0,
+        \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        \`updated_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        CONSTRAINT \`fk_mle_lead\` FOREIGN KEY (\`lead_id\`) REFERENCES \`leads\` (\`id\`) ON DELETE SET NULL,
+        INDEX \`idx_mle_leadgen\` (\`leadgen_id\`),
+        INDEX \`idx_mle_status\` (\`status\`),
+        INDEX \`idx_mle_platform\` (\`platform\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    // 19e. Seed default active Meta configuration
+    const [existingMetaConfig] = await conn.query(`SELECT id FROM meta_configurations LIMIT 1`);
+    if (existingMetaConfig.length === 0) {
+      await conn.query(`
+        INSERT INTO meta_configurations (
+          account_name, business_account_id, ad_account_id, page_id, page_name,
+          instagram_actor_id, app_id, app_secret, access_token, pixel_id, webhook_verify_token, status, last_synced_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'CONNECTED', CURRENT_TIMESTAMP)
+      `, [
+        'Universal Pest Control — Meta Ads Portfolio',
+        'act_83921049281',
+        'act_83921049281',
+        '109283746501928',
+        'Universal Pest Control Official',
+        '17841405928193821',
+        '928374650192837',
+        'upc_sec_app_secret_hash_2026',
+        'EAAGMockUniversalPestControlMetaTokenSecret2026',
+        '987654321012345',
+        'upc_meta_webhook_verify_token_2026'
+      ]);
+      logger.info('Seeded default Meta ad account configuration.');
+    }
+
     logger.info('Database migration and seeding completed successfully!');
   } finally {
     await conn.end();

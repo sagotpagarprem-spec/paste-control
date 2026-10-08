@@ -4,6 +4,8 @@ const customerModel = require('../models/customerModel');
 const notificationModel = require('../models/notificationModel');
 const auditLogModel = require('../models/auditLogModel');
 const { query } = require('../config/database');
+const whatsappService = require('./whatsappService');
+const logger = require('../utils/logger');
 
 class BookingService {
   async getBookings(filters) {
@@ -75,9 +77,13 @@ class BookingService {
         customerName: booking.customerName,
         service: booking.serviceName,
         scheduledDate: booking.scheduledDate,
-        amount: booking.amount
-      }
-    });
+    // 6. Phase 6 WhatsApp Business Automation: Send approved booking confirmation template
+    const bookingRecipientPhone = booking.phone || booking.customerPhone || phone;
+    if (bookingRecipientPhone) {
+      whatsappService.sendBookingConfirmation({ ...booking, phone: bookingRecipientPhone }).catch(err => {
+        logger.warn(`[WhatsApp Auto] Booking confirmation template failed for #${booking.bookingCode}: ${err.message}`);
+      });
+    }
 
     return booking;
   }
@@ -109,6 +115,11 @@ class BookingService {
           [updated.leadId, user?.id || null, `Technician ${updated.technicianName || ''} assigned to booking #${updated.bookingCode}`]
         );
       }
+
+      // Phase 6 WhatsApp Automation: Technician Assignment Alert
+      whatsappService.sendTechnicianAssigned(updated).catch(err => {
+        logger.warn(`[WhatsApp Auto] Technician assignment message failed: ${err.message}`);
+      });
     }
 
     // Status change notification
@@ -134,6 +145,16 @@ class BookingService {
         if (newStatus === 'COMPLETED') {
           await query(`UPDATE leads SET status = 'COMPLETED' WHERE id = ?`, [updated.leadId]);
         }
+      }
+
+      // Phase 6 WhatsApp Automations: Service Completed & Review Request
+      if (newStatus === 'COMPLETED') {
+        whatsappService.sendServiceCompleted(updated).catch(err => {
+          logger.warn(`[WhatsApp Auto] Service completion message failed: ${err.message}`);
+        });
+        whatsappService.sendReviewRequest(updated).catch(err => {
+          logger.warn(`[WhatsApp Auto] Review request message failed: ${err.message}`);
+        });
       }
     }
 

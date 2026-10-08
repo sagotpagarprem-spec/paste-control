@@ -2,6 +2,8 @@
 const technicianModel = require('../models/technicianModel');
 const bookingModel = require('../models/bookingModel');
 const notificationModel = require('../models/notificationModel');
+const whatsappService = require('../services/whatsappService');
+const logger = require('../utils/logger');
 const { apiSuccess, apiError } = require('../utils/response');
 
 const technicianController = {
@@ -155,6 +157,20 @@ const technicianController = {
         type: normalized === 'COMPLETED' ? 'BOOKING_COMPLETED' : 'BOOKING_ASSIGNED',
         link: '/admin.html'
       });
+
+      // Phase 6 WhatsApp Automations: Technician update & completion
+      if (normalized === 'COMPLETED') {
+        whatsappService.sendServiceCompleted(booking).catch(err => {
+          logger.warn(`[WhatsApp Auto] Job complete template failed: ${err.message}`);
+        });
+        whatsappService.sendReviewRequest(booking).catch(err => {
+          logger.warn(`[WhatsApp Auto] Job review template failed: ${err.message}`);
+        });
+      } else if (normalized === 'ON_THE_WAY' || normalized === 'ACCEPTED') {
+        whatsappService.sendTechnicianAssigned(booking).catch(err => {
+          logger.warn(`[WhatsApp Auto] Technician update template failed: ${err.message}`);
+        });
+      }
 
       return apiSuccess(res, updated, `Job status updated to ${normalized}.`);
     } catch (error) {

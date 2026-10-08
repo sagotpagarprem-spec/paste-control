@@ -461,3 +461,108 @@ CREATE TABLE IF NOT EXISTS `service_areas` (
   INDEX `idx_areas_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ---------------------------------------------------------------------
+-- 20. WHATSAPP_TEMPLATES TABLE (Phase 6 WhatsApp Cloud API)
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `whatsapp_templates` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `name` VARCHAR(100) NOT NULL UNIQUE,
+  `category` VARCHAR(50) NOT NULL DEFAULT 'UTILITY',
+  `language` VARCHAR(10) NOT NULL DEFAULT 'en',
+  `status` VARCHAR(30) NOT NULL DEFAULT 'APPROVED',
+  `header_text` VARCHAR(255) NULL,
+  `body_text` TEXT NOT NULL,
+  `footer_text` VARCHAR(150) NULL,
+  `buttons` JSON NULL,
+  `variables_sample` JSON NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX `idx_wat_name` (`name`),
+  INDEX `idx_wat_status` (`status`),
+  INDEX `idx_wat_category` (`category`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------
+-- 21. WHATSAPP_MESSAGES TABLE (Phase 6 WhatsApp Conversations & History)
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `whatsapp_messages` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `wam_id` VARCHAR(128) NULL UNIQUE,
+  `direction` ENUM('OUTBOUND', 'INBOUND') NOT NULL DEFAULT 'OUTBOUND',
+  `to_phone` VARCHAR(30) NOT NULL,
+  `from_phone` VARCHAR(30) NOT NULL,
+  `customer_id` INT NULL,
+  `lead_id` INT NULL,
+  `booking_id` INT NULL,
+  `template_name` VARCHAR(100) NULL,
+  `template_language` VARCHAR(10) DEFAULT 'en',
+  `message_type` VARCHAR(30) NOT NULL DEFAULT 'TEMPLATE',
+  `body` TEXT NOT NULL,
+  `status` ENUM('QUEUED', 'SENT', 'DELIVERED', 'READ', 'FAILED') NOT NULL DEFAULT 'QUEUED',
+  `error_message` TEXT NULL,
+  `metadata` JSON NULL,
+  `delivered_at` TIMESTAMP NULL DEFAULT NULL,
+  `read_at` TIMESTAMP NULL DEFAULT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT `fk_wam_customer` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_wam_lead` FOREIGN KEY (`lead_id`) REFERENCES `leads` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_wam_booking` FOREIGN KEY (`booking_id`) REFERENCES `bookings` (`id`) ON DELETE SET NULL,
+  INDEX `idx_wam_to_phone` (`to_phone`),
+  INDEX `idx_wam_from_phone` (`from_phone`),
+  INDEX `idx_wam_status` (`status`),
+  INDEX `idx_wam_direction` (`direction`),
+  INDEX `idx_wam_template` (`template_name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------
+-- 22. META_CONFIGURATIONS TABLE (Phase 7 Meta Connection & Account Storage)
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `meta_configurations` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `account_name` VARCHAR(150) NOT NULL DEFAULT 'Universal Pest Control Primary Meta Account',
+  `business_account_id` VARCHAR(100) NULL,
+  `ad_account_id` VARCHAR(100) NULL,
+  `page_id` VARCHAR(100) NULL,
+  `page_name` VARCHAR(150) NULL,
+  `instagram_actor_id` VARCHAR(100) NULL,
+  `app_id` VARCHAR(100) NULL,
+  `app_secret` VARCHAR(255) NULL,
+  `access_token` TEXT NULL,
+  `pixel_id` VARCHAR(100) NULL,
+  `webhook_verify_token` VARCHAR(150) NULL,
+  `status` ENUM('CONNECTED', 'DISCONNECTED', 'PENDING', 'ERROR') DEFAULT 'CONNECTED',
+  `last_synced_at` TIMESTAMP NULL DEFAULT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX `idx_meta_status` (`status`),
+  INDEX `idx_meta_page` (`page_id`),
+  INDEX `idx_meta_ad_account` (`ad_account_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------
+-- 23. META_LEAD_EVENTS TABLE (Phase 7 Webhook Event Audit & Retry Buffer)
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `meta_lead_events` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `event_id` VARCHAR(128) NOT NULL UNIQUE,
+  `leadgen_id` VARCHAR(100) NOT NULL,
+  `page_id` VARCHAR(100) NULL,
+  `form_id` VARCHAR(100) NULL,
+  `adgroup_id` VARCHAR(100) NULL,
+  `ad_id` VARCHAR(100) NULL,
+  `platform` VARCHAR(50) NULL,
+  `status` ENUM('RECEIVED', 'PROCESSED', 'FAILED', 'RETRYING') DEFAULT 'RECEIVED',
+  `lead_id` INT NULL,
+  `payload` JSON NOT NULL,
+  `error_message` TEXT NULL,
+  `retry_count` INT NOT NULL DEFAULT 0,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT `fk_mle_lead` FOREIGN KEY (`lead_id`) REFERENCES `leads` (`id`) ON DELETE SET NULL,
+  INDEX `idx_mle_leadgen` (`leadgen_id`),
+  INDEX `idx_mle_status` (`status`),
+  INDEX `idx_mle_platform` (`platform`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+

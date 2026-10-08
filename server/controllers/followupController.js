@@ -1,6 +1,8 @@
 // Universal Pest Control — Follow-up Controller
 const followupModel = require('../models/followupModel');
 const notificationModel = require('../models/notificationModel');
+const whatsappService = require('../services/whatsappService');
+const logger = require('../utils/logger');
 const { apiSuccess, apiError } = require('../utils/response');
 
 const followupController = {
@@ -55,6 +57,11 @@ const followupController = {
         message: `Follow-up set for ${followup.customerName} on ${followup.scheduledDate} at ${followup.scheduledTime || '11:00 AM'}.`,
         type: 'FOLLOWUP_DUE',
         link: '/admin.html'
+      });
+
+      // Phase 6 WhatsApp Business Automation: Send approved reminder template
+      whatsappService.sendFollowupReminder(followup).catch(err => {
+        logger.warn(`[WhatsApp Auto] Follow-up reminder template failed: ${err.message}`);
       });
 
       return apiSuccess(res, followup, 'Follow-up scheduled successfully.', 201);

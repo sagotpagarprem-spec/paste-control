@@ -493,6 +493,40 @@ class UPCApiClient {
     }
   };
 
+  // WhatsApp Business Hub API (Phase 6)
+  whatsapp = {
+    getConversations: async (params = {}) => {
+      const q = new URLSearchParams(params).toString();
+      return await this.request(`/whatsapp/conversations${q ? `?${q}` : ''}`, { method: 'GET' });
+    },
+
+    getMessages: async (phone, params = {}) => {
+      const clean = encodeURIComponent(phone);
+      const q = new URLSearchParams(params).toString();
+      return await this.request(`/whatsapp/messages/${clean}${q ? `?${q}` : ''}`, { method: 'GET' });
+    },
+
+    getTemplates: async (params = {}) => {
+      const q = new URLSearchParams(params).toString();
+      return await this.request(`/whatsapp/templates${q ? `?${q}` : ''}`, { method: 'GET' });
+    },
+
+    sendTemplate: async (data) => {
+      return await this.request('/whatsapp/send-template', { method: 'POST', body: data });
+    },
+
+    sendMessage: async (data) => {
+      return await this.request('/whatsapp/send-message', { method: 'POST', body: data });
+    },
+
+    updateStatus: async (id, status, errorMessage = null) => {
+      return await this.request(`/whatsapp/messages/${id}/status`, {
+        method: 'PATCH',
+        body: { status, errorMessage }
+      });
+    }
+  };
+
   // Health API
   health = {
     check: async () => {
