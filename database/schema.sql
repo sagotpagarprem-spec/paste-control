@@ -173,8 +173,15 @@ CREATE TABLE IF NOT EXISTS `leads` (
   `address` TEXT NULL,
   `message` TEXT NULL,
   `source` VARCHAR(50) NOT NULL DEFAULT 'Website',
+  `platform` VARCHAR(50) NULL,
   `campaign` VARCHAR(100) NULL,
+  `campaign_id` VARCHAR(100) NULL,
+  `adset_name` VARCHAR(100) NULL,
+  `adset_id` VARCHAR(100) NULL,
   `ad_name` VARCHAR(100) NULL,
+  `ad_id` VARCHAR(100) NULL,
+  `leadgen_id` VARCHAR(100) NULL,
+  `raw_meta_payload` JSON NULL,
   `utm_source` VARCHAR(100) NULL,
   `utm_medium` VARCHAR(100) NULL,
   `utm_campaign` VARCHAR(150) NULL,
@@ -563,6 +570,145 @@ CREATE TABLE IF NOT EXISTS `meta_lead_events` (
   INDEX `idx_mle_leadgen` (`leadgen_id`),
   INDEX `idx_mle_status` (`status`),
   INDEX `idx_mle_platform` (`platform`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------
+-- 24. META_CAMPAIGNS TABLE (Phase 8 Campaign Management & Sync)
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `meta_campaigns` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `campaign_id` VARCHAR(100) NULL UNIQUE,
+  `name` VARCHAR(255) NOT NULL,
+  `objective` VARCHAR(50) NOT NULL DEFAULT 'OUTCOME_LEADS',
+  `status` VARCHAR(50) NOT NULL DEFAULT 'DRAFT',
+  `daily_budget` DECIMAL(12, 2) NULL,
+  `lifetime_budget` DECIMAL(12, 2) NULL,
+  `start_time` TIMESTAMP NULL DEFAULT NULL,
+  `end_time` TIMESTAMP NULL DEFAULT NULL,
+  `location` VARCHAR(255) DEFAULT 'Pune, Maharashtra',
+  `target_audience` JSON NULL,
+  `spend` DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
+  `impressions` INT NOT NULL DEFAULT 0,
+  `clicks` INT NOT NULL DEFAULT 0,
+  `leads` INT NOT NULL DEFAULT 0,
+  `cpl` DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+  `conversions` INT NOT NULL DEFAULT 0,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX `idx_mc_status` (`status`),
+  INDEX `idx_mc_objective` (`objective`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------
+-- 25. META_AD_SETS TABLE (Phase 8 Ad Sets)
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `meta_ad_sets` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `campaign_id` INT NOT NULL,
+  `adset_id` VARCHAR(100) NULL UNIQUE,
+  `name` VARCHAR(255) NOT NULL,
+  `status` VARCHAR(50) NOT NULL DEFAULT 'DRAFT',
+  `billing_event` VARCHAR(50) DEFAULT 'IMPRESSIONS',
+  `optimization_goal` VARCHAR(50) DEFAULT 'LEAD_GENERATION',
+  `targeting` JSON NULL,
+  `budget` DECIMAL(12, 2) NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT `fk_mas_campaign` FOREIGN KEY (`campaign_id`) REFERENCES `meta_campaigns` (`id`) ON DELETE CASCADE,
+  INDEX `idx_mas_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------
+-- 26. META_CREATIVES TABLE (Phase 8 Creatives Connected with Studio)
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `meta_creatives` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `creative_id` VARCHAR(100) NULL UNIQUE,
+  `name` VARCHAR(255) NOT NULL,
+  `image_url` VARCHAR(500) NULL,
+  `video_url` VARCHAR(500) NULL,
+  `headline` VARCHAR(255) NOT NULL,
+  `primary_text` TEXT NOT NULL,
+  `description` TEXT NULL,
+  `cta` VARCHAR(50) NOT NULL DEFAULT 'GET_QUOTE',
+  `destination_url` VARCHAR(500) NULL,
+  `instagram_story_spec` JSON NULL,
+  `ai_generated` BOOLEAN NOT NULL DEFAULT FALSE,
+  `status` VARCHAR(50) NOT NULL DEFAULT 'DRAFT',
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX `idx_mcr_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------
+-- 27. META_ADS TABLE (Phase 8 Ads)
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `meta_ads` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `adset_id` INT NOT NULL,
+  `ad_id` VARCHAR(100) NULL UNIQUE,
+  `name` VARCHAR(255) NOT NULL,
+  `creative_id` INT NULL,
+  `status` VARCHAR(50) NOT NULL DEFAULT 'DRAFT',
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT `fk_ma_adset` FOREIGN KEY (`adset_id`) REFERENCES `meta_ad_sets` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_ma_creative` FOREIGN KEY (`creative_id`) REFERENCES `meta_creatives` (`id`) ON DELETE SET NULL,
+  INDEX `idx_ma_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------
+-- 28. AI_CREATIVE_GENERATIONS TABLE (Phase 9 AI Creative Studio Content)
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `ai_creative_generations` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `service` VARCHAR(100) NOT NULL,
+  `location` VARCHAR(100) NOT NULL DEFAULT 'Pune',
+  `audience` VARCHAR(100) NOT NULL DEFAULT 'Homeowners & Societies',
+  `offer` VARCHAR(150) NULL DEFAULT 'Flat ₹500 OFF + Free Inspection',
+  `tone` VARCHAR(50) NOT NULL DEFAULT 'Urgent & Professional',
+  `platform` VARCHAR(50) NOT NULL DEFAULT 'ALL',
+  `format` VARCHAR(50) NOT NULL DEFAULT 'Single Image / Reel',
+  `headline` VARCHAR(255) NOT NULL,
+  `primary_text` TEXT NOT NULL,
+  `description` TEXT NULL,
+  `cta` VARCHAR(50) NOT NULL DEFAULT 'Book Free Inspection',
+  `instagram_caption` TEXT NULL,
+  `facebook_copy` TEXT NULL,
+  `whatsapp_copy` TEXT NULL,
+  `creative_concept` TEXT NULL,
+  `reel_script` TEXT NULL,
+  `status` ENUM('GENERATED', 'SAVED', 'APPROVED', 'PUBLISHED') NOT NULL DEFAULT 'GENERATED',
+  `created_by` INT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX `idx_acg_service` (`service`),
+  INDEX `idx_acg_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------
+-- 29. WEB_PAGEVIEWS TABLE (Phase 10 Marketing Analytics & Multi-touch)
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `web_pageviews` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `session_id` VARCHAR(64) NOT NULL,
+  `page_url` VARCHAR(500) NOT NULL,
+  `path` VARCHAR(255) NOT NULL,
+  `referrer` VARCHAR(500) NULL,
+  `source` VARCHAR(100) NULL,
+  `medium` VARCHAR(100) NULL,
+  `campaign` VARCHAR(150) NULL,
+  `content` VARCHAR(150) NULL,
+  `term` VARCHAR(150) NULL,
+  `gclid` VARCHAR(255) NULL,
+  `fbclid` VARCHAR(255) NULL,
+  `user_agent` VARCHAR(255) NULL,
+  `ip_address` VARCHAR(45) NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX `idx_wp_session` (`session_id`),
+  INDEX `idx_wp_source` (`source`),
+  INDEX `idx_wp_campaign` (`campaign`),
+  INDEX `idx_wp_created_at` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 

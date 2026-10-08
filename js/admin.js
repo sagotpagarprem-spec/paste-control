@@ -20,6 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initTechnicianDispatch();
   initNotificationDrawer();
   initCmsAdminListeners();
+  initMetaAds();
 
   // Subscribe to store updates for real-time reactive sync
   window.upcStore.subscribe(() => {
@@ -139,6 +140,10 @@ function switchAdminSection(viewKey) {
   if (viewKey === 'cms-reviews') renderAdminCmsReviews();
   if (viewKey === 'cms-blog') renderAdminCmsBlogs();
   if (viewKey === 'cms-service-areas') renderAdminCmsAreas();
+  if (viewKey === 'whatsapp') loadWhatsAppConversations();
+  if (viewKey === 'meta-ads') { loadMetaConnection(); loadMetaCampaigns(); loadMetaAdSets(); loadMetaAds(); loadMetaCreatives(); loadMetaWebhookEvents(); }
+  if (viewKey === 'analytics') loadMarketingAnalytics();
+  if (viewKey === 'settings') checkPlatformHealthStatus();
 }
 
 /* 2. OVERVIEW KPI CARDS & CHARTS */
@@ -295,31 +300,47 @@ function renderCrmKanban() {
           ${colLeads.map(lead => {
             const leadId = lead.id || lead.lead_code || `LD-${lead.dbId}`;
             const isDup = lead.is_duplicate || lead.isDuplicate;
+            const isMetaLead = Boolean(lead.source?.includes('LEAD_AD') || lead.platform || lead.campaign_id || lead.campaignId);
+            const platformName = lead.platform || (lead.source?.includes('INSTAGRAM') ? 'Instagram' : lead.source?.includes('FACEBOOK') ? 'Facebook' : null);
+            const campaignName = lead.campaign || lead.utm_campaign || null;
+            const adSetName = lead.adSet || lead.adset_name || lead.adsetName || null;
+            const adName = lead.ad || lead.ad_name || lead.adName || null;
+
             return `
               <div 
                 class="kanban-card" 
                 draggable="true" 
                 ondragstart="handleKanbanDragStart(event, '${leadId}')"
                 onclick="openLeadDrawer('${leadId}')"
-                style="${isDup ? 'border-left: 4px solid #F59E0B;' : ''}"
+                style="${isDup ? 'border-left: 4px solid #F59E0B;' : isMetaLead ? 'border-left: 4px solid #1877F2;' : ''}"
               >
                 <div class="kanban-card-top">
-                  <div style="display:flex; gap:0.25rem; align-items:center;">
-                    <span class="badge ${lead.source?.includes('Instagram') ? 'badge-primary' : lead.source?.includes('Facebook') || lead.source?.includes('Meta') ? 'badge-info' : 'badge-neutral'}">
-                      ${lead.source || 'Website'}
+                  <div style="display:flex; gap:0.25rem; align-items:center; flex-wrap:wrap;">
+                    <span class="badge ${platformName === 'Instagram' || lead.source?.includes('Instagram') ? 'badge-primary' : (lead.source?.includes('Facebook') || lead.source?.includes('Meta') || lead.source?.includes('LEAD_AD')) ? 'badge-info' : 'badge-neutral'}">
+                      ${platformName ? `${platformName}` : (lead.source || 'Website')}
                     </span>
                     ${isDup ? `<span class="badge badge-warning" style="font-size:0.65rem;" title="Duplicate lead">Repeat</span>` : ''}
                   </div>
                   <span style="font-weight:700; color:#064E3B; font-size:0.85rem;">₹${(Number(lead.value || lead.estimated_value) || 3500).toLocaleString()}</span>
                 </div>
-                <div class="kanban-lead-name">${lead.name}</div>
-                <div class="kanban-lead-service">🛡️ ${lead.service || lead.service_name}</div>
-                <div style="font-size:0.78rem; color:#64748B; margin-bottom:0.5rem;">
-                  📍 ${lead.area ? `${lead.area}, ${lead.city}` : lead.city || 'Pune'}
+                <div class="kanban-lead-name">${escapeHtml(lead.name)}</div>
+                <div class="kanban-lead-service">🛡️ ${escapeHtml(lead.service || lead.service_name)}</div>
+                <div style="font-size:0.78rem; color:#64748B; margin-bottom:0.35rem;">
+                  📍 ${escapeHtml(lead.area ? `${lead.area}, ${lead.city || 'Pune'}` : lead.city || 'Pune')}
                 </div>
 
+                ${isMetaLead ? `
+                  <div style="margin-bottom:0.5rem; padding:0.35rem 0.5rem; background:#F8FAFC; border-radius:6px; border:1px solid #E2E8F0; font-size:0.7rem; line-height:1.4;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.15rem;">
+                      <span style="font-weight:700; color:#0284C7;">${escapeHtml(lead.source)}</span>
+                    </div>
+                    ${campaignName ? `<div style="color:#0F172A; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(campaignName)}">📣 ${escapeHtml(campaignName)}</div>` : ''}
+                    ${adSetName || adName ? `<div style="color:#64748B; font-size:0.68rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(adSetName || '')} • ${escapeHtml(adName || '')}">🎯 ${escapeHtml(adSetName || 'AdSet')} • ${escapeHtml(adName || 'Ad')}</div>` : ''}
+                  </div>
+                ` : ''}
+
                 <div class="kanban-card-footer">
-                  <span style="font-size:0.75rem; color:#475569;">👤 ${lead.assignedTo?.split(' ')[0] || lead.assigned_to_name?.split(' ')[0] || 'Unassigned'}</span>
+                  <span style="font-size:0.75rem; color:#475569;">👤 ${escapeHtml(lead.assignedTo?.split(' ')[0] || lead.assigned_to_name?.split(' ')[0] || 'Unassigned')}</span>
                   <div style="display:flex; gap:0.4rem;">
                     <button class="btn btn-sm btn-white" style="padding:0.2rem 0.5rem; font-size:0.72rem;" onclick="event.stopPropagation(); triggerWhatsAppChat('${lead.phone}', '${lead.name}')">WA</button>
                     <button class="btn btn-sm btn-outline" style="padding:0.2rem 0.5rem; font-size:0.72rem;" onclick="event.stopPropagation(); quickAdvanceLead('${leadId}')">→</button>
@@ -461,9 +482,15 @@ function renderCrmTable() {
         </td>
         <td><span style="font-weight:600; color:#064E3B;">${lead.service || lead.service_name}</span></td>
         <td>${lead.property || lead.property_type || 'Residential'}</td>
-        <td>${lead.area ? `${lead.area}, ${lead.city || 'Pune'}` : lead.city || 'Pune'}</td>
-        <td><span class="badge badge-neutral">${lead.source || 'Website'}</span></td>
         <td>
+          <div>
+            <span class="badge ${lead.platform === 'Instagram' || lead.source?.includes('INSTAGRAM') ? 'badge-primary' : (lead.source?.includes('FACEBOOK') || lead.source?.includes('LEAD_AD') || lead.source?.includes('Meta')) ? 'badge-info' : 'badge-neutral'}">
+              ${lead.platform ? `${lead.platform} (${lead.source || 'LEAD_AD'})` : (lead.source || 'Website')}
+            </span>
+            ${lead.campaign ? `<div style="font-size:0.75rem; color:#0284C7; font-weight:600; margin-top:0.2rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:200px;" title="${escapeHtml(lead.campaign)}">📣 ${escapeHtml(lead.campaign)}</div>` : ''}
+            ${(lead.adSet || lead.adset_name || lead.ad || lead.ad_name) ? `<div style="font-size:0.7rem; color:#64748B; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:200px;" title="${escapeHtml(lead.adSet || lead.adset_name || '')} • ${escapeHtml(lead.ad || lead.ad_name || '')}">🎯 ${escapeHtml(lead.adSet || lead.adset_name || 'AdSet')} / ${escapeHtml(lead.ad || lead.ad_name || 'Ad')}</div>` : ''}
+          </div>
+        </td>
           <span class="badge ${statusNorm === 'NEW' ? 'badge-primary' : statusNorm === 'BOOKED' || statusNorm === 'COMPLETED' ? 'badge-success' : 'badge-warning'}">
             ${statusNorm}
           </span>
@@ -777,6 +804,14 @@ async function openLeadDrawer(leadId) {
   document.getElementById('drawerLeadProperty').textContent = lead.property || lead.property_type || 'Residential';
   document.getElementById('drawerLeadLocation').textContent = `${lead.area || ''}${lead.area && lead.city ? ', ' : ''}${lead.city || 'Pune'}`;
   document.getElementById('drawerLeadSource').textContent = lead.source || 'Website';
+  const platformEl = document.getElementById('drawerLeadPlatform');
+  if (platformEl) platformEl.textContent = lead.platform || (lead.source?.includes('INSTAGRAM') ? 'Instagram' : lead.source?.includes('FACEBOOK') ? 'Facebook' : 'Web');
+  const adSetEl = document.getElementById('drawerLeadAdSet');
+  if (adSetEl) adSetEl.textContent = lead.adSet || lead.adset_name || lead.adsetName || 'N/A';
+  const metaAdSetEl = document.getElementById('drawerLeadMetaAdSet');
+  if (metaAdSetEl) metaAdSetEl.textContent = lead.adSet || lead.adset_name || lead.adsetName || 'N/A';
+  const leadgenIdEl = document.getElementById('drawerLeadgenId');
+  if (leadgenIdEl) leadgenIdEl.textContent = lead.leadgenId || lead.leadgen_id || 'N/A';
   document.getElementById('drawerLeadCampaign').textContent = lead.campaign || lead.utm_campaign || 'N/A';
   document.getElementById('drawerLeadAdName').textContent = lead.ad_name || lead.adName || 'N/A';
 
@@ -890,126 +925,511 @@ async function openLeadDrawer(leadId) {
   drawer.classList.add('open');
 }
 
-/* 6. CREATIVE STUDIO & AI AD GENERATOR */
+/* 6. CREATIVE STUDIO & AI AD GENERATOR (PHASE 9) */
+let currentAiGenerationId = null;
+
 function initAiCreativeStudio() {
   const generateBtn = document.getElementById('btnAiGenerateCreative');
   if (!generateBtn) return;
 
-  generateBtn.addEventListener('click', () => {
-    const service = document.getElementById('aiStudioService')?.value || 'Cockroach Control';
-    const city = document.getElementById('aiStudioLocation')?.value || 'Pune';
-    const tone = document.getElementById('aiStudioTone')?.value || 'Professional';
-    const offer = document.getElementById('aiStudioOffer')?.value || 'Free Inspection';
+  generateBtn.addEventListener('click', async () => {
+    const service = document.getElementById('aiStudioService')?.value || 'Termite Control';
+    const location = document.getElementById('aiStudioLocation')?.value || 'Pune';
+    const tone = document.getElementById('aiStudioTone')?.value || 'Urgent Problem Solver';
+    const audience = document.getElementById('aiStudioAudience')?.value || 'Homeowners & Society Residents';
+    const platform = document.getElementById('aiStudioPlatform')?.value || 'ALL (Meta, IG, WhatsApp, FB)';
+    const format = 'Single Image / Reel';
+    const offer = document.getElementById('aiStudioOffer')?.value || 'Free Inspection + 20% Off Monsoon AMC';
 
-    // Simulate AI Generation with realistic high-converting marketing copywriting
-    generateBtn.textContent = '✨ Generating with AI...';
+    const alertBox = document.getElementById('aiStudioAlertBox');
+    if (alertBox) {
+      alertBox.style.display = 'none';
+      alertBox.className = '';
+    }
+
+    generateBtn.textContent = '✨ Generating Real AI Copy & Scripts...';
     generateBtn.disabled = true;
 
-    setTimeout(() => {
-      generateBtn.textContent = '✨ Generate High-Converting Creative';
-      generateBtn.disabled = false;
-
-      let generatedHeadline = '';
-      let generatedBody = '';
-      let generatedCta = 'Get Free Inspection';
-
-      if (service.includes('Cockroach')) {
-        generatedHeadline = `Say Goodbye to German Cockroaches in ${city}.`;
-        generatedBody = `100% Odorless Bayer Gel Baiting. No need to empty kitchen cabinets or leave your home. Child & pet safe. Over 25,000+ happy homes in ${city}.`;
-        generatedCta = 'Claim Free Kitchen Inspection';
-      } else if (service.includes('Termite')) {
-        generatedHeadline = `Protect Your Wooden Interiors from Termite Rot.`;
-        generatedBody = `Non-destructive Ultrasonic Radar detection finds underground colonies before damage spreads. 5-Year Government-approved warranty.`;
-        generatedCta = 'Book Radar Termite Check';
-      } else {
-        generatedHeadline = `HACCP & FSSAI Compliant Commercial Pest Control.`;
-        generatedBody = `Zero downtime audit-ready pest management for restaurants, hotels, and warehouses across ${city}. Digital trend documentation included.`;
-        generatedCta = 'Request Commercial Audit';
+    try {
+      let data = null;
+      if (window.upcApi && window.upcApi.creatives) {
+        const res = await window.upcApi.creatives.generate({
+          service,
+          location,
+          audience,
+          offer,
+          tone,
+          platform,
+          format
+        });
+        data = res && res.data;
       }
 
-      // Update editable inputs
-      const hlInput = document.getElementById('studioHeadlineInput');
-      const bodyInput = document.getElementById('studioPrimaryTextInput');
-      if (hlInput) hlInput.value = generatedHeadline;
-      if (bodyInput) bodyInput.value = generatedBody;
+      if (!data) {
+        throw new Error('Could not retrieve creative assets from AI generator.');
+      }
 
-      // Update Live Mobile Mockup Preview
+      // Populate all 9 editable fields
+      const hlEl = document.getElementById('studioHeadlineInput');
+      const bodyEl = document.getElementById('studioPrimaryTextInput');
+      const descEl = document.getElementById('studioDescriptionInput');
+      const ctaEl = document.getElementById('studioCtaInput');
+      const igEl = document.getElementById('studioInstagramCaptionInput');
+      const fbEl = document.getElementById('studioFacebookCopyInput');
+      const waEl = document.getElementById('studioWhatsappCopyInput');
+      const conceptEl = document.getElementById('studioConceptInput');
+      const reelEl = document.getElementById('studioReelScriptInput');
+
+      if (hlEl) hlEl.value = data.headline || '';
+      if (bodyEl) bodyEl.value = data.primaryText || '';
+      if (descEl) descEl.value = data.description || '';
+      if (ctaEl) ctaEl.value = data.cta || 'Book Free Inspection';
+      if (igEl) igEl.value = data.instagramCaption || '';
+      if (fbEl) fbEl.value = data.facebookCopy || '';
+      if (waEl) waEl.value = data.whatsappCopy || '';
+      if (conceptEl) conceptEl.value = data.creativeConcept || '';
+      if (reelEl) reelEl.value = data.reelScript || '';
+
+      // Update Mobile Device Preview
       const previewHl = document.getElementById('previewAdHeadline');
       const previewBody = document.getElementById('previewAdBody');
       const previewCta = document.getElementById('previewAdCta');
 
-      if (previewHl) previewHl.textContent = generatedHeadline;
-      if (previewBody) previewBody.textContent = generatedBody;
-      if (previewCta) previewCta.textContent = generatedCta;
+      if (previewHl) previewHl.textContent = data.headline || '';
+      if (previewBody) previewBody.textContent = data.primaryText || '';
+      if (previewCta) previewCta.textContent = `${data.cta || 'Get Free Inspection'} →`;
 
-      showToast('✨ AI Ad Creative Generated! Preview updated.', 'success');
-    }, 700);
+      const badge = document.getElementById('aiActiveGenBadge');
+      if (badge) {
+        badge.textContent = `Generated (${data.engine || 'AI Engine'}) • Unsaved`;
+        badge.className = 'badge badge-warning';
+      }
+
+      if (alertBox) {
+        alertBox.style.display = 'block';
+        alertBox.style.background = '#ECFDF5';
+        alertBox.style.border = '1px solid #A7F3D0';
+        alertBox.style.color = '#065F46';
+        alertBox.innerHTML = `✅ <strong>Creative Kit Generated Successfully:</strong> 9 high-converting multi-channel assets tailored for <em>${escapeHtml(service)}</em> in <em>${escapeHtml(location)}</em> ready for editing.`;
+      }
+
+      showToast('✨ AI Marketing kit generated! Review and edit assets below.', 'success');
+    } catch (err) {
+      console.error('AI Creative generation error:', err);
+      if (alertBox) {
+        alertBox.style.display = 'block';
+        alertBox.style.background = '#FEF2F2';
+        alertBox.style.border = '1px solid #FECACA';
+        alertBox.style.color = '#991B1B';
+
+        let errTitle = 'Generation Encountered An Issue';
+        let errDesc = err.message || 'Please try again.';
+        if (err.message && err.message.includes('rate limit')) {
+          errTitle = '⏳ Rate Limit Exceeded';
+          errDesc = 'AI service quota temporarily reached. Please wait a few moments before requesting another generation.';
+        } else if (err.message && (err.message.includes('timed out') || err.message.includes('timeout'))) {
+          errTitle = '⏱️ Generation Timeout';
+          errDesc = 'AI response took longer than 15s. The service has safely recovered. Click generate to retry.';
+        } else if (err.message && err.message.includes('empty') || err.message.includes('Invalid JSON')) {
+          errTitle = '⚠️ Invalid AI Response';
+          errDesc = 'The response was incomplete or formatted incorrectly. Please adjust inputs and try again.';
+        }
+
+        alertBox.innerHTML = `<strong>${errTitle}:</strong> ${escapeHtml(errDesc)}`;
+      }
+      showToast(err.message || 'AI Generation encountered an issue.', 'error');
+    } finally {
+      generateBtn.textContent = '✨ Generate High-Converting Creative with AI';
+      generateBtn.disabled = false;
+    }
+  });
+
+  // Keep live preview synchronized on typing
+  const hlInput = document.getElementById('studioHeadlineInput');
+  const bodyInput = document.getElementById('studioPrimaryTextInput');
+  const ctaInput = document.getElementById('studioCtaInput');
+  if (hlInput) hlInput.addEventListener('input', () => {
+    const p = document.getElementById('previewAdHeadline');
+    if (p) p.textContent = hlInput.value;
+  });
+  if (bodyInput) bodyInput.addEventListener('input', () => {
+    const p = document.getElementById('previewAdBody');
+    if (p) p.textContent = bodyInput.value;
+  });
+  if (ctaInput) ctaInput.addEventListener('input', () => {
+    const p = document.getElementById('previewAdCta');
+    if (p) p.textContent = `${ctaInput.value} →`;
   });
 }
 
-/* 7. WHATSAPP BUSINESS HUB */
+async function saveAiCreativeDraft() {
+  const headline = document.getElementById('studioHeadlineInput')?.value.trim();
+  const primaryText = document.getElementById('studioPrimaryTextInput')?.value.trim();
+  if (!headline || !primaryText) {
+    showToast('Please generate or provide a headline and body copy first.', 'error');
+    return;
+  }
+
+  const payload = {
+    service: document.getElementById('aiStudioService')?.value || 'Termite Control',
+    location: document.getElementById('aiStudioLocation')?.value || 'Pune',
+    tone: document.getElementById('aiStudioTone')?.value || 'Professional',
+    offer: document.getElementById('aiStudioOffer')?.value || null,
+    headline,
+    primaryText,
+    description: document.getElementById('studioDescriptionInput')?.value.trim() || null,
+    cta: document.getElementById('studioCtaInput')?.value.trim() || 'Book Free Inspection',
+    instagramCaption: document.getElementById('studioInstagramCaptionInput')?.value.trim() || null,
+    facebookCopy: document.getElementById('studioFacebookCopyInput')?.value.trim() || null,
+    whatsappCopy: document.getElementById('studioWhatsappCopyInput')?.value.trim() || null,
+    creativeConcept: document.getElementById('studioConceptInput')?.value.trim() || null,
+    reelScript: document.getElementById('studioReelScriptInput')?.value.trim() || null,
+    status: 'SAVED'
+  };
+
+  try {
+    const res = await window.upcApi.creatives.save(payload);
+    if (res && res.data) {
+      currentAiGenerationId = res.data.id;
+      const badge = document.getElementById('aiActiveGenBadge');
+      if (badge) {
+        badge.textContent = `Draft #${res.data.id} Saved`;
+        badge.className = 'badge badge-success';
+      }
+      showToast(`AI Creative Kit #${res.data.id} saved to drafts! 💾`, 'success');
+    }
+  } catch (err) {
+    showToast(err.message || 'Failed to save creative draft.', 'error');
+  }
+}
+
+async function approveAiCreativeLive() {
+  if (!currentAiGenerationId) {
+    await saveAiCreativeDraft();
+    if (!currentAiGenerationId) return;
+  }
+
+  try {
+    await window.upcApi.creatives.approve(currentAiGenerationId);
+    const badge = document.getElementById('aiActiveGenBadge');
+    if (badge) {
+      badge.textContent = 'Approved & Meta Synced';
+      badge.className = 'badge badge-primary';
+    }
+    showToast('🚀 Creative approved & registered in Meta Creatives catalog!', 'success');
+  } catch (err) {
+    showToast(err.message || 'Failed to approve creative.', 'error');
+  }
+}
+
+/* 7. WHATSAPP BUSINESS HUB (PHASE 6) */
+let activeWaPhone = null;
+let activeWaCustomerName = null;
+let waConversationsCache = [];
+let waTemplatesCache = [];
+
 function initWhatsAppHub() {
   const sendBtn = document.getElementById('btnWaSendMessage');
   const input = document.getElementById('waMessageInput');
-  const stream = document.getElementById('waMessagesStream');
 
-  if (sendBtn && input && stream) {
-    sendBtn.addEventListener('click', () => {
+  if (sendBtn && input) {
+    sendBtn.addEventListener('click', async () => {
       const text = input.value.trim();
       if (!text) return;
+      if (!activeWaPhone) {
+        showToast('Please select a customer conversation thread first.', 'warning');
+        return;
+      }
 
-      appendWaBubble(text, 'outgoing');
-      input.value = '';
+      sendBtn.disabled = true;
+      try {
+        await window.upcApi.whatsapp.sendMessage({
+          to: activeWaPhone,
+          text: text
+        });
+        input.value = '';
+        openWhatsAppThread(activeWaPhone, activeWaCustomerName);
+        showToast('WhatsApp message sent!', 'success');
+      } catch (err) {
+        showToast(err.message || 'Failed to send WhatsApp message.', 'error');
+      } finally {
+        sendBtn.disabled = false;
+      }
+    });
 
-      // Auto-reply simulation
-      setTimeout(() => {
-        appendWaBubble('Thank you! What is the convenient time for the inspection team to arrive?', 'incoming');
-      }, 1200);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendBtn.click();
+      }
     });
   }
 
-  // Quick Template Buttons
-  const templateBtns = document.querySelectorAll('[data-wa-template]');
-  templateBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const type = btn.getAttribute('data-wa-template');
-      let msg = '';
-      if (type === 'quote') {
-        msg = 'Hello! Your customized Universal Pest Control quotation is ready: ₹3,999 with 1-Year Comprehensive Warranty. Reply YES to confirm.';
-      } else if (type === 'enroute') {
-        msg = 'Hello! Your senior pest technician Vikram Shinde is ON THE WAY (ETA: 25 mins). Live tracking link: https://upc.io/t/902';
-      } else if (type === 'confirm') {
-        msg = 'Hi, your Free Site Inspection is confirmed for today at 02:00 PM. Our technician carries sanitized gear & ID.';
+  // Quick Action Buttons
+  document.querySelectorAll('[data-wa-quick]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const templateName = btn.getAttribute('data-wa-quick');
+      if (!activeWaPhone) {
+        showToast('Please select a customer thread on the left first.', 'warning');
+        return;
       }
 
-      if (input) {
-        input.value = msg;
-        input.focus();
+      try {
+        btn.disabled = true;
+        await window.upcApi.whatsapp.sendTemplate({
+          to: activeWaPhone,
+          templateName: templateName,
+          customerName: activeWaCustomerName || 'Valued Customer',
+          serviceName: 'Inspection & Pest Defense'
+        });
+        showToast(`Template "${templateName}" dispatched! 🚀`, 'success');
+        openWhatsAppThread(activeWaPhone, activeWaCustomerName);
+      } catch (err) {
+        showToast(err.message || 'Failed to dispatch template.', 'error');
+      } finally {
+        btn.disabled = false;
       }
     });
   });
+
+  // Search Filter on Conversation Threads
+  const searchInput = document.getElementById('waSearchThreadsInput');
+  if (searchInput) {
+    searchInput.addEventListener('input', () => {
+      const q = searchInput.value.toLowerCase().trim();
+      renderWaThreadsList(waConversationsCache.filter(c => 
+        (c.name && c.name.toLowerCase().includes(q)) ||
+        (c.phone && c.phone.includes(q)) ||
+        (c.service && c.service.toLowerCase().includes(q))
+      ));
+    });
+  }
 }
 
-function appendWaBubble(text, direction) {
-  const stream = document.getElementById('waMessagesStream');
-  if (!stream) return;
+async function loadWhatsAppConversations() {
+  const listEl = document.getElementById('waThreadsList');
+  if (!listEl) return;
 
-  const bubble = document.createElement('div');
-  bubble.className = `wa-bubble ${direction}`;
-  bubble.innerHTML = `
-    <div>${text}</div>
-    <div style="font-size:0.68rem; color:#64748B; text-align:right; margin-top:0.25rem;">${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-  `;
-  stream.appendChild(bubble);
-  stream.scrollTop = stream.scrollHeight;
+  try {
+    const res = await window.upcApi.whatsapp.getConversations();
+    const convos = (res && res.data) || [];
+    waConversationsCache = convos;
+
+    const countEl = document.getElementById('waTotalConversationsCount');
+    if (countEl) countEl.textContent = convos.length;
+
+    renderWaThreadsList(convos);
+
+    // Auto-select first thread if none active
+    if (!activeWaPhone && convos.length > 0) {
+      openWhatsAppThread(convos[0].phone, convos[0].name, convos[0]);
+    }
+  } catch (err) {
+    console.error('Failed to load WA conversations:', err);
+    listEl.innerHTML = `<div style="padding:2rem 1rem; text-align:center; color:#DC2626;">Error: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+function renderWaThreadsList(convos) {
+  const listEl = document.getElementById('waThreadsList');
+  if (!listEl) return;
+
+  if (convos.length === 0) {
+    listEl.innerHTML = `<div style="padding:2.5rem 1rem; text-align:center; color:#94A3B8; font-size:0.85rem;">No WhatsApp conversations found.</div>`;
+    return;
+  }
+
+  listEl.innerHTML = convos.map(c => {
+    const isActive = activeWaPhone === c.phone;
+    const cName = c.contactName || c.name || 'Customer';
+    const timeVal = c.lastActivity || c.lastTime;
+    const timeStr = timeVal ? new Date(timeVal).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+    const preview = (c.latestMessage && c.latestMessage.body) || c.lastMessage || `${c.service || 'Service Lead'} inquiry`;
+    const leadBadge = c.leadCode ? `<span class="badge badge-neutral" style="font-size:0.65rem;">#${escapeHtml(c.leadCode)}</span>` : '';
+    const statusPill = c.latestMessage ? getWaStatusIcon(c.latestMessage.status) : '';
+
+    return `
+      <div class="wa-thread-item ${isActive ? 'active' : ''}" 
+           style="padding:0.85rem 1rem; border-bottom:1px solid #E2E8F0; cursor:pointer; background:${isActive ? '#E2E8F0' : '#FFFFFF'}; transition:background 0.15s;"
+           onclick="openWhatsAppThread('${escapeHtml(c.phone)}', '${escapeHtml(cName)}', ${JSON.stringify(c).replace(/"/g, '&quot;')})">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
+          <div style="display:flex; align-items:center; gap:0.4rem;">
+            <strong style="font-size:0.9rem; color:#0F172A;">${escapeHtml(cName)}</strong>
+            ${leadBadge}
+          </div>
+          <span style="font-size:0.7rem; color:#64748B;">${timeStr}</span>
+        </div>
+        <div style="font-size:0.75rem; color:#059669; font-weight:600; margin-bottom:0.2rem;">
+          📞 ${escapeHtml(c.phone)} ${c.service ? '• ' + escapeHtml(c.service) : ''}
+        </div>
+        <div style="font-size:0.78rem; color:#64748B; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:flex; justify-content:space-between; align-items:center;">
+          <span style="overflow:hidden; text-overflow:ellipsis; max-width:180px;">${escapeHtml(preview)}</span>
+          ${statusPill}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function openWhatsAppThread(phone, customerName, leadData = null) {
+  activeWaPhone = phone;
+  activeWaCustomerName = customerName;
+
+  const activeNameEl = document.getElementById('waActiveCustomer');
+  const activePhoneBadge = document.getElementById('waActivePhoneBadge');
+  const activeContext = document.getElementById('waActiveContext');
+  const stream = document.getElementById('waMessagesStream');
+
+  if (activeNameEl) activeNameEl.textContent = customerName || 'Customer';
+  if (activePhoneBadge) activePhoneBadge.textContent = phone;
+  if (activeContext) {
+    if (leadData) {
+      const lCode = leadData.leadCode || leadData.id || '--';
+      const sName = leadData.service || 'General Pest Control';
+      const sStatus = leadData.status || 'Active';
+      activeContext.textContent = `Customer: ${customerName || 'Direct'} • Lead: #${lCode} • Service: ${sName} • Status: ${sStatus}`;
+    } else {
+      activeContext.textContent = `Direct WhatsApp Session • Customer: ${customerName || phone}`;
+    }
+  }
+
+  // Highlight active thread item
+  renderWaThreadsList(waConversationsCache);
+
+  if (!stream) return;
+  stream.innerHTML = `<div style="text-align:center; padding:2rem; color:#94A3B8;">Loading conversation history...</div>`;
+
+  try {
+    const res = await window.upcApi.whatsapp.getMessages(phone);
+    const msgs = (res && res.data) || [];
+
+    if (msgs.length === 0) {
+      stream.innerHTML = `
+        <div style="text-align:center; padding:3rem 1rem; color:#64748B;">
+          <div style="font-size:1.5rem; margin-bottom:0.5rem;">💬</div>
+          <div>No recorded messages for this customer yet.</div>
+          <div style="font-size:0.75rem; color:#94A3B8; margin-top:0.25rem;">Send an approved template message to initiate chat.</div>
+        </div>
+      `;
+      return;
+    }
+
+    stream.innerHTML = msgs.map(m => {
+      const isOut = m.direction === 'OUTBOUND';
+      const timeStr = m.createdAt || m.created_at ? new Date(m.createdAt || m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+      const statusPill = isOut ? getWaStatusIcon(m.status) : '';
+      const tplBadge = m.templateName ? `<div style="font-size:0.68rem; color:#059669; font-weight:700; margin-bottom:0.25rem;">📄 TEMPLATE: ${escapeHtml(m.templateName)}</div>` : '';
+
+      return `
+        <div class="wa-bubble ${isOut ? 'outgoing' : 'incoming'}" style="${isOut ? 'align-self:flex-end; background:#DCF8C6;' : 'align-self:flex-start; background:#FFFFFF;'} max-width:72%; padding:0.65rem 0.9rem; border-radius:8px; box-shadow:0 1px 2px rgba(0,0,0,0.06); font-size:0.875rem; color:#1E293B;">
+          ${tplBadge}
+          <div style="white-space:pre-wrap; word-break:break-word;">${escapeHtml(m.body || '[Message content]')}</div>
+          <div style="font-size:0.65rem; color:#64748B; text-align:right; margin-top:0.35rem; display:flex; justify-content:flex-end; align-items:center; gap:0.4rem;">
+            <span>${timeStr}</span>
+            ${statusPill}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    stream.scrollTop = stream.scrollHeight;
+  } catch (err) {
+    stream.innerHTML = `<div style="color:#DC2626; text-align:center; padding:2rem;">Failed to load messages: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+function getWaStatusIcon(status) {
+  const s = String(status || '').toUpperCase();
+  if (s === 'READ') return '<span class="wa-status-badge wa-status-read" title="Message read by customer" style="color:#0284C7; font-weight:700; font-size:0.7rem;">✓✓ READ</span>';
+  if (s === 'DELIVERED') return '<span class="wa-status-badge wa-status-delivered" title="Message delivered to phone" style="color:#475569; font-weight:600; font-size:0.7rem;">✓✓ DELIVERED</span>';
+  if (s === 'SENT') return '<span class="wa-status-badge wa-status-sent" title="Sent by WhatsApp server" style="color:#64748B; font-size:0.7rem;">✓ SENT</span>';
+  if (s === 'FAILED') return '<span class="wa-status-badge wa-status-failed" title="Failed to deliver" style="color:#DC2626; font-weight:700; font-size:0.7rem;">✕ FAILED</span>';
+  return '<span class="wa-status-badge wa-status-queued" title="Queued for dispatch" style="color:#94A3B8; font-size:0.7rem;">🕒 QUEUED</span>';
 }
 
 function triggerWhatsAppChat(phone, name) {
-  // Jump to WhatsApp view and select thread
   switchAdminSection('whatsapp');
-  const customerNameEl = document.getElementById('waActiveCustomer');
-  if (customerNameEl) customerNameEl.textContent = `${name} (${phone})`;
+  openWhatsAppThread(phone, name);
   showToast(`WhatsApp thread opened for ${name}`, 'info');
+}
+
+// Template Modal
+async function openSendTemplateModal() {
+  const modal = document.getElementById('modalSendWaTemplate');
+  if (!modal) return;
+
+  const phoneInput = document.getElementById('waTemplateRecipientPhone');
+  if (phoneInput && activeWaPhone) {
+    phoneInput.value = activeWaPhone;
+  }
+
+  const select = document.getElementById('waTemplateSelect');
+  if (select) {
+    try {
+      const res = await window.upcApi.whatsapp.getTemplates();
+      waTemplatesCache = (res && res.data) || [];
+      select.innerHTML = '<option value="">Choose an approved template...</option>' + waTemplatesCache.map(t => `
+        <option value="${t.template_name}">${escapeHtml(t.template_name)} (${t.category})</option>
+      `).join('');
+    } catch (e) {}
+
+    select.onchange = () => {
+      const chosen = waTemplatesCache.find(t => t.template_name === select.value);
+      const previewBox = document.getElementById('waTemplatePreviewBox');
+      const varsContainer = document.getElementById('waTemplateVariablesContainer');
+      if (chosen && previewBox) {
+        previewBox.textContent = chosen.body_text || chosen.preview_text || '';
+        if (varsContainer && chosen.variables) {
+          varsContainer.innerHTML = chosen.variables.map(v => `
+            <div class="form-group">
+              <label class="form-label" style="font-size:0.75rem;">Variable: {{${v}}}</label>
+              <input type="text" class="form-control wa-tpl-var" data-var="${v}" placeholder="Value for ${v}" style="font-size:0.8rem; padding:0.4rem;">
+            </div>
+          `).join('');
+        }
+      }
+    };
+  }
+
+  modal.style.display = 'flex';
+}
+
+function closeSendTemplateModal() {
+  const m = document.getElementById('modalSendWaTemplate');
+  if (m) m.style.display = 'none';
+}
+
+async function handleSendTemplateSubmit(e) {
+  if (e) e.preventDefault();
+  const phone = document.getElementById('waTemplateRecipientPhone')?.value.trim();
+  const templateName = document.getElementById('waTemplateSelect')?.value;
+
+  if (!phone || !templateName) {
+    showToast('Phone number and template selection are required.', 'error');
+    return;
+  }
+
+  const varInputs = document.querySelectorAll('.wa-tpl-var');
+  const variables = {};
+  varInputs.forEach(i => {
+    variables[i.getAttribute('data-var')] = i.value.trim();
+  });
+
+  try {
+    await window.upcApi.whatsapp.sendTemplate({
+      to: phone,
+      templateName: templateName,
+      variables: variables,
+      customerName: activeWaCustomerName || 'Valued Customer'
+    });
+    showToast('Template dispatched successfully! 🚀', 'success');
+    closeSendTemplateModal();
+    if (activeWaPhone === phone) {
+      openWhatsAppThread(phone, activeWaCustomerName);
+    }
+  } catch (err) {
+    showToast(err.message || 'Failed to dispatch template.', 'error');
+  }
 }
 
 /* 8. TECHNICIAN MANAGEMENT & DISPATCH (PHASE 5) */
@@ -2855,4 +3275,1291 @@ window.saveTechnicianFromModal = saveTechnicianFromModal;
 window.changeTechStatus = changeTechStatus;
 window.deleteTechLive = deleteTechLive;
 window.assignBookingTechnician = assignBookingTechnician;
+
+/* =====================================================================
+   PHASE 7 & 8: META ADS MANAGER, LEAD ADS & CAMPAIGN MANAGEMENT
+   ===================================================================== */
+function initMetaAds() {
+  loadMetaConnection();
+  loadMetaCampaigns();
+  loadMetaWebhookEvents();
+}
+
+async function loadMetaConnection() {
+  try {
+    const res = await window.upcApi.meta.getConnection();
+    const config = res && res.data;
+    if (!config) return;
+
+    const badge = document.getElementById('metaConnectionStatusBadge');
+    if (badge) {
+      badge.textContent = config.status === 'CONNECTED' ? '● Meta Connected' : '○ Meta Not Configured';
+      badge.className = config.status === 'CONNECTED' ? 'badge badge-success' : 'badge badge-warning';
+    }
+
+    const nameEl = document.getElementById('metaAccountNameDisplay');
+    const pageEl = document.getElementById('metaPageNameDisplay');
+    const adAccEl = document.getElementById('metaAdAccountIdDisplay');
+    const pageIdEl = document.getElementById('metaPageIdDisplay');
+    const igActorEl = document.getElementById('metaIgActorIdDisplay');
+
+    if (nameEl) nameEl.textContent = config.accountName || 'Universal Pest Control — Meta Ads Portfolio';
+    if (pageEl) pageEl.textContent = `Facebook Page: ${config.pageName || 'Universal Pest Control Official'}`;
+    if (adAccEl) adAccEl.textContent = config.adAccountId || 'Not Configured';
+    if (pageIdEl) pageIdEl.textContent = config.pageId || 'Not Configured';
+    if (igActorEl) igActorEl.textContent = config.instagramActorId || 'Not Configured';
+  } catch (err) {
+    console.error('Failed to load Meta connection:', err);
+  }
+}
+
+async function testMetaConnection() {
+  const btn = document.getElementById('btnTestMetaConnection');
+  if (btn) btn.disabled = true;
+
+  try {
+    const res = await window.upcApi.meta.testConnection();
+    showToast(res.message || 'Meta API connection verified successfully! ⚡', 'success');
+    loadMetaConnection();
+  } catch (err) {
+    showToast(err.message || 'Meta connection test failed.', 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+function openMetaConfigModal() {
+  const m = document.getElementById('modalMetaConfig');
+  if (m) m.style.display = 'flex';
+}
+
+function closeMetaConfigModal() {
+  const m = document.getElementById('modalMetaConfig');
+  if (m) m.style.display = 'none';
+}
+
+async function handleMetaConfigSubmit(e) {
+  if (e) e.preventDefault();
+  const payload = {
+    accountName: document.getElementById('metaFormAccountName')?.value.trim(),
+    adAccountId: document.getElementById('metaFormAdAccountId')?.value.trim(),
+    businessAccountId: document.getElementById('metaFormBusinessId')?.value.trim() || null,
+    pageId: document.getElementById('metaFormPageId')?.value.trim(),
+    pageName: document.getElementById('metaFormPageName')?.value.trim() || null,
+    instagramActorId: document.getElementById('metaFormIgActorId')?.value.trim() || null,
+    pixelId: document.getElementById('metaFormPixelId')?.value.trim() || null,
+    appId: document.getElementById('metaFormAppId')?.value.trim() || null,
+    appSecret: document.getElementById('metaFormAppSecret')?.value.trim() || null,
+    accessToken: document.getElementById('metaFormAccessToken')?.value.trim() || null,
+    webhookVerifyToken: document.getElementById('metaFormWebhookVerifyToken')?.value.trim() || null
+  };
+
+  try {
+    await window.upcApi.meta.updateConnection(payload);
+    showToast('Meta Business configuration saved securely! 🛡️', 'success');
+    closeMetaConfigModal();
+    loadMetaConnection();
+  } catch (err) {
+    showToast(err.message || 'Failed to update Meta configuration.', 'error');
+  }
+}
+
+function openSimulateLeadModal() {
+  const m = document.getElementById('modalSimulateMetaLead');
+  if (m) m.style.display = 'flex';
+}
+
+function closeSimulateLeadModal() {
+  const m = document.getElementById('modalSimulateMetaLead');
+  if (m) m.style.display = 'none';
+}
+
+async function handleSimulateMetaLeadSubmit(e) {
+  if (e) e.preventDefault();
+  const btn = document.getElementById('btnSubmitSimulateLead');
+  if (btn) btn.disabled = true;
+
+  const payload = {
+    platform: document.getElementById('simMetaPlatform')?.value || 'ig',
+    name: document.getElementById('simMetaName')?.value.trim(),
+    phone: document.getElementById('simMetaPhone')?.value.trim(),
+    email: document.getElementById('simMetaEmail')?.value.trim() || null,
+    service: document.getElementById('simMetaService')?.value || 'Termite Control',
+    campaignName: document.getElementById('simMetaCampaign')?.value.trim() || 'Termite Monsoon Shield 2026',
+    adName: document.getElementById('simMetaAd')?.value.trim() || 'Monsoon Termite Shield Reel'
+  };
+
+  try {
+    const res = await window.upcApi.meta.simulateLead(payload);
+    showToast(`Lead Ad ingested successfully into CRM! (Leadgen ID: ${res.data?.leadgenId}) 🚀`, 'success');
+    closeSimulateLeadModal();
+    loadMetaWebhookEvents();
+    if (window.upcApi.leads) {
+      const leadsRes = await window.upcApi.leads.getAll();
+      if (window.upcStore && leadsRes.data) window.upcStore.syncFromBackend(leadsRes.data);
+    }
+  } catch (err) {
+    showToast(err.message || 'Failed to simulate lead ingestion.', 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+/* =====================================================================
+   PHASE 8: META CAMPAIGNS, AD SETS, ADS, CREATIVES & PERFORMANCE
+   ===================================================================== */
+
+function switchMetaSubtab(tabName) {
+  const tabs = ['campaigns', 'adsets', 'ads', 'creatives', 'performance', 'webhooks'];
+  tabs.forEach(t => {
+    const btn = document.getElementById(`metaSubtabBtn${t.charAt(0).toUpperCase() + t.slice(1)}`);
+    const panel = document.getElementById(`metaTab${t.charAt(0).toUpperCase() + t.slice(1)}`);
+    if (btn) btn.classList.toggle('active', t === tabName);
+    if (panel) panel.classList.toggle('active', t === tabName);
+  });
+
+  if (tabName === 'campaigns') loadMetaCampaigns();
+  else if (tabName === 'adsets') loadMetaAdSets();
+  else if (tabName === 'ads') loadMetaAds();
+  else if (tabName === 'creatives') loadMetaCreatives();
+  else if (tabName === 'performance') loadSelectedCampaignPerformance();
+  else if (tabName === 'webhooks') loadMetaWebhookEvents();
+}
+
+// -------------------------------------------------------------
+// 1. CAMPAIGNS MANAGER
+// -------------------------------------------------------------
+async function loadMetaCampaigns() {
+  const tbody = document.getElementById('metaCampaignsTableBody');
+  if (!tbody) return;
+
+  const statusFilter = document.getElementById('metaCampaignStatusFilter')?.value || '';
+
+  try {
+    const res = await window.upcApi.campaigns.getAll({ status: statusFilter });
+    const campaigns = (res && res.data) || [];
+
+    // Populate campaign dropdowns across views
+    populateCampaignDropdowns(campaigns);
+
+    if (campaigns.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:2rem; color:#94A3B8;">No Meta campaigns found matching criteria. Click "+ Create Campaign" to launch.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = campaigns.map(c => {
+      const statusBadge = getCampaignStatusBadge(c.status);
+      const budgetStr = c.dailyBudget ? `₹${Number(c.dailyBudget).toLocaleString()}/day` : (c.lifetimeBudget ? `₹${Number(c.lifetimeBudget).toLocaleString()} lifetime` : 'Dynamic');
+      const startStr = c.startTime ? new Date(c.startTime).toLocaleDateString() : '—';
+      const endStr = c.endTime ? new Date(c.endTime).toLocaleDateString() : 'Continuous';
+      const spend = Number(c.spend || 0);
+      const leads = Number(c.leads || 0);
+      const audience = c.targetAudience || {};
+      const audienceSummary = `Ages ${audience.ageMin || 25}-${audience.ageMax || 65} • ${audience.gender || 'All'}`;
+
+      return `
+        <tr>
+          <td>
+            <strong style="color:#0F172A; display:block; font-size:0.9rem;">${escapeHtml(c.name)}</strong>
+            <small style="color:#64748B;">Objective: <code>${escapeHtml(c.objective || 'OUTCOME_LEADS')}</code></small>
+          </td>
+          <td>
+            <span style="font-size:0.8rem; color:#1E293B; display:block;">Start: ${startStr}</span>
+            <small style="color:#64748B;">End: ${endStr}</small>
+          </td>
+          <td><strong>${budgetStr}</strong></td>
+          <td>
+            <span style="font-size:0.8rem; color:#0F172A; display:block;">📍 ${escapeHtml(c.location || 'Pune')}</span>
+            <small style="color:#64748B;">${escapeHtml(audienceSummary)}</small>
+          </td>
+          <td>${statusBadge}</td>
+          <td>
+            <span style="font-size:0.85rem; color:#0F172A; display:block;">Spend: <strong>${spend > 0 ? `₹${spend.toLocaleString()}` : '<span style="color:#94A3B8;">₹0</span>'}</strong></span>
+            <span style="font-size:0.8rem; color:#059669;">Leads: <strong>${leads}</strong></span>
+          </td>
+          <td>
+            <div style="display:flex; gap:0.35rem; align-items:center;">
+              <select class="form-control" style="font-size:0.75rem; padding:0.25rem 0.4rem; width:115px;" onchange="updateCampaignStatusLive(${c.id}, this.value)">
+                ${['DRAFT', 'REVIEW', 'READY', 'PUBLISH', 'ACTIVE', 'PAUSED', 'COMPLETED', 'ARCHIVED'].map(st => `
+                  <option value="${st}" ${c.status === st ? 'selected' : ''}>${st}</option>
+                `).join('')}
+              </select>
+            </div>
+          </td>
+          <td>
+            <div style="display:flex; gap:0.3rem;">
+              <button class="btn btn-white btn-sm" title="Synchronize live Meta insights" onclick="syncCampaignMetricsLive(${c.id})">🔄</button>
+              <button class="btn btn-outline btn-sm" title="View in-depth performance" onclick="openCampaignPerformanceModal(${c.id})">📊</button>
+              <button class="btn btn-white btn-sm" style="color:#DC2626;" title="Delete campaign" onclick="deleteCampaignLive(${c.id})">🗑️</button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:1.5rem; color:#DC2626;">Error loading campaigns: ${escapeHtml(err.message)}</td></tr>`;
+  }
+}
+
+function populateCampaignDropdowns(campaigns) {
+  // 1. Performance selector
+  const perfSel = document.getElementById('metaPerfCampaignSelect');
+  if (perfSel) {
+    const curVal = perfSel.value;
+    perfSel.innerHTML = '<option value="">Select a Campaign...</option>' + campaigns.map(c => `
+      <option value="${c.id}" ${String(c.id) === String(curVal) ? 'selected' : ''}>${escapeHtml(c.name)} (${c.status})</option>
+    `).join('');
+    if (!perfSel.value && campaigns.length > 0) {
+      perfSel.value = campaigns[0].id;
+      loadSelectedCampaignPerformance(campaigns[0].id);
+    }
+  }
+
+  // 2. Ad Set filter
+  const adsetFilter = document.getElementById('metaAdSetCampaignFilter');
+  if (adsetFilter) {
+    const cur = adsetFilter.value;
+    adsetFilter.innerHTML = '<option value="">All Campaigns</option>' + campaigns.map(c => `
+      <option value="${c.id}" ${String(c.id) === String(cur) ? 'selected' : ''}>${escapeHtml(c.name)}</option>
+    `).join('');
+  }
+
+  // 3. Ad Set creation selector
+  const adsetCreateSel = document.getElementById('adsetFormCampaignId');
+  if (adsetCreateSel) {
+    adsetCreateSel.innerHTML = '<option value="">Select a Campaign...</option>' + campaigns.map(c => `
+      <option value="${c.id}">${escapeHtml(c.name)}</option>
+    `).join('');
+  }
+}
+
+function getCampaignStatusBadge(status) {
+  const s = String(status || '').toUpperCase();
+  if (s === 'ACTIVE') return '<span class="badge badge-success">ACTIVE</span>';
+  if (s === 'PAUSED') return '<span class="badge badge-warning">PAUSED</span>';
+  if (s === 'DRAFT') return '<span class="badge badge-neutral">DRAFT</span>';
+  if (s === 'REVIEW') return '<span class="badge badge-warning">REVIEW</span>';
+  if (s === 'READY') return '<span class="badge badge-primary">READY</span>';
+  if (s === 'PUBLISH') return '<span class="badge badge-primary">PUBLISH</span>';
+  if (s === 'COMPLETED') return '<span class="badge badge-success">COMPLETED</span>';
+  return `<span class="badge badge-neutral">${s}</span>`;
+}
+
+function openCreateCampaignModal() {
+  const m = document.getElementById('modalCreateCampaign');
+  if (m) {
+    m.style.display = 'flex';
+    const startInput = document.getElementById('campaignFormStartTime');
+    if (startInput && !startInput.value) {
+      const now = new Date();
+      startInput.value = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    }
+  }
+}
+
+function closeCreateCampaignModal() {
+  const m = document.getElementById('modalCreateCampaign');
+  if (m) m.style.display = 'none';
+}
+
+function toggleBudgetTypeFields() {
+  const type = document.getElementById('campaignFormBudgetType')?.value;
+  const dailyGrp = document.getElementById('groupDailyBudget');
+  const lifeGrp = document.getElementById('groupLifetimeBudget');
+  if (type === 'daily') {
+    if (dailyGrp) dailyGrp.style.display = 'block';
+    if (lifeGrp) lifeGrp.style.display = 'none';
+  } else {
+    if (dailyGrp) dailyGrp.style.display = 'none';
+    if (lifeGrp) lifeGrp.style.display = 'block';
+  }
+}
+
+async function handleCreateCampaignSubmit(e) {
+  if (e) e.preventDefault();
+  const btn = document.getElementById('btnSubmitCampaign');
+  if (btn) btn.disabled = true;
+
+  const budgetType = document.getElementById('campaignFormBudgetType')?.value;
+  const payload = {
+    name: document.getElementById('campaignFormName')?.value.trim(),
+    objective: document.getElementById('campaignFormObjective')?.value || 'OUTCOME_LEADS',
+    dailyBudget: budgetType === 'daily' ? (Number(document.getElementById('campaignFormDailyBudget')?.value) || 1000) : null,
+    lifetimeBudget: budgetType === 'lifetime' ? (Number(document.getElementById('campaignFormLifetimeBudget')?.value) || 15000) : null,
+    location: document.getElementById('campaignFormLocation')?.value.trim() || 'Pune, Maharashtra',
+    startTime: document.getElementById('campaignFormStartTime')?.value || new Date().toISOString(),
+    endTime: document.getElementById('campaignFormEndTime')?.value || null,
+    targetAudience: {
+      ageMin: Number(document.getElementById('campaignFormAgeMin')?.value) || 25,
+      ageMax: Number(document.getElementById('campaignFormAgeMax')?.value) || 65,
+      gender: document.getElementById('campaignFormGender')?.value || 'ALL',
+      interests: (document.getElementById('campaignFormInterests')?.value || '').split(',').map(s => s.trim()).filter(Boolean)
+    }
+  };
+
+  try {
+    const res = await window.upcApi.campaigns.create(payload);
+    showToast(`Campaign "${res.data?.name || payload.name}" created in DRAFT state! 📢`, 'success');
+    closeCreateCampaignModal();
+    loadMetaCampaigns();
+  } catch (err) {
+    showToast(err.message || 'Failed to create campaign.', 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function updateCampaignStatusLive(campaignId, newStatus) {
+  try {
+    await window.upcApi.campaigns.updateStatus(campaignId, newStatus);
+    showToast(`Campaign status transitioned to ${newStatus}`, 'success');
+    loadMetaCampaigns();
+  } catch (err) {
+    showToast(err.message || 'Failed to update campaign status.', 'error');
+  }
+}
+
+async function syncCampaignMetricsLive(campaignId) {
+  try {
+    const res = await window.upcApi.campaigns.syncMetrics(campaignId);
+    showToast(res.message || 'Campaign performance metrics synchronized! 📊', 'success');
+    loadMetaCampaigns();
+  } catch (err) {
+    showToast(err.message || 'Failed to synchronize metrics.', 'error');
+  }
+}
+
+async function deleteCampaignLive(id) {
+  if (!confirm(`Are you sure you want to delete campaign #${id}?`)) return;
+  try {
+    await window.upcApi.campaigns.delete(id);
+    showToast(`Campaign #${id} deleted.`, 'success');
+    loadMetaCampaigns();
+  } catch (err) {
+    showToast(err.message || 'Failed to delete campaign.', 'error');
+  }
+}
+
+// -------------------------------------------------------------
+// 2. AD SETS MANAGER
+// -------------------------------------------------------------
+async function loadMetaAdSets() {
+  const tbody = document.getElementById('metaAdSetsTableBody');
+  if (!tbody) return;
+
+  const campaignId = document.getElementById('metaAdSetCampaignFilter')?.value || '';
+
+  try {
+    const res = await window.upcApi.campaigns.getAdSets({ campaignId });
+    const adSets = (res && res.data) || [];
+
+    // Populate ad set dropdowns
+    populateAdSetDropdowns(adSets);
+
+    if (adSets.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:2rem; color:#94A3B8;">No Ad Sets configured yet. Click "+ Create Ad Set" to configure audience & placements.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = adSets.map(a => {
+      const budgetStr = a.budget ? `₹${Number(a.budget).toLocaleString()}/day` : 'Inherited from Campaign';
+      const targeting = a.targeting || {};
+      const placementsStr = targeting.placements || 'Automatic (Feeds + Reels)';
+
+      return `
+        <tr>
+          <td>
+            <strong style="color:#0F172A; display:block;">${escapeHtml(a.name)}</strong>
+            <small style="color:#64748B;">ID: <code>#${a.id}</code></small>
+          </td>
+          <td>
+            <strong style="color:#0284C7;">${escapeHtml(a.campaignName || `Campaign #${a.campaignId}`)}</strong>
+          </td>
+          <td>
+            <span class="badge badge-primary" style="font-size:0.7rem;">${escapeHtml(a.optimizationGoal || 'LEAD_GENERATION')}</span>
+            <small style="display:block; color:#64748B;">Billing: ${escapeHtml(a.billingEvent || 'IMPRESSIONS')}</small>
+          </td>
+          <td><strong>${budgetStr}</strong></td>
+          <td>
+            <span style="font-size:0.8rem; color:#0F172A; display:block;">${escapeHtml(placementsStr)}</span>
+            <small style="color:#64748B;">Locations: ${escapeHtml(targeting.location || 'Pune')}</small>
+          </td>
+          <td>
+            <select class="form-control" style="font-size:0.75rem; padding:0.2rem 0.4rem; width:100px;" onchange="updateAdSetStatusLive(${a.id}, this.value)">
+              ${['ACTIVE', 'PAUSED', 'ARCHIVED'].map(st => `
+                <option value="${st}" ${a.status === st ? 'selected' : ''}>${st}</option>
+              `).join('')}
+            </select>
+          </td>
+          <td>
+            <button class="btn btn-white btn-sm" style="color:#DC2626;" title="Delete Ad Set" onclick="deleteAdSetLive(${a.id})">🗑️</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:1.5rem; color:#DC2626;">Error loading ad sets: ${escapeHtml(err.message)}</td></tr>`;
+  }
+}
+
+function populateAdSetDropdowns(adSets) {
+  const adFilter = document.getElementById('metaAdsAdSetFilter');
+  if (adFilter) {
+    const cur = adFilter.value;
+    adFilter.innerHTML = '<option value="">All Ad Sets</option>' + adSets.map(a => `
+      <option value="${a.id}" ${String(a.id) === String(cur) ? 'selected' : ''}>${escapeHtml(a.name)}</option>
+    `).join('');
+  }
+
+  const adCreateSel = document.getElementById('adFormAdSetId');
+  if (adCreateSel) {
+    adCreateSel.innerHTML = '<option value="">Select an Ad Set...</option>' + adSets.map(a => `
+      <option value="${a.id}">${escapeHtml(a.name)}</option>
+    `).join('');
+  }
+}
+
+function openCreateAdSetModal() {
+  const m = document.getElementById('modalCreateAdSet');
+  if (m) m.style.display = 'flex';
+}
+
+function closeCreateAdSetModal() {
+  const m = document.getElementById('modalCreateAdSet');
+  if (m) m.style.display = 'none';
+}
+
+async function handleCreateAdSetSubmit(e) {
+  if (e) e.preventDefault();
+  const btn = document.getElementById('btnSubmitAdSet');
+  if (btn) btn.disabled = true;
+
+  const payload = {
+    campaignId: Number(document.getElementById('adsetFormCampaignId')?.value),
+    name: document.getElementById('adsetFormName')?.value.trim(),
+    optimizationGoal: document.getElementById('adsetFormOptimization')?.value || 'LEAD_GENERATION',
+    billingEvent: document.getElementById('adsetFormBillingEvent')?.value || 'IMPRESSIONS',
+    budget: Number(document.getElementById('adsetFormBudget')?.value) || null,
+    targeting: {
+      placements: document.getElementById('adsetFormPlacements')?.value || 'ALL',
+      location: 'Pune, Maharashtra'
+    }
+  };
+
+  try {
+    await window.upcApi.campaigns.createAdSet(payload);
+    showToast(`Ad Set "${payload.name}" created successfully! 🎯`, 'success');
+    closeCreateAdSetModal();
+    loadMetaAdSets();
+  } catch (err) {
+    showToast(err.message || 'Failed to create Ad Set.', 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function updateAdSetStatusLive(id, status) {
+  try {
+    await window.upcApi.campaigns.updateAdSetStatus(id, status);
+    showToast(`Ad Set #${id} updated to ${status}`, 'success');
+    loadMetaAdSets();
+  } catch (err) {
+    showToast(err.message || 'Failed to update Ad Set status.', 'error');
+  }
+}
+
+async function deleteAdSetLive(id) {
+  if (!confirm(`Are you sure you want to delete Ad Set #${id}?`)) return;
+  try {
+    await window.upcApi.campaigns.deleteAdSet(id);
+    showToast(`Ad Set #${id} deleted.`, 'success');
+    loadMetaAdSets();
+  } catch (err) {
+    showToast(err.message || 'Failed to delete Ad Set.', 'error');
+  }
+}
+
+// -------------------------------------------------------------
+// 3. ADS MANAGER
+// -------------------------------------------------------------
+async function loadMetaAds() {
+  const tbody = document.getElementById('metaAdsTableBody');
+  if (!tbody) return;
+
+  const adsetId = document.getElementById('metaAdsAdSetFilter')?.value || '';
+
+  try {
+    const res = await window.upcApi.campaigns.getAds({ adsetId });
+    const ads = (res && res.data) || [];
+
+    if (ads.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:2rem; color:#94A3B8;">No Ads created yet. Click "+ Create Ad" to launch your first ad.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = ads.map(ad => {
+      const img = ad.imageUrl || 'assets/images/termite.jpg';
+      const cta = ad.cta || 'BOOK_NOW';
+
+      return `
+        <tr>
+          <td>
+            <strong style="color:#0F172A; display:block;">${escapeHtml(ad.name)}</strong>
+            <small style="color:#64748B;">ID: <code>#${ad.id}</code></small>
+          </td>
+          <td>
+            <strong style="color:#0284C7; display:block;">${escapeHtml(ad.adsetName || `Ad Set #${ad.adsetId}`)}</strong>
+            <small style="color:#64748B;">${escapeHtml(ad.campaignName || '')}</small>
+          </td>
+          <td>
+            <div style="display:flex; align-items:center; gap:0.5rem;">
+              <img src="${img}" alt="Ad preview" style="width:40px; height:40px; object-fit:cover; border-radius:6px; border:1px solid #E2E8F0;" onerror="this.src='assets/images/termite.jpg'">
+              <div>
+                <strong style="font-size:0.75rem; color:#0F172A;">${escapeHtml(ad.creativeName || 'Asset Kit')}</strong>
+                <span class="badge badge-neutral" style="font-size:0.65rem; display:block;">Connected</span>
+              </div>
+            </div>
+          </td>
+          <td>
+            <strong style="font-size:0.8rem; color:#0F172A; display:block;">${escapeHtml(ad.headline || 'Pest Control Protection')}</strong>
+            <small style="color:#64748B; display:block; max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(ad.primaryText || '')}</small>
+          </td>
+          <td><span class="badge badge-primary" style="font-size:0.7rem;">${escapeHtml(cta)}</span></td>
+          <td>
+            <select class="form-control" style="font-size:0.75rem; padding:0.2rem 0.4rem; width:95px;" onchange="updateAdStatusLive(${ad.id}, this.value)">
+              ${['DRAFT', 'ACTIVE', 'PAUSED'].map(st => `
+                <option value="${st}" ${ad.status === st ? 'selected' : ''}>${st}</option>
+              `).join('')}
+            </select>
+          </td>
+          <td>
+            <button class="btn btn-white btn-sm" style="color:#DC2626;" title="Delete Ad" onclick="deleteAdLive(${ad.id})">🗑️</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:1.5rem; color:#DC2626;">Error loading ads: ${escapeHtml(err.message)}</td></tr>`;
+  }
+}
+
+function openCreateAdModal() {
+  const m = document.getElementById('modalCreateAd');
+  if (m) m.style.display = 'flex';
+}
+
+function closeCreateAdModal() {
+  const m = document.getElementById('modalCreateAd');
+  if (m) m.style.display = 'none';
+}
+
+async function handleCreateAdSubmit(e) {
+  if (e) e.preventDefault();
+  const btn = document.getElementById('btnSubmitAd');
+  if (btn) btn.disabled = true;
+
+  const payload = {
+    adsetId: Number(document.getElementById('adFormAdSetId')?.value),
+    name: document.getElementById('adFormName')?.value.trim(),
+    creativeId: Number(document.getElementById('adFormCreativeId')?.value) || null,
+    status: document.getElementById('adFormStatus')?.value || 'DRAFT'
+  };
+
+  try {
+    await window.upcApi.campaigns.createAd(payload);
+    showToast(`Ad "${payload.name}" created successfully! 🖼️`, 'success');
+    closeCreateAdModal();
+    loadMetaAds();
+  } catch (err) {
+    showToast(err.message || 'Failed to create Ad.', 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function updateAdStatusLive(id, status) {
+  try {
+    await window.upcApi.campaigns.updateAdStatus(id, status);
+    showToast(`Ad #${id} status updated to ${status}`, 'success');
+    loadMetaAds();
+  } catch (err) {
+    showToast(err.message || 'Failed to update ad status.', 'error');
+  }
+}
+
+async function deleteAdLive(id) {
+  if (!confirm(`Are you sure you want to delete Ad #${id}?`)) return;
+  try {
+    await window.upcApi.campaigns.deleteAd(id);
+    showToast(`Ad #${id} deleted.`, 'success');
+    loadMetaAds();
+  } catch (err) {
+    showToast(err.message || 'Failed to delete ad.', 'error');
+  }
+}
+
+// -------------------------------------------------------------
+// 4. CREATIVES MANAGER (CONNECTED WITH CREATIVE STUDIO)
+// -------------------------------------------------------------
+async function loadMetaCreatives() {
+  const grid = document.getElementById('metaCreativesGrid');
+  if (!grid) return;
+
+  try {
+    const res = await window.upcApi.campaigns.getCreatives();
+    const creatives = (res && res.data) || [];
+
+    // Populate ad form creative selector
+    const adFormCreativeSel = document.getElementById('adFormCreativeId');
+    if (adFormCreativeSel) {
+      adFormCreativeSel.innerHTML = '<option value="">Select an approved creative...</option>' + creatives.map(c => `
+        <option value="${c.id}">${escapeHtml(c.name)} (${c.cta})</option>
+      `).join('');
+    }
+
+    if (creatives.length === 0) {
+      grid.innerHTML = `
+        <div style="grid-column: 1 / -1; text-align:center; padding:3rem; background:#fff; border:1px dashed #CBD5E1; border-radius:var(--radius-lg); color:#64748B;">
+          <div style="font-size:2rem; margin-bottom:0.5rem;">🎨</div>
+          <strong style="color:#0F172A; display:block; margin-bottom:0.25rem;">No Creatives Available</strong>
+          <p style="margin:0 0 1rem 0; font-size:0.85rem;">Approve assets in Creative Studio or create custom manual kits.</p>
+          <div style="display:flex; justify-content:center; gap:0.5rem;">
+            <button class="btn btn-accent btn-sm" onclick="switchAdminView('creative-studio')">Open Creative Studio</button>
+            <button class="btn btn-primary btn-sm" onclick="openCreateCreativeModal()">+ Create Creative</button>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    grid.innerHTML = creatives.map(c => {
+      const isVideo = Boolean(c.videoUrl);
+      const mediaUrl = c.videoUrl || c.imageUrl || 'assets/images/termite.jpg';
+      const isAi = Boolean(c.aiGenerated);
+
+      return `
+        <div class="creative-asset-card">
+          <div class="creative-asset-media">
+            ${isVideo ? `
+              <div style="color:#fff; text-align:center;">
+                <div style="font-size:2.5rem;">🎥</div>
+                <span class="badge badge-primary" style="font-size:0.7rem;">Video / Reel Script</span>
+              </div>
+            ` : `
+              <img src="${mediaUrl}" alt="${escapeHtml(c.name)}" onerror="this.src='assets/images/termite.jpg'">
+            `}
+            <span class="badge ${isAi ? 'badge-primary' : 'badge-neutral'}" style="position:absolute; top:8px; right:8px; font-size:0.65rem;">
+              ${isAi ? '✨ Studio AI' : 'Manual'}
+            </span>
+            <span class="badge badge-success" style="position:absolute; bottom:8px; left:8px; font-size:0.65rem;">
+              ${escapeHtml(c.cta || 'BOOK_NOW')}
+            </span>
+          </div>
+          <div class="creative-asset-body">
+            <strong style="font-size:0.9rem; color:#0F172A; margin-bottom:0.25rem;">${escapeHtml(c.name)}</strong>
+            <div style="font-size:0.8rem; font-weight:700; color:#064E3B; margin-bottom:0.35rem;">
+              "${escapeHtml(c.headline || '')}"
+            </div>
+            <p style="font-size:0.75rem; color:#64748B; margin:0 0 0.75rem 0; line-height:1.4; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;">
+              ${escapeHtml(c.primaryText || '')}
+            </p>
+            ${c.description ? `
+              <small style="color:#94A3B8; font-size:0.7rem; margin-bottom:0.75rem; display:block;">
+                Desc: ${escapeHtml(c.description)}
+              </small>
+            ` : ''}
+            <div style="margin-top:auto; display:flex; justify-content:space-between; align-items:center; border-top:1px solid #F1F5F9; padding-top:0.75rem;">
+              <span class="badge badge-neutral" style="font-size:0.65rem;">${c.status || 'APPROVED'}</span>
+              <button class="btn btn-white btn-sm" style="color:#DC2626; padding:0.2rem 0.5rem; font-size:0.75rem;" onclick="deleteCreativeLive(${c.id})">🗑️ Delete</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  } catch (err) {
+    grid.innerHTML = `<div style="grid-column: 1 / -1; text-align:center; padding:1.5rem; color:#DC2626;">Error: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+function openCreateCreativeModal() {
+  const m = document.getElementById('modalCreateCreative');
+  if (m) m.style.display = 'flex';
+}
+
+function closeCreateCreativeModal() {
+  const m = document.getElementById('modalCreateCreative');
+  if (m) m.style.display = 'none';
+}
+
+function toggleCreativeMediaInput() {
+  const type = document.getElementById('creativeFormMediaType')?.value;
+  const urlInput = document.getElementById('creativeFormMediaUrl');
+  if (!urlInput) return;
+  if (type === 'VIDEO') {
+    urlInput.placeholder = 'e.g. assets/videos/inspection.mp4';
+  } else {
+    urlInput.placeholder = 'e.g. assets/images/termite.jpg';
+  }
+}
+
+function setCreativeMediaPreset(url) {
+  const inp = document.getElementById('creativeFormMediaUrl');
+  if (inp) inp.value = url;
+}
+
+async function handleCreateCreativeSubmit(e) {
+  if (e) e.preventDefault();
+  const btn = document.getElementById('btnSubmitCreative');
+  if (btn) btn.disabled = true;
+
+  const mediaType = document.getElementById('creativeFormMediaType')?.value;
+  const mediaUrl = document.getElementById('creativeFormMediaUrl')?.value.trim();
+
+  const payload = {
+    name: document.getElementById('creativeFormName')?.value.trim(),
+    imageUrl: mediaType === 'IMAGE' ? mediaUrl : null,
+    videoUrl: mediaType === 'VIDEO' ? mediaUrl : null,
+    headline: document.getElementById('creativeFormHeadline')?.value.trim(),
+    primaryText: document.getElementById('creativeFormPrimaryText')?.value.trim(),
+    description: document.getElementById('creativeFormDescription')?.value.trim() || null,
+    cta: document.getElementById('creativeFormCta')?.value || 'BOOK_NOW',
+    destinationUrl: document.getElementById('creativeFormDestUrl')?.value.trim() || null,
+    aiGenerated: false,
+    status: 'ACTIVE'
+  };
+
+  try {
+    await window.upcApi.campaigns.createCreative(payload);
+    showToast(`Creative "${payload.name}" saved to catalog! 🎨`, 'success');
+    closeCreateCreativeModal();
+    loadMetaCreatives();
+  } catch (err) {
+    showToast(err.message || 'Failed to create creative.', 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function deleteCreativeLive(id) {
+  if (!confirm(`Are you sure you want to delete Creative #${id}?`)) return;
+  try {
+    await window.upcApi.campaigns.deleteCreative(id);
+    showToast(`Creative #${id} deleted.`, 'success');
+    loadMetaCreatives();
+  } catch (err) {
+    showToast(err.message || 'Failed to delete creative.', 'error');
+  }
+}
+
+// -------------------------------------------------------------
+// 5. PERFORMANCE & INSIGHTS (ZERO FAKE METRICS)
+// -------------------------------------------------------------
+async function loadSelectedCampaignPerformance(campaignId = null) {
+  const select = document.getElementById('metaPerfCampaignSelect');
+  const targetId = campaignId || (select ? select.value : null);
+  if (!targetId) return;
+
+  try {
+    const res = await window.upcApi.campaigns.getPerformance(targetId);
+    const data = (res && res.data) || {};
+    renderPerformanceDashboard(data);
+  } catch (err) {
+    console.error('Failed to load campaign performance:', err);
+  }
+}
+
+function renderPerformanceDashboard(data) {
+  const m = data.metrics || {};
+  const isApiAvailable = Boolean(data.apiDataAvailable);
+
+  // Notice Banner
+  const banner = document.getElementById('metaPerfNoticeBanner');
+  if (banner) {
+    if (isApiAvailable) {
+      banner.style.background = '#ECFDF5';
+      banner.style.borderColor = '#A7F3D0';
+      banner.style.color = '#065F46';
+      banner.innerHTML = '✅ Live Meta Marketing API metrics are synchronized from Meta Graph API v20.0 insights.';
+    } else {
+      banner.style.background = '#FEF3C7';
+      banner.style.borderColor = '#FDE68A';
+      banner.style.color = '#92400E';
+      banner.innerHTML = `⚠️ Live Meta Marketing API metrics are unavailable for this account/campaign. Real CRM Leads captured: ${m.crmLeadsRecorded || m.leads || 0}. Zero fake metrics displayed.`;
+    }
+  }
+
+  // 1. Status & Objective
+  const statusEl = document.getElementById('perfDisplayStatus');
+  const objEl = document.getElementById('perfDisplayObjective');
+  if (statusEl) statusEl.innerHTML = getCampaignStatusBadge(data.status);
+  if (objEl) objEl.textContent = `Objective: ${data.objective || 'OUTCOME_LEADS'}`;
+
+  // 2. Spend
+  const spendEl = document.getElementById('perfDisplaySpend');
+  const spendStatusEl = document.getElementById('perfDisplaySpendStatus');
+  if (spendEl) spendEl.textContent = m.spendFormatted || 'Unavailable (API Not Synced)';
+  if (spendStatusEl) spendStatusEl.textContent = isApiAvailable ? 'Meta Insights Verified' : 'API Sync Pending';
+
+  // 3. Impressions
+  const impEl = document.getElementById('perfDisplayImpressions');
+  if (impEl) impEl.textContent = m.impressionsFormatted || 'Unavailable';
+
+  // 4. Clicks & CTR
+  const clickEl = document.getElementById('perfDisplayClicks');
+  const ctrEl = document.getElementById('perfDisplayCtr');
+  if (clickEl) clickEl.textContent = m.clicksFormatted || 'Unavailable';
+  if (ctrEl) ctrEl.textContent = `CTR: ${m.ctr || 'Unavailable'}`;
+
+  // 5. Leads
+  const leadsEl = document.getElementById('perfDisplayLeads');
+  const crmLeadsEl = document.getElementById('perfDisplayCrmLeads');
+  if (leadsEl) leadsEl.textContent = m.leads !== undefined ? m.leads : 0;
+  if (crmLeadsEl) crmLeadsEl.textContent = `CRM Leads: ${m.crmLeadsRecorded || 0}`;
+
+  // 6. CPL
+  const cplEl = document.getElementById('perfDisplayCpl');
+  if (cplEl) cplEl.textContent = m.cpl || 'Unavailable';
+
+  // 7. Conversions & Conv Rate
+  const convEl = document.getElementById('perfDisplayConversions');
+  const convRateEl = document.getElementById('perfDisplayConvRate');
+  if (convEl) convEl.textContent = m.conversions || 0;
+  if (convRateEl) convRateEl.textContent = `Conv Rate: ${m.conversionRate || '0.0%'}`;
+
+  // 8. Attributed Pipeline & ROAS
+  const pipeEl = document.getElementById('perfDisplayPipeline');
+  const roasEl = document.getElementById('perfDisplayRoas');
+  const metaIdEl = document.getElementById('perfDisplayMetaId');
+  const budgetEl = document.getElementById('perfDisplayBudget');
+
+  if (pipeEl) pipeEl.textContent = m.pipelineValue || '₹0';
+  if (roasEl) roasEl.textContent = m.roas || 'Unavailable';
+  if (metaIdEl) metaIdEl.textContent = data.campaignId || 'Local Managed';
+  if (budgetEl) budgetEl.textContent = data.budget || 'Dynamic';
+}
+
+async function syncSelectedCampaignMetrics() {
+  const select = document.getElementById('metaPerfCampaignSelect');
+  const id = select?.value;
+  if (!id) {
+    showToast('Please select a campaign first.', 'error');
+    return;
+  }
+  await syncCampaignMetricsLive(id);
+  loadSelectedCampaignPerformance(id);
+}
+
+async function openCampaignPerformanceModal(id) {
+  const m = document.getElementById('modalCampaignPerformance');
+  const content = document.getElementById('modalPerfContent');
+  if (m) m.style.display = 'flex';
+  if (content) content.innerHTML = '<div style="text-align:center; padding:2rem; color:#94A3B8;">Loading performance...</div>';
+
+  try {
+    const res = await window.upcApi.campaigns.getPerformance(id);
+    const data = res && res.data;
+    if (!data) return;
+
+    const metrics = data.metrics || {};
+    const titleEl = document.getElementById('modalPerfTitle');
+    if (titleEl) titleEl.textContent = `📊 Performance: ${data.campaignName}`;
+
+    const isApiAvailable = Boolean(data.apiDataAvailable);
+
+    content.innerHTML = `
+      <div style="margin-bottom:1.25rem;">
+        <div style="padding:0.75rem 1rem; border-radius:var(--radius-md); font-size:0.8rem; margin-bottom:1rem; ${isApiAvailable ? 'background:#ECFDF5; border:1px solid #A7F3D0; color:#065F46;' : 'background:#FEF3C7; border:1px solid #FDE68A; color:#92400E;'}">
+          ${isApiAvailable ? '✅ Live Meta Marketing API metrics synchronized via Meta Insights.' : `⚠️ Live Meta Marketing API insights unavailable for this campaign. Zero fake metrics displayed. Captured CRM Leads: ${metrics.crmLeadsRecorded || 0}.`}
+        </div>
+
+        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:0.75rem; margin-bottom:1.25rem;">
+          <div class="perf-metric-card" style="padding:1rem;">
+            <div class="metric-label">Status</div>
+            <div style="margin-top:0.25rem;">${getCampaignStatusBadge(data.status)}</div>
+          </div>
+          <div class="perf-metric-card" style="padding:1rem;">
+            <div class="metric-label">Total Spend</div>
+            <div class="metric-val" style="font-size:1.15rem;">${metrics.spendFormatted || 'Unavailable'}</div>
+          </div>
+          <div class="perf-metric-card" style="padding:1rem;">
+            <div class="metric-label">Total Leads</div>
+            <div class="metric-val" style="font-size:1.15rem; color:#059669;">${metrics.leads || 0}</div>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:0.75rem; margin-bottom:1.25rem;">
+          <div class="perf-metric-card" style="padding:1rem;">
+            <div class="metric-label">Impressions</div>
+            <div class="metric-val" style="font-size:1.15rem;">${metrics.impressionsFormatted || 'Unavailable'}</div>
+          </div>
+          <div class="perf-metric-card" style="padding:1rem;">
+            <div class="metric-label">Clicks</div>
+            <div class="metric-val" style="font-size:1.15rem;">${metrics.clicksFormatted || 'Unavailable'}</div>
+          </div>
+          <div class="perf-metric-card" style="padding:1rem;">
+            <div class="metric-label">Cost per Lead</div>
+            <div class="metric-val" style="font-size:1.15rem;">${metrics.cpl || 'Unavailable'}</div>
+          </div>
+        </div>
+
+        <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:var(--radius-md); padding:1rem; font-size:0.85rem;">
+          <strong style="display:block; margin-bottom:0.5rem; color:#0F172A;">Attribution & CRM Summary</strong>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
+            <div>Conversions (Booked): <strong>${metrics.conversions || 0}</strong></div>
+            <div>Conversion Rate: <strong>${metrics.conversionRate || '0.0%'}</strong></div>
+            <div>Pipeline Value: <strong>${metrics.pipelineValue || '₹0'}</strong></div>
+            <div>ROAS: <strong>${metrics.roas || 'Unavailable'}</strong></div>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1.5rem;">
+          <button class="btn btn-outline" onclick="closeCampaignPerformanceModal()">Close</button>
+          <button class="btn btn-primary" onclick="syncCampaignMetricsLive(${data.campaignId}).then(() => openCampaignPerformanceModal(${data.campaignId}))">🔄 Sync Live</button>
+        </div>
+      </div>
+    `;
+  } catch (err) {
+    content.innerHTML = `<div style="text-align:center; padding:1.5rem; color:#DC2626;">Error loading performance: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+function closeCampaignPerformanceModal() {
+  const m = document.getElementById('modalCampaignPerformance');
+  if (m) m.style.display = 'none';
+}
+
+async function loadMetaWebhookEvents() {
+  const tbody = document.getElementById('metaEventsTableBody');
+  if (!tbody) return;
+
+  try {
+    const res = await window.upcApi.meta.getEvents({ limit: 20 });
+    const events = (res && res.data) || [];
+
+    if (events.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:2rem; color:#94A3B8;">No webhook events recorded yet. Ingestion buffer clean.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = events.map(e => {
+      const st = (e.status || e.processing_status || 'PENDING').toUpperCase();
+      const stBadge = st === 'PROCESSED'
+        ? '<span class="badge badge-success">PROCESSED</span>'
+        : st === 'FAILED'
+        ? '<span class="badge badge-danger">FAILED</span>'
+        : st === 'RETRYING'
+        ? '<span class="badge badge-warning">RETRYING</span>'
+        : '<span class="badge badge-neutral">RECEIVED</span>';
+
+      const timeVal = e.createdAt || e.received_at;
+      const timeStr = timeVal ? new Date(timeVal).toLocaleString() : 'Recently';
+      const leadIdRef = e.leadCode || (e.leadId || e.crm_lead_id ? `Lead #${e.leadCode || e.leadId || e.crm_lead_id}` : null);
+      const leadgenIdDisplay = e.leadgenId || e.leadgen_id || 'N/A';
+
+      return `
+        <tr>
+          <td><code>#${e.id}</code></td>
+          <td><code style="color:#0284C7;">${escapeHtml(leadgenIdDisplay)}</code></td>
+          <td><span class="badge ${e.platform === 'ig' || e.platform === 'Instagram' ? 'badge-primary' : 'badge-neutral'}">${escapeHtml(e.platform || 'Meta')}</span></td>
+          <td><small style="color:#64748B;">${timeStr}</small></td>
+          <td>${stBadge}</td>
+          <td>${leadIdRef ? `<strong style="color:#064E3B;">${escapeHtml(leadIdRef)}</strong>` : '<span style="color:#94A3B8;">—</span>'}</td>
+          <td>
+            ${st === 'FAILED' ? `
+              <button class="btn btn-outline btn-sm" onclick="retryMetaWebhookEvent(${e.id})">Retry 🔄</button>
+            ` : '<span style="color:#059669; font-size:0.8rem;">Normalized ✓</span>'}
+          </td>
+        </tr>
+      `;
+    }).join('');
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:1.5rem; color:#DC2626;">Error: ${escapeHtml(err.message)}</td></tr>`;
+  }
+}
+
+async function retryMetaWebhookEvent(eventId) {
+  try {
+    await window.upcApi.meta.retryEvent(eventId);
+    showToast(`Webhook event #${eventId} retried & processed.`, 'success');
+    loadMetaWebhookEvents();
+  } catch (err) {
+    showToast(err.message || 'Retry failed.', 'error');
+  }
+}
+
+/* =====================================================================
+   PHASE 10: PRODUCTION MARKETING ANALYTICS
+   ===================================================================== */
+async function loadMarketingAnalytics() {
+  try {
+    const res = await window.upcApi.analytics.getOverview();
+    const data = res && res.data;
+    if (!data) return;
+
+    const { kpis, sources, services, locations } = data;
+
+    // 1. KPI Cards
+    const cplEl = document.getElementById('statBlendedCpl');
+    const convEl = document.getElementById('statConversionRate');
+    const roasEl = document.getElementById('statMetaRoas');
+    const revEl = document.getElementById('statTotalRevenue');
+    const adSpendSub = document.getElementById('statAdSpendSubtitle');
+    const bookSub = document.getElementById('statBookingsSubtitle');
+
+    if (cplEl) cplEl.textContent = kpis.costPerLead || 'Organic';
+    if (convEl) convEl.textContent = kpis.conversionRate || '0.0%';
+    if (roasEl) roasEl.textContent = kpis.roas || '0.0x';
+    if (revEl) revEl.textContent = kpis.revenue || '₹0';
+    if (adSpendSub) adSpendSub.textContent = `Spend: ${kpis.adSpend || '₹0'}`;
+    if (bookSub) bookSub.textContent = `${kpis.bookings || 0} confirmed bookings`;
+
+    // 2. Secondary Metrics (Full CRM Funnel)
+    const totalLeadsEl = document.getElementById('statTotalLeads');
+    const qualLeadsEl = document.getElementById('statQualifiedLeads');
+    const siteVisitsEl = document.getElementById('statSiteVisits');
+    const quotesEl = document.getElementById('statQuotations');
+    const bookingsCountEl = document.getElementById('statBookingsCount');
+    const completedEl = document.getElementById('statCompletedCount');
+    const cacEl = document.getElementById('statCacCost');
+    const pageviewsEl = document.getElementById('statPageviews');
+    const visitorsEl = document.getElementById('statUniqueVisitors');
+
+    if (totalLeadsEl) totalLeadsEl.textContent = kpis.totalLeads || 0;
+    if (qualLeadsEl) qualLeadsEl.textContent = kpis.qualifiedLeads || 0;
+    if (siteVisitsEl) siteVisitsEl.textContent = kpis.siteVisits || 0;
+    if (quotesEl) quotesEl.textContent = kpis.quotations || 0;
+    if (bookingsCountEl) bookingsCountEl.textContent = kpis.bookings || 0;
+    if (completedEl) completedEl.textContent = kpis.completed || 0;
+    if (cacEl) cacEl.textContent = kpis.customerAcquisitionCost || 'Organic';
+    if (pageviewsEl) pageviewsEl.textContent = (kpis.pageviews || 0).toLocaleString();
+    if (visitorsEl) visitorsEl.textContent = (kpis.visitors || 0).toLocaleString();
+
+    // 3. Attribution Channels Table
+    const chanTbody = document.getElementById('analyticsChannelsTableBody');
+    if (chanTbody) {
+      if (!sources || sources.length === 0) {
+        chanTbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:1.5rem; color:#94A3B8;">No attribution channels recorded yet.</td></tr>`;
+      } else {
+        chanTbody.innerHTML = sources.map(s => {
+          const leads = Number(s.leads || 0);
+          const bookings = Number(s.bookings || 0);
+          const rate = leads > 0 ? ((bookings / leads) * 100).toFixed(1) : 0;
+
+          return `
+            <tr>
+              <td><strong style="color:#0F172A;">${escapeHtml(s.channel)}</strong></td>
+              <td><strong>${leads}</strong></td>
+              <td><strong style="color:#064E3B;">${bookings}</strong></td>
+              <td><span class="badge badge-success">${rate}%</span></td>
+            </tr>
+          `;
+        }).join('');
+      }
+    }
+
+    // 4. Campaign Performance Table (Phase 10)
+    const campTbody = document.getElementById('analyticsCampaignsTableBody');
+    if (campTbody) {
+      const campaigns = data.campaigns || [];
+      if (campaigns.length === 0) {
+        campTbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:1.5rem; color:#94A3B8;">No paid campaigns recorded yet.</td></tr>`;
+      } else {
+        campTbody.innerHTML = campaigns.map(c => `
+          <tr>
+            <td>
+              <strong style="color:#0F172A; display:block;">${escapeHtml(c.name)}</strong>
+              <small style="color:#64748B;">Objective: ${escapeHtml(c.objective || 'OUTCOME_LEADS')}</small>
+            </td>
+            <td><span class="badge badge-primary">${escapeHtml(c.status || 'ACTIVE')}</span></td>
+            <td><strong>₹${Number(c.spend || 0).toLocaleString()}</strong></td>
+            <td>${Number(c.impressions || 0).toLocaleString()}</td>
+            <td>${Number(c.clicks || 0).toLocaleString()}</td>
+            <td><strong style="color:#064E3B;">${c.leads}</strong></td>
+            <td>${c.cpl > 0 ? `₹${Number(c.cpl).toFixed(2)}` : '—'}</td>
+            <td><strong style="color:#059669;">${c.conversions || 0}</strong></td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    // 5. Lead Trend Table (Phase 10)
+    const trendTbody = document.getElementById('analyticsLeadTrendTableBody');
+    if (trendTbody) {
+      const trends = data.trends || [];
+      if (trends.length === 0) {
+        trendTbody.innerHTML = `<tr><td colspan="2" style="text-align:center; padding:1rem; color:#94A3B8;">No recent lead trend data</td></tr>`;
+      } else {
+        trendTbody.innerHTML = trends.map(t => `
+          <tr>
+            <td><code>${escapeHtml(t.date)}</code></td>
+            <td style="text-align:right;"><strong style="color:#064E3B;">${t.leads} leads</strong></td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    // 6. Revenue Trend Table (Phase 10)
+    const revTrendTbody = document.getElementById('analyticsRevenueTrendTableBody');
+    if (revTrendTbody) {
+      const revTrends = data.revenueTrends || [];
+      if (revTrends.length === 0) {
+        revTrendTbody.innerHTML = `<tr><td colspan="3" style="text-align:center; padding:1rem; color:#94A3B8;">No recent revenue trend data</td></tr>`;
+      } else {
+        revTrendTbody.innerHTML = revTrends.map(r => `
+          <tr>
+            <td><code>${escapeHtml(r.date)}</code></td>
+            <td>${r.bookings} bookings</td>
+            <td style="text-align:right;"><strong style="color:#059669;">₹${Number(r.revenue || 0).toLocaleString()}</strong></td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    // 7. Services Breakdown
+    const srvTbody = document.getElementById('analyticsServicesTableBody');
+    if (srvTbody) {
+      if (!services || services.length === 0) {
+        srvTbody.innerHTML = `<tr><td colspan="2" style="text-align:center; padding:1rem; color:#94A3B8;">No data</td></tr>`;
+      } else {
+        srvTbody.innerHTML = services.map(s => `
+          <tr>
+            <td>${escapeHtml(s.service)}</td>
+            <td style="text-align:right;"><strong>${s.leads}</strong></td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    // 8. Locations Breakdown
+    const locTbody = document.getElementById('analyticsLocationsTableBody');
+    if (locTbody) {
+      if (!locations || locations.length === 0) {
+        locTbody.innerHTML = `<tr><td colspan="2" style="text-align:center; padding:1rem; color:#94A3B8;">No data</td></tr>`;
+      } else {
+        locTbody.innerHTML = locations.map(l => `
+          <tr>
+            <td>${escapeHtml(l.location)}</td>
+            <td style="text-align:right;"><strong>${l.leads}</strong></td>
+          </tr>
+        `).join('');
+      }
+    }
+
+  } catch (err) {
+    console.error('Failed to load marketing analytics:', err);
+  }
+}
+
+// Global Window Exports (Phases 6, 7, 8, 9, 10)
+window.saveAiCreativeDraft = saveAiCreativeDraft;
+window.approveAiCreativeLive = approveAiCreativeLive;
+
+window.loadWhatsAppConversations = loadWhatsAppConversations;
+window.openWhatsAppThread = openWhatsAppThread;
+window.openSendTemplateModal = openSendTemplateModal;
+window.closeSendTemplateModal = closeSendTemplateModal;
+window.handleSendTemplateSubmit = handleSendTemplateSubmit;
+
+window.loadMetaConnection = loadMetaConnection;
+window.testMetaConnection = testMetaConnection;
+window.openMetaConfigModal = openMetaConfigModal;
+window.closeMetaConfigModal = closeMetaConfigModal;
+window.handleMetaConfigSubmit = handleMetaConfigSubmit;
+window.openSimulateLeadModal = openSimulateLeadModal;
+window.closeSimulateLeadModal = closeSimulateLeadModal;
+window.handleSimulateMetaLeadSubmit = handleSimulateMetaLeadSubmit;
+window.loadMetaCampaigns = loadMetaCampaigns;
+window.updateCampaignStatusLive = updateCampaignStatusLive;
+window.syncCampaignMetricsLive = syncCampaignMetricsLive;
+window.deleteCampaignLive = deleteCampaignLive;
+window.openCreateCampaignModal = openCreateCampaignModal;
+window.closeCreateCampaignModal = closeCreateCampaignModal;
+window.toggleBudgetTypeFields = toggleBudgetTypeFields;
+window.handleCreateCampaignSubmit = handleCreateCampaignSubmit;
+window.switchMetaSubtab = switchMetaSubtab;
+
+window.loadMetaAdSets = loadMetaAdSets;
+window.openCreateAdSetModal = openCreateAdSetModal;
+window.closeCreateAdSetModal = closeCreateAdSetModal;
+window.handleCreateAdSetSubmit = handleCreateAdSetSubmit;
+window.updateAdSetStatusLive = updateAdSetStatusLive;
+window.deleteAdSetLive = deleteAdSetLive;
+
+window.loadMetaAds = loadMetaAds;
+window.openCreateAdModal = openCreateAdModal;
+window.closeCreateAdModal = closeCreateAdModal;
+window.handleCreateAdSubmit = handleCreateAdSubmit;
+window.updateAdStatusLive = updateAdStatusLive;
+window.deleteAdLive = deleteAdLive;
+
+window.loadMetaCreatives = loadMetaCreatives;
+window.openCreateCreativeModal = openCreateCreativeModal;
+window.closeCreateCreativeModal = closeCreateCreativeModal;
+window.toggleCreativeMediaInput = toggleCreativeMediaInput;
+window.setCreativeMediaPreset = setCreativeMediaPreset;
+window.handleCreateCreativeSubmit = handleCreateCreativeSubmit;
+window.deleteCreativeLive = deleteCreativeLive;
+
+window.loadSelectedCampaignPerformance = loadSelectedCampaignPerformance;
+window.syncSelectedCampaignMetrics = syncSelectedCampaignMetrics;
+window.openCampaignPerformanceModal = openCampaignPerformanceModal;
+window.closeCampaignPerformanceModal = closeCampaignPerformanceModal;
+
+window.loadMetaWebhookEvents = loadMetaWebhookEvents;
+window.retryMetaWebhookEvent = retryMetaWebhookEvent;
+
+window.loadMarketingAnalytics = loadMarketingAnalytics;
+
+// 17. PLATFORM SETTINGS HEALTH DIAGNOSTICS & BACKUP (PHASE 11 / PHASE 12)
+async function checkPlatformHealthStatus() {
+  const pre = document.getElementById('diagnosticOutputPre');
+  const ts = document.getElementById('diagnosticTimestamp');
+  const apiBadge = document.getElementById('settingsApiHealthBadge');
+  const dbBadge = document.getElementById('settingsDbHealthBadge');
+  if (pre) pre.textContent = 'Querying live health endpoint /api/health...';
+  try {
+    const res = await fetch('/api/health');
+    const data = await res.json();
+    if (pre) pre.textContent = JSON.stringify(data, null, 2);
+    if (ts) ts.textContent = new Date().toLocaleTimeString();
+    if (apiBadge) {
+      apiBadge.textContent = data.data && data.data.status === 'ONLINE' ? 'ONLINE (v1.0.0)' : 'ACTIVE';
+      apiBadge.className = 'badge badge-success';
+    }
+    if (dbBadge && data.data && data.data.database) {
+      dbBadge.textContent = data.data.database.connected ? 'CONNECTED (MySQL Pool)' : 'OFFLINE / RECONNECTING';
+      dbBadge.className = data.data.database.connected ? 'badge badge-success' : 'badge badge-danger';
+    }
+  } catch (err) {
+    if (pre) pre.textContent = `Diagnostic error: ${err.message}`;
+    if (ts) ts.textContent = new Date().toLocaleTimeString();
+  }
+}
+
+function exportPlatformSnapshot() {
+  const exportPayload = {
+    system: 'Universal Pest Control Platform',
+    exportedAt: new Date().toISOString(),
+    status: 'HEALTHY',
+    environment: 'PRODUCTION_READY',
+    modules: [
+      'Core Operations CRM & Kanban',
+      'Attribution & Multi-Touch Persistence',
+      'AI Creative Studio (Gemini 1.5 Flash)',
+      'Meta Marketing & Lead Ads Graph API',
+      'WhatsApp Business Cloud API',
+      'Production Security Headers & SEO Shields'
+    ]
+  };
+  const blob = new Blob([JSON.stringify(exportPayload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `upc-platform-snapshot-${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+window.checkPlatformHealthStatus = checkPlatformHealthStatus;
+window.exportPlatformSnapshot = exportPlatformSnapshot;
 

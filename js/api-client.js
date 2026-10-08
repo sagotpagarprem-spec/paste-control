@@ -527,6 +527,178 @@ class UPCApiClient {
     }
   };
 
+  // Meta (Facebook & Instagram) Lead Ads API (Phase 7)
+  meta = {
+    getConnection: async () => {
+      return await this.request('/meta/connection', { method: 'GET' });
+    },
+
+    updateConnection: async (data) => {
+      return await this.request('/meta/connection', { method: 'POST', body: data });
+    },
+
+    testConnection: async () => {
+      return await this.request('/meta/test-connection', { method: 'POST' });
+    },
+
+    getCampaigns: async () => {
+      return await this.request('/meta/campaigns', { method: 'GET' });
+    },
+
+    getEvents: async (params = {}) => {
+      const q = new URLSearchParams(params).toString();
+      return await this.request(`/meta/events${q ? `?${q}` : ''}`, { method: 'GET' });
+    },
+
+    retryEvent: async (id) => {
+      return await this.request(`/meta/events/${id}/retry`, { method: 'POST' });
+    },
+
+    simulateLead: async (data) => {
+      return await this.request('/meta/simulate-lead', { method: 'POST', body: data });
+    }
+  };
+
+  // Meta Campaign Management API (Phase 8)
+  campaigns = {
+    getAll: async (params = {}) => {
+      const q = new URLSearchParams(params).toString();
+      return await this.request(`/campaigns${q ? `?${q}` : ''}`, { method: 'GET' });
+    },
+
+    getById: async (id) => {
+      return await this.request(`/campaigns/${id}`, { method: 'GET' });
+    },
+
+    create: async (data) => {
+      return await this.request('/campaigns', { method: 'POST', body: data });
+    },
+
+    update: async (id, data) => {
+      return await this.request(`/campaigns/${id}`, { method: 'PUT', body: data });
+    },
+
+    updateStatus: async (id, status) => {
+      return await this.request(`/campaigns/${id}/status`, { method: 'PATCH', body: { status } });
+    },
+
+    syncMetrics: async (id) => {
+      return await this.request(`/campaigns/${id}/sync`, { method: 'POST' });
+    },
+
+    getPerformance: async (id) => {
+      return await this.request(`/campaigns/${id}/performance`, { method: 'GET' });
+    },
+
+    delete: async (id) => {
+      return await this.request(`/campaigns/${id}`, { method: 'DELETE' });
+    },
+
+    // Ad Sets
+    getAdSets: async (params = {}) => {
+      const q = new URLSearchParams(params).toString();
+      return await this.request(`/campaigns/adsets/all${q ? `?${q}` : ''}`, { method: 'GET' });
+    },
+
+    getAdSetById: async (id) => {
+      return await this.request(`/campaigns/adsets/${id}`, { method: 'GET' });
+    },
+
+    createAdSet: async (data) => {
+      return await this.request('/campaigns/adsets', { method: 'POST', body: data });
+    },
+
+    updateAdSet: async (id, data) => {
+      return await this.request(`/campaigns/adsets/${id}`, { method: 'PUT', body: data });
+    },
+
+    updateAdSetStatus: async (id, status) => {
+      return await this.request(`/campaigns/adsets/${id}/status`, { method: 'PATCH', body: { status } });
+    },
+
+    deleteAdSet: async (id) => {
+      return await this.request(`/campaigns/adsets/${id}`, { method: 'DELETE' });
+    },
+
+    // Ads
+    getAds: async (params = {}) => {
+      const q = new URLSearchParams(params).toString();
+      return await this.request(`/campaigns/ads/all${q ? `?${q}` : ''}`, { method: 'GET' });
+    },
+
+    getAdById: async (id) => {
+      return await this.request(`/campaigns/ads/${id}`, { method: 'GET' });
+    },
+
+    createAd: async (data) => {
+      return await this.request('/campaigns/ads', { method: 'POST', body: data });
+    },
+
+    updateAd: async (id, data) => {
+      return await this.request(`/campaigns/ads/${id}`, { method: 'PUT', body: data });
+    },
+
+    updateAdStatus: async (id, status) => {
+      return await this.request(`/campaigns/ads/${id}/status`, { method: 'PATCH', body: { status } });
+    },
+
+    deleteAd: async (id) => {
+      return await this.request(`/campaigns/ads/${id}`, { method: 'DELETE' });
+    },
+
+    // Creatives (Connected to Creative Studio)
+    getCreatives: async (params = {}) => {
+      const q = new URLSearchParams(params).toString();
+      return await this.request(`/campaigns/creatives/all${q ? `?${q}` : ''}`, { method: 'GET' });
+    },
+
+    getCreativeById: async (id) => {
+      return await this.request(`/campaigns/creatives/${id}`, { method: 'GET' });
+    },
+
+    createCreative: async (data) => {
+      return await this.request('/campaigns/creatives', { method: 'POST', body: data });
+    },
+
+    updateCreative: async (id, data) => {
+      return await this.request(`/campaigns/creatives/${id}`, { method: 'PUT', body: data });
+    },
+
+    deleteCreative: async (id) => {
+      return await this.request(`/campaigns/creatives/${id}`, { method: 'DELETE' });
+    }
+  };
+
+  // AI-Assisted Creative Studio API (Phase 9)
+  creatives = {
+    generate: async (data) => {
+      return await this.request('/creatives/ai-generate', { method: 'POST', body: data });
+    },
+
+    save: async (data) => {
+      return await this.request('/creatives/ai-save', { method: 'POST', body: data });
+    },
+
+    list: async () => {
+      return await this.request('/creatives/ai-generations', { method: 'GET' });
+    },
+
+    approve: async (id) => {
+      return await this.request(`/creatives/ai-approve/${id}`, { method: 'POST' });
+    }
+  };
+
+  // Production Marketing Analytics API (Phase 10)
+  analytics = {
+    getOverview: async () => {
+      return await this.request('/analytics/overview', { method: 'GET' });
+    },
+
+    track: async (data) => {
+      return await this.request('/analytics/track', { method: 'POST', body: data });
+    }
+  };
+
   // Health API
   health = {
     check: async () => {

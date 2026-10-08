@@ -76,7 +76,10 @@ class BookingService {
         bookingCode: booking.bookingCode,
         customerName: booking.customerName,
         service: booking.serviceName,
-        scheduledDate: booking.scheduledDate,
+        scheduledDate: booking.scheduledDate
+      }
+    });
+
     // 6. Phase 6 WhatsApp Business Automation: Send approved booking confirmation template
     const bookingRecipientPhone = booking.phone || booking.customerPhone || phone;
     if (bookingRecipientPhone) {

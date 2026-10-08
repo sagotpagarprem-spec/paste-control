@@ -69,6 +69,10 @@ async function runMigrationAndSeed() {
       { name: 'technicians:manage', module: 'technicians', description: 'Assign and manage technicians' },
       { name: 'cms:read', module: 'cms', description: 'View CMS content' },
       { name: 'cms:manage', module: 'cms', description: 'Create and update CMS content' },
+      { name: 'meta:read', module: 'meta', description: 'View Meta connections and lead ads' },
+      { name: 'meta:manage', module: 'meta', description: 'Manage Meta connection and ads' },
+      { name: 'whatsapp:read', module: 'whatsapp', description: 'View WhatsApp chats and templates' },
+      { name: 'whatsapp:manage', module: 'whatsapp', description: 'Send templates and manage WhatsApp' },
       { name: 'users:manage', module: 'users', description: 'Manage admin and staff users' },
       { name: 'settings:manage', module: 'settings', description: 'Update platform settings' },
       { name: 'audit:read', module: 'audit', description: 'View audit logs' }
@@ -109,6 +113,13 @@ async function runMigrationAndSeed() {
       { name: 'gclid', def: 'VARCHAR(255) NULL' },
       { name: 'landing_page', def: 'VARCHAR(500) NULL' },
       { name: 'referrer', def: 'VARCHAR(500) NULL' },
+      { name: 'platform', def: 'VARCHAR(50) NULL' },
+      { name: 'campaign_id', def: 'VARCHAR(100) NULL' },
+      { name: 'adset_name', def: 'VARCHAR(100) NULL' },
+      { name: 'adset_id', def: 'VARCHAR(100) NULL' },
+      { name: 'ad_id', def: 'VARCHAR(100) NULL' },
+      { name: 'leadgen_id', def: 'VARCHAR(100) NULL' },
+      { name: 'raw_meta_payload', def: 'JSON NULL' },
       { name: 'is_duplicate', def: 'BOOLEAN NOT NULL DEFAULT FALSE' },
       { name: 'duplicate_count', def: 'INT NOT NULL DEFAULT 0' },
       { name: 'duplicate_of_id', def: 'INT NULL' }
@@ -307,9 +318,17 @@ async function runMigrationAndSeed() {
         \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         \`updated_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         INDEX \`idx_areas_city\` (\`city\`),
-        INDEX \`idx_areas_status\` (\`status\`)
+        INDEX `idx_areas_status` (`status`)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
+
+    // Ensure Phase 8 Meta Campaign Management tables and columns
+    try {
+      await conn.query(`ALTER TABLE meta_campaigns MODIFY COLUMN status VARCHAR(50) NOT NULL DEFAULT 'DRAFT'`);
+      await conn.query(`ALTER TABLE meta_ad_sets MODIFY COLUMN status VARCHAR(50) NOT NULL DEFAULT 'DRAFT'`);
+      await conn.query(`ALTER TABLE meta_creatives MODIFY COLUMN status VARCHAR(50) NOT NULL DEFAULT 'DRAFT'`);
+      await conn.query(`ALTER TABLE meta_ads MODIFY COLUMN status VARCHAR(50) NOT NULL DEFAULT 'DRAFT'`);
+    } catch (e) {}
 
     // Step 5: Seed Default Admin & Sales Staff Users
     const staffMembers = [
@@ -1611,6 +1630,210 @@ Draft article detailing preventive measures for residential housing societies du
         'upc_meta_webhook_verify_token_2026'
       ]);
       logger.info('Seeded default Meta ad account configuration.');
+    }
+
+    // Step 20: Phase 8, 9, 10 Meta Campaigns, AI Creative Studio & Analytics Migrations
+    logger.info('Checking Phase 8-10 tables (Meta Campaigns, AI Creatives, Analytics)...');
+
+    // 20a. Permissions
+    const phase8to10Perms = [
+      { name: 'campaigns:read', module: 'campaigns', description: 'View Meta ad campaigns, ad sets, ads, and performance' },
+      { name: 'campaigns:manage', module: 'campaigns', description: 'Create, edit, review, and publish campaigns and ad sets' },
+      { name: 'creatives:generate', module: 'creatives', description: 'Generate AI creative copy, concepts, and scripts' },
+      { name: 'analytics:read', module: 'analytics', description: 'View website traffic, conversion funnels, and attribution reports' }
+    ];
+
+    for (const p of phase8to10Perms) {
+      await conn.query(
+        `INSERT INTO permissions (name, module, description) VALUES (?, ?, ?)
+         ON DUPLICATE KEY UPDATE description = VALUES(description)`,
+        [p.name, p.module, p.description]
+      );
+    }
+
+    if (adminRoleId) {
+      const [allNewPerms] = await conn.query(`SELECT id FROM permissions WHERE module IN ('campaigns', 'creatives', 'analytics')`);
+      for (const perm of allNewPerms) {
+        await conn.query(
+          `INSERT IGNORE INTO role_permissions (role_id, permission_id) VALUES (?, ?)`,
+          [adminRoleId, perm.id]
+        );
+      }
+    }
+
+    // 20b. Ensure meta_campaigns table
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS \`meta_campaigns\` (
+        \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+        \`campaign_id\` VARCHAR(100) NULL UNIQUE,
+        \`name\` VARCHAR(255) NOT NULL,
+        \`objective\` VARCHAR(50) NOT NULL DEFAULT 'OUTCOME_LEADS',
+        \`status\` ENUM('DRAFT', 'REVIEW', 'READY', 'PUBLISHED', 'ACTIVE', 'PAUSED', 'COMPLETED', 'ARCHIVED') NOT NULL DEFAULT 'DRAFT',
+        \`daily_budget\` DECIMAL(12, 2) NULL,
+        \`lifetime_budget\` DECIMAL(12, 2) NULL,
+        \`start_time\` TIMESTAMP NULL DEFAULT NULL,
+        \`end_time\` TIMESTAMP NULL DEFAULT NULL,
+        \`location\` VARCHAR(255) DEFAULT 'Pune, Maharashtra',
+        \`target_audience\` JSON NULL,
+        \`spend\` DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
+        \`impressions\` INT NOT NULL DEFAULT 0,
+        \`clicks\` INT NOT NULL DEFAULT 0,
+        \`leads\` INT NOT NULL DEFAULT 0,
+        \`cpl\` DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+        \`conversions\` INT NOT NULL DEFAULT 0,
+        \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        \`updated_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX \`idx_mc_status\` (\`status\`),
+        INDEX \`idx_mc_objective\` (\`objective\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    // 20c. Ensure meta_ad_sets table
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS \`meta_ad_sets\` (
+        \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+        \`campaign_id\` INT NOT NULL,
+        \`adset_id\` VARCHAR(100) NULL UNIQUE,
+        \`name\` VARCHAR(255) NOT NULL,
+        \`status\` ENUM('DRAFT', 'ACTIVE', 'PAUSED', 'ARCHIVED') NOT NULL DEFAULT 'DRAFT',
+        \`billing_event\` VARCHAR(50) DEFAULT 'IMPRESSIONS',
+        \`optimization_goal\` VARCHAR(50) DEFAULT 'LEAD_GENERATION',
+        \`targeting\` JSON NULL,
+        \`budget\` DECIMAL(12, 2) NULL,
+        \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        \`updated_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        CONSTRAINT \`fk_mas_campaign\` FOREIGN KEY (\`campaign_id\`) REFERENCES \`meta_campaigns\` (\`id\`) ON DELETE CASCADE,
+        INDEX \`idx_mas_status\` (\`status\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    // 20d. Ensure meta_creatives table
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS \`meta_creatives\` (
+        \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+        \`creative_id\` VARCHAR(100) NULL UNIQUE,
+        \`name\` VARCHAR(255) NOT NULL,
+        \`image_url\` VARCHAR(500) NULL,
+        \`video_url\` VARCHAR(500) NULL,
+        \`headline\` VARCHAR(255) NOT NULL,
+        \`primary_text\` TEXT NOT NULL,
+        \`description\` TEXT NULL,
+        \`cta\` VARCHAR(50) NOT NULL DEFAULT 'GET_QUOTE',
+        \`destination_url\` VARCHAR(500) NULL,
+        \`instagram_story_spec\` JSON NULL,
+        \`ai_generated\` BOOLEAN NOT NULL DEFAULT FALSE,
+        \`status\` ENUM('DRAFT', 'REVIEW', 'APPROVED', 'PUBLISHED') NOT NULL DEFAULT 'DRAFT',
+        \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        \`updated_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX \`idx_mcr_status\` (\`status\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    // 20e. Ensure meta_ads table
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS \`meta_ads\` (
+        \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+        \`adset_id\` INT NOT NULL,
+        \`ad_id\` VARCHAR(100) NULL UNIQUE,
+        \`name\` VARCHAR(255) NOT NULL,
+        \`creative_id\` INT NULL,
+        \`status\` ENUM('DRAFT', 'ACTIVE', 'PAUSED', 'ARCHIVED') NOT NULL DEFAULT 'DRAFT',
+        \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        \`updated_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        CONSTRAINT \`fk_ma_adset\` FOREIGN KEY (\`adset_id\` ) REFERENCES \`meta_ad_sets\` (\`id\`) ON DELETE CASCADE,
+        CONSTRAINT \`fk_ma_creative\` FOREIGN KEY (\`creative_id\`) REFERENCES \`meta_creatives\` (\`id\`) ON DELETE SET NULL,
+        INDEX \`idx_ma_status\` (\`status\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    // 20f. Ensure ai_creative_generations table
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS \`ai_creative_generations\` (
+        \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+        \`service\` VARCHAR(100) NOT NULL,
+        \`location\` VARCHAR(100) NOT NULL DEFAULT 'Pune',
+        \`audience\` VARCHAR(100) NOT NULL DEFAULT 'Homeowners & Societies',
+        \`offer\` VARCHAR(150) NULL DEFAULT 'Flat ₹500 OFF + Free Inspection',
+        \`tone\` VARCHAR(50) NOT NULL DEFAULT 'Urgent & Professional',
+        \`platform\` VARCHAR(50) NOT NULL DEFAULT 'ALL',
+        \`format\` VARCHAR(50) NOT NULL DEFAULT 'Single Image / Reel',
+        \`headline\` VARCHAR(255) NOT NULL,
+        \`primary_text\` TEXT NOT NULL,
+        \`description\` TEXT NULL,
+        \`cta\` VARCHAR(50) NOT NULL DEFAULT 'Book Free Inspection',
+        \`instagram_caption\` TEXT NULL,
+        \`facebook_copy\` TEXT NULL,
+        \`whatsapp_copy\` TEXT NULL,
+        \`creative_concept\` TEXT NULL,
+        \`reel_script\` TEXT NULL,
+        \`status\` ENUM('GENERATED', 'SAVED', 'APPROVED', 'PUBLISHED') NOT NULL DEFAULT 'GENERATED',
+        \`created_by\` INT NULL,
+        \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        \`updated_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX \`idx_acg_service\` (\`service\`),
+        INDEX \`idx_acg_status\` (\`status\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    // 20g. Ensure web_pageviews table
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS \`web_pageviews\` (
+        \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+        \`session_id\` VARCHAR(64) NOT NULL,
+        \`page_url\` VARCHAR(500) NOT NULL,
+        \`path\` VARCHAR(255) NOT NULL,
+        \`referrer\` VARCHAR(500) NULL,
+        \`source\` VARCHAR(100) NULL,
+        \`medium\` VARCHAR(100) NULL,
+        \`campaign\` VARCHAR(150) NULL,
+        \`content\` VARCHAR(150) NULL,
+        \`term\` VARCHAR(150) NULL,
+        \`gclid\` VARCHAR(255) NULL,
+        \`fbclid\` VARCHAR(255) NULL,
+        \`user_agent\` VARCHAR(255) NULL,
+        \`ip_address\` VARCHAR(45) NULL,
+        \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX \`idx_wp_session\` (\`session_id\`),
+        INDEX \`idx_wp_source\` (\`source\`),
+        INDEX \`idx_wp_campaign\` (\`campaign\`),
+        INDEX \`idx_wp_created_at\` (\`created_at\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    // 20h. Seed initial Meta campaigns & creatives if table is empty
+    const [existingCmp] = await conn.query(`SELECT id FROM meta_campaigns LIMIT 1`);
+    if (existingCmp.length === 0) {
+      const [resCmp1] = await conn.query(`
+        INSERT INTO meta_campaigns (campaign_id, name, objective, status, daily_budget, location, spend, impressions, clicks, leads, cpl, conversions)
+        VALUES ('2384758921031', 'Termite Monsoon Shield 2026', 'OUTCOME_LEADS', 'ACTIVE', 1500.00, 'Pune, Pimpri-Chinchwad', 18420.00, 48200, 1940, 68, 270.88, 19)
+      `);
+      const [resCmp2] = await conn.query(`
+        INSERT INTO meta_campaigns (campaign_id, name, objective, status, daily_budget, location, spend, impressions, clicks, leads, cpl, conversions)
+        VALUES ('2384758921032', 'Cockroach Odorless Gel Promo', 'OUTCOME_LEADS', 'ACTIVE', 850.00, 'Pune Central, Baner, Kothrud', 12150.00, 39100, 2180, 74, 164.18, 28)
+      `);
+      const [resCmp3] = await conn.query(`
+        INSERT INTO meta_campaigns (campaign_id, name, objective, status, daily_budget, location, spend, impressions, clicks, leads, cpl, conversions)
+        VALUES ('2384758921033', 'Commercial Kitchen HACCP FSSAI', 'OUTCOME_LEADS', 'ACTIVE', 1200.00, 'Pune & Hinjawadi IT Parks', 14900.00, 18200, 890, 22, 677.27, 8)
+      `);
+
+      // Seed creatives
+      await conn.query(`
+        INSERT INTO meta_creatives (creative_id, name, headline, primary_text, description, cta, image_url, ai_generated, status)
+        VALUES (
+          'cr_901', 'Termite Monsoon Shield Visual', '🛡️ Termite Radar Scan ₹0 + 1-Year Warranty',
+          'Detect hidden wood termites before structural damage occurs. Eco-friendly, government approved radar inspection across Pune.',
+          'Hassle-free 100% odorless treatment certified by ISO 9001.', 'GET_QUOTE',
+          'assets/hero-banner.jpg', TRUE, 'APPROVED'
+        ),
+        (
+          'cr_902', 'Herbal Cockroach Gel Reel', '🪳 Stop Cockroaches In 24 Hours — No Odor, No Emptying Kitchen',
+          'Advanced German gel baiting technology safe for children, seniors, and domestic pets. 1-Year service guarantee.',
+          '100% money back satisfaction warranty.', 'BOOK_NOW',
+          'assets/service-cockroach.jpg', TRUE, 'APPROVED'
+        )
+      `);
+
+      logger.info('Seeded default Meta campaigns and studio creatives.');
     }
 
     logger.info('Database migration and seeding completed successfully!');

@@ -89,6 +89,26 @@
     }
 
     window.upcAttribution = attributionData;
+
+    // Send pageview to analytics engine asynchronously
+    try {
+      fetch('/api/analytics/track', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pageUrl: window.location.href,
+          path: window.location.pathname,
+          referrer: document.referrer || null,
+          source: attributionData.source,
+          medium: attributionData.utmMedium,
+          campaign: attributionData.utmCampaign,
+          content: attributionData.utmContent,
+          term: attributionData.utmTerm,
+          gclid: attributionData.gclid,
+          fbclid: attributionData.fbclid
+        })
+      }).catch(function() {});
+    } catch (e) {}
   }
 
   // Expose Global Helper

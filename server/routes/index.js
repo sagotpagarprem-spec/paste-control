@@ -13,7 +13,10 @@ const userRoutes = require('./userRoutes');
 const followupRoutes = require('./followupRoutes');
 const cmsRoutes = require('./cmsRoutes');
 const whatsappRoutes = require('./whatsappRoutes');
-const { metaRouter, campaignsRouter, analyticsRouter } = require('./futureRoutes');
+const metaRoutes = require('./metaRoutes');
+const campaignRoutes = require('./campaignRoutes');
+const creativeRoutes = require('./creativeRoutes');
+const analyticsRoutes = require('./analyticsRoutes');
 
 const { apiSuccess } = require('../utils/response');
 const { isConnected, dbConfig } = require('../config/database');
@@ -48,9 +51,12 @@ router.use('/users', userRoutes);
 // Mount WhatsApp Business Cloud API & Webhooks
 router.use('/whatsapp', whatsappRoutes);
 
-// Mount Future Integration Stubs
-router.use('/meta', metaRouter);
-router.use('/campaigns', campaignsRouter);
-router.use('/analytics', analyticsRouter);
+// Mount Meta (Facebook & Instagram) Lead Ads & Webhooks
+router.use('/meta', metaRoutes);
+
+// Mount Campaigns (Phase 8), AI Creatives (Phase 9), Analytics (Phase 10)
+router.use('/campaigns', campaignRoutes);
+router.use('/creatives', creativeRoutes);
+router.use('/analytics', analyticsRoutes);
 
 module.exports = router;

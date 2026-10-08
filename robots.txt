@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin.html
+Disallow: /admin
+Disallow: /login.html
+Disallow: /login
+Disallow: /technician.html
+
+Sitemap: https://universalpestcontrol.in/sitemap.xml

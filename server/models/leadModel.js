@@ -33,7 +33,9 @@ function formatLead(lead, notes = [], activities = [], bookings = []) {
     serviceName: lead.service_name,
     property: lead.property_type,
     propertyType: lead.property_type,
+    location: lead.area ? `${lead.area}, ${lead.city || 'Pune'}` : (lead.city || 'Pune'),
     adName: lead.ad_name,
+    ad: lead.ad_name,
     campaignId: lead.campaign_id,
     adsetName: lead.adset_name,
     adSet: lead.adset_name,
@@ -124,7 +126,8 @@ const leadModel = {
     const selectSql = `
       SELECT l.id, l.lead_code, l.customer_id, l.name, l.phone, l.email,
              l.service_name, l.property_type, l.city, l.area, l.address, l.message,
-             l.source, l.campaign, l.ad_name, l.utm_source, l.utm_medium,
+             l.source, l.platform, l.campaign, l.campaign_id, l.adset_name, l.adset_id,
+             l.ad_name, l.ad_id, l.leadgen_id, l.utm_source, l.utm_medium,
              l.utm_campaign, l.utm_content, l.utm_term, l.fbclid, l.gclid,
              l.landing_page, l.referrer, l.status, l.urgency, l.estimated_value,
              l.assigned_to, l.follow_up_date, l.is_duplicate, l.duplicate_count,
@@ -251,13 +254,15 @@ const leadModel = {
         source, platform, campaign, campaign_id, adset_name, adset_id, ad_name, ad_id, leadgen_id, raw_meta_payload,
         utm_source, utm_medium, utm_campaign, utm_content, utm_term, fbclid, gclid,
         landing_page, referrer, status, urgency, estimated_value,
-        assigned_to, follow_up_date, is_duplicate, duplicate_count, duplicate_of_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        assigned_to, follow_up_date, is_duplicate, duplicate_count, duplicate_of_id, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const rawPayloadStr = data.raw_meta_payload
       ? (typeof data.raw_meta_payload === 'string' ? data.raw_meta_payload : JSON.stringify(data.raw_meta_payload))
       : null;
+
+    const createdAtVal = data.created_at || data.createdAt ? new Date(data.created_at || data.createdAt) : new Date();
 
     const params = [
       leadCode,
@@ -297,7 +302,8 @@ const leadModel = {
       data.follow_up_date || data.followUpDate || null,
       Boolean(data.is_duplicate || data.isDuplicate),
       Number(data.duplicate_count || data.duplicateCount || 0),
-      data.duplicate_of_id || data.duplicateOfId || null
+      data.duplicate_of_id || data.duplicateOfId || null,
+      createdAtVal
     ];
 
     const result = await query(sql, params);

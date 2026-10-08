@@ -1,6 +1,9 @@
 // Universal Pest Control — Centralized Error Handling Middleware
+const path = require('path');
 const logger = require('../utils/logger');
 const { apiError } = require('../utils/response');
+
+const PUBLIC_DIR = path.join(__dirname, '../..');
 
 // 404 Route Not Found Handler (for /api routes)
 function notFoundHandler(req, res, next) {
@@ -43,7 +46,12 @@ function errorHandler(err, req, res, next) {
     return apiError(res, 'Security token expired. Please log in again.', 401);
   }
 
-  // 4. Default 500 Internal Server Error
+  // 4. If request is from a browser navigation (non-API), render 500.html
+  if (!req.path.startsWith('/api') && req.accepts('html')) {
+    return res.status(500).sendFile(path.join(PUBLIC_DIR, '500.html'));
+  }
+
+  // 5. Default 500 Internal Server Error for API
   const isDev = process.env.NODE_ENV !== 'production';
   const responseMessage = isDev ? err.message : 'Internal Server Error';
 

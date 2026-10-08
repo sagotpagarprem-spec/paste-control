@@ -65,14 +65,18 @@ function formatEvent(row) {
     adId: row.ad_id,
     platform: row.platform,
     status: row.status,
+    processing_status: row.status,
     leadId: row.lead_id,
+    crm_lead_id: row.lead_id,
     leadCode: row.lead_code || null,
+    crm_lead_code: row.lead_code || null,
     leadName: row.lead_name || null,
     leadPhone: row.lead_phone || null,
     payload: parseJson(row.payload, {}),
     errorMessage: row.error_message,
     retryCount: row.retry_count,
     createdAt: row.created_at,
+    received_at: row.created_at,
     updatedAt: row.updated_at
   };
 }

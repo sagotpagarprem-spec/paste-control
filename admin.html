@@ -106,6 +106,13 @@
         </li>
       </ul>
 
+      <div class="admin-nav-group">Administration</div>
+      <ul class="admin-nav-menu">
+        <li class="admin-nav-item" data-admin-view="settings">
+          <a>⚙️ Platform Settings</a>
+        </li>
+      </ul>
+
       <div class="admin-sidebar-footer">
         <a href="index.html" class="btn btn-white btn-sm" style="font-size:0.8rem; width:100%; justify-content:center;">
           🌐 Back to Public Website
@@ -623,8 +630,30 @@
                   <label class="form-label">Brand Tone</label>
                   <select id="aiStudioTone" class="form-control">
                     <option value="Professional & Scientific">Professional & Scientific</option>
-                    <option value="Urgent Problem Solver">Urgent Problem Solver</option>
+                    <option value="Urgent Problem Solver" selected>Urgent Problem Solver</option>
                     <option value="Family & Pet Safe">Family & Pet Safe</option>
+                    <option value="FSSAI Commercial Compliance">FSSAI Commercial Compliance</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+                <div class="form-group">
+                  <label class="form-label">Target Audience</label>
+                  <select id="aiStudioAudience" class="form-control">
+                    <option value="Homeowners & Society Residents" selected>Homeowners & Society Residents</option>
+                    <option value="Villa & Bungalow Owners">Villa & Bungalow Owners</option>
+                    <option value="Commercial Kitchens & F&B">Commercial Kitchens & F&B</option>
+                    <option value="Pet Owners & Families with Toddlers">Pet Owners & Families with Toddlers</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Target Platform & Format</label>
+                  <select id="aiStudioPlatform" class="form-control">
+                    <option value="ALL (Meta, IG, WhatsApp, FB)" selected>Multi-Channel (Meta, IG, WhatsApp)</option>
+                    <option value="Instagram Reels & Stories">Instagram Reels & Stories (9:16)</option>
+                    <option value="Facebook Lead Ads">Facebook Lead Ads (1:1 / 4:5)</option>
+                    <option value="WhatsApp Direct Broadcast">WhatsApp Direct Broadcast</option>
                   </select>
                 </div>
               </div>
@@ -634,12 +663,18 @@
                 <input type="text" id="aiStudioOffer" class="form-control" value="Free Inspection + 20% Off Monsoon AMC">
               </div>
 
-              <button id="btnAiGenerateCreative" class="btn btn-accent btn-block" style="margin-bottom:1.75rem;">
+              <!-- Real AI Error / Alert State Banner -->
+              <div id="aiStudioAlertBox" style="display:none; padding:0.75rem 1rem; border-radius:8px; font-size:0.825rem; margin-bottom:1rem;"></div>
+
+              <button id="btnAiGenerateCreative" class="btn btn-accent btn-block" style="margin-bottom:1.75rem;" onclick="generateAiCreativeLive()">
                 ✨ Generate High-Converting Creative with AI
               </button>
 
               <div style="border-top:1px solid #E2E8F0; padding-top:1.5rem;">
-                <h4 style="font-size:1rem; margin-bottom:1rem;">Generated Copy (Live Editable)</h4>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                  <h4 style="font-size:1rem; margin:0;">Generated Multi-Asset Kit (Live Editable)</h4>
+                  <span id="aiActiveGenBadge" class="badge badge-neutral" style="font-size:0.7rem;">Not Saved</span>
+                </div>
                 
                 <div class="form-group">
                   <label class="form-label">Primary Headline</label>
@@ -651,9 +686,45 @@
                   <textarea id="studioPrimaryTextInput" class="form-control" rows="3">Non-destructive Ultrasonic Radar detection finds underground colonies before damage spreads. 5-Year Government-approved warranty.</textarea>
                 </div>
 
-                <div style="display:flex; gap:0.75rem; margin-top:1.5rem;">
-                  <button class="btn btn-primary" onclick="showToast('Ad draft saved to Meta Campaign drafts!', 'success')">Save Draft</button>
-                  <button class="btn btn-outline" onclick="showToast('Pushed to Meta Ads Manager sandbox', 'info')">Publish to Meta Ads</button>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+                  <div class="form-group">
+                    <label class="form-label">Ad Description</label>
+                    <input type="text" id="studioDescriptionInput" class="form-control" value="Pune's #1 Rated Termite Defense. Instant booking.">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">CTA Text</label>
+                    <input type="text" id="studioCtaInput" class="form-control" value="Book Radar Termite Check">
+                  </div>
+                </div>
+
+                <div class="form-group" style="margin-top:0.75rem;">
+                  <label class="form-label">Instagram Caption & Hashtags</label>
+                  <textarea id="studioInstagramCaptionInput" class="form-control" rows="2" placeholder="Instagram caption..."></textarea>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">Facebook Ad Copy</label>
+                  <textarea id="studioFacebookCopyInput" class="form-control" rows="2" placeholder="Facebook copy..."></textarea>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">WhatsApp Campaign Copy</label>
+                  <textarea id="studioWhatsappCopyInput" class="form-control" rows="2" placeholder="WhatsApp template message..."></textarea>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">Creative Concept & Visual Hook</label>
+                  <textarea id="studioConceptInput" class="form-control" rows="2" placeholder="Creative concept directions..."></textarea>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">Short Video / Reel Script (30s)</label>
+                  <textarea id="studioReelScriptInput" class="form-control" rows="3" placeholder="Reel script hook, body, CTA..."></textarea>
+                </div>
+
+                <div style="display:flex; gap:0.75rem; margin-top:1.5rem; flex-wrap:wrap;">
+                  <button id="btnSaveAiDraft" class="btn btn-primary" onclick="saveAiCreativeDraft()">💾 Save Draft</button>
+                  <button id="btnApproveAiCreative" class="btn btn-accent" onclick="approveAiCreativeLive()">🚀 Approve & Sync to Meta</button>
                 </div>
               </div>
             </div>
@@ -700,69 +771,336 @@
           </div>
         </section>
 
-        <!-- ==================== SECTION 6: META ADS MANAGER ==================== -->
+        <!-- ==================== SECTION 6: META ADS MANAGER (PHASE 8) ==================== -->
         <section id="admin-sec-meta-ads" class="admin-view-section" style="display:none;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+          <!-- Top Header -->
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
             <div>
-              <h2 style="font-size:1.75rem; margin-bottom:0.25rem;">Meta Ads & Lead Ads Tracking</h2>
-              <p style="color:#64748B; font-size:0.875rem; margin:0;">Real-time API tracking for Facebook & Instagram Lead Generation campaigns.</p>
+              <h2 style="font-size:1.75rem; margin-bottom:0.25rem;">Meta Ads & Campaign Management</h2>
+              <p style="color:#64748B; font-size:0.875rem; margin:0;">Official Meta Marketing API integration for Universal Pest Control. Campaigns, Ad Sets, Ads & Creatives.</p>
             </div>
-            <button class="btn btn-accent btn-sm" onclick="switchAdminSection('creative-studio')">+ Create New Meta Campaign</button>
+            <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+              <span class="badge badge-success" id="metaConnectionStatusBadge">● Meta Connected</span>
+              <button class="btn btn-primary btn-sm" onclick="openCreateCampaignModal()">+ New Campaign</button>
+              <button class="btn btn-white btn-sm" onclick="openCreateAdSetModal()">+ New Ad Set</button>
+              <button class="btn btn-white btn-sm" onclick="openCreateAdModal()">+ New Ad</button>
+              <button class="btn btn-white btn-sm" onclick="openCreateCreativeModal()">+ New Creative</button>
+              <button class="btn btn-outline btn-sm" id="btnTestMetaConnection" onclick="testMetaConnection()">⚡ Test Connection</button>
+              <button class="btn btn-white btn-sm" id="btnOpenMetaConfigModal" onclick="openMetaConfigModal()">⚙️ Account Settings</button>
+              <button class="btn btn-accent btn-sm" id="btnOpenSimulateLeadModal" onclick="openSimulateLeadModal()">🧪 Simulate Lead Ad</button>
+            </div>
           </div>
 
-          <div class="crm-table-card">
-            <table class="crm-data-table">
-              <thead>
-                <tr>
-                  <th>Campaign Name</th>
-                  <th>Platform</th>
-                  <th>Status</th>
-                  <th>Budget</th>
-                  <th>Total Spend</th>
-                  <th>Leads Generated</th>
-                  <th>Cost per Lead (CPL)</th>
-                  <th>ROAS</th>
-                  <th>Toggle</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td><strong>Termite Monsoon Shield 2026</strong></td>
-                  <td>Instagram / Facebook</td>
-                  <td><span class="badge badge-success">Active</span></td>
-                  <td>₹45,000 / mo</td>
-                  <td>₹18,420</td>
-                  <td><strong>68 Leads</strong></td>
-                  <td><span style="color:#059669; font-weight:700;">₹270.88</span></td>
-                  <td><strong>5.2x</strong></td>
-                  <td><button class="btn btn-white btn-sm" onclick="showToast('Campaign paused', 'info')">Pause</button></td>
-                </tr>
-                <tr>
-                  <td><strong>Cockroach Odorless Gel Promo</strong></td>
-                  <td>Instagram Reels</td>
-                  <td><span class="badge badge-success">Active</span></td>
-                  <td>₹25,000 / mo</td>
-                  <td>₹12,150</td>
-                  <td><strong>74 Leads</strong></td>
-                  <td><span style="color:#059669; font-weight:700;">₹164.18</span></td>
-                  <td><strong>4.8x</strong></td>
-                  <td><button class="btn btn-white btn-sm" onclick="showToast('Campaign paused', 'info')">Pause</button></td>
-                </tr>
-                <tr>
-                  <td><strong>Commercial Kitchen HACCP FSSAI</strong></td>
-                  <td>Facebook Feed & B2B</td>
-                  <td><span class="badge badge-success">Active</span></td>
-                  <td>₹35,000 / mo</td>
-                  <td>₹14,900</td>
-                  <td><strong>22 Leads</strong></td>
-                  <td><span style="color:#B45309; font-weight:700;">₹677.27</span></td>
-                  <td><strong>7.1x</strong></td>
-                  <td><button class="btn btn-white btn-sm" onclick="showToast('Campaign paused', 'info')">Pause</button></td>
-                </tr>
-              </tbody>
-            </table>
+          <!-- 1. Connected Meta Business Profile Card -->
+          <div style="background:#fff; border:1px solid #E2E8F0; border-radius:var(--radius-lg); padding:1.25rem 1.5rem; margin-bottom:1.5rem; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; border-bottom:1px solid #F1F5F9; padding-bottom:0.75rem; flex-wrap:wrap; gap:0.75rem;">
+              <div style="display:flex; align-items:center; gap:0.75rem;">
+                <div style="width:36px; height:36px; border-radius:8px; background:#1877F2; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:1.1rem;">
+                  f
+                </div>
+                <div>
+                  <strong style="font-size:0.95rem; color:#0F172A;" id="metaAccountNameDisplay">Universal Pest Control — Meta Ads Portfolio</strong>
+                  <div style="font-size:0.75rem; color:#64748B;" id="metaPageNameDisplay">Facebook Page: Universal Pest Control Official</div>
+                </div>
+              </div>
+              <div style="text-align:right;">
+                <span class="badge badge-success" style="font-size:0.75rem;">Marketing API v20.0 Ready</span>
+                <div style="font-size:0.72rem; color:#94A3B8; margin-top:0.25rem;">Endpoint: <code>/api/campaigns</code></div>
+              </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:1rem; font-size:0.8rem;">
+              <div>
+                <span style="color:#64748B; display:block;">Ad Account ID</span>
+                <strong id="metaAdAccountIdDisplay" style="color:#1E293B; font-family:monospace;">act_83921049281</strong>
+              </div>
+              <div>
+                <span style="color:#64748B; display:block;">Facebook Page ID</span>
+                <strong id="metaPageIdDisplay" style="color:#1E293B; font-family:monospace;">109283746501928</strong>
+              </div>
+              <div>
+                <span style="color:#64748B; display:block;">Instagram Actor ID</span>
+                <strong id="metaIgActorIdDisplay" style="color:#1E293B; font-family:monospace;">17841405928193821</strong>
+              </div>
+              <div>
+                <span style="color:#64748B; display:block;">Token Security</span>
+                <strong style="color:#059669;">● Server-Side Only (Protected)</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Sub-Navigation Tabs -->
+          <div class="meta-subtabs-nav">
+            <button class="meta-subtab-btn active" id="metaSubtabBtnCampaigns" onclick="switchMetaSubtab('campaigns')">
+              📢 Campaigns
+            </button>
+            <button class="meta-subtab-btn" id="metaSubtabBtnAdSets" onclick="switchMetaSubtab('adsets')">
+              🎯 Ad Sets
+            </button>
+            <button class="meta-subtab-btn" id="metaSubtabBtnAds" onclick="switchMetaSubtab('ads')">
+              🖼️ Ads
+            </button>
+            <button class="meta-subtab-btn" id="metaSubtabBtnCreatives" onclick="switchMetaSubtab('creatives')">
+              🎨 Creatives (Studio)
+            </button>
+            <button class="meta-subtab-btn" id="metaSubtabBtnPerformance" onclick="switchMetaSubtab('performance')">
+              📊 Performance
+            </button>
+            <button class="meta-subtab-btn" id="metaSubtabBtnWebhooks" onclick="switchMetaSubtab('webhooks')">
+              ⚡ Webhook Stream
+            </button>
+          </div>
+
+          <!-- ==================== SUB-PANEL 1: CAMPAIGNS ==================== -->
+          <div id="metaTabCampaigns" class="meta-tab-panel active">
+            <div class="crm-table-card" style="margin-bottom:1.5rem;">
+              <div style="padding:1rem 1.25rem; border-bottom:1px solid #E2E8F0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">
+                <div style="display:flex; align-items:center; gap:0.75rem;">
+                  <strong style="font-size:0.95rem;">Meta Campaigns</strong>
+                  <select id="metaCampaignStatusFilter" class="form-control" style="font-size:0.8rem; padding:0.25rem 0.5rem; width:130px;" onchange="loadMetaCampaigns()">
+                    <option value="">All Statuses</option>
+                    <option value="DRAFT">Draft</option>
+                    <option value="REVIEW">Review</option>
+                    <option value="READY">Ready</option>
+                    <option value="PUBLISH">Publish</option>
+                    <option value="ACTIVE">Active</option>
+                    <option value="PAUSED">Paused</option>
+                    <option value="COMPLETED">Completed</option>
+                  </select>
+                </div>
+                <div style="display:flex; gap:0.5rem;">
+                  <button class="btn btn-primary btn-sm" onclick="openCreateCampaignModal()">+ Create Campaign</button>
+                  <button class="btn btn-outline btn-sm" onclick="loadMetaCampaigns()">🔄 Refresh</button>
+                </div>
+              </div>
+              <div style="overflow-x:auto;">
+                <table class="crm-data-table">
+                  <thead>
+                    <tr>
+                      <th>Campaign & Objective</th>
+                      <th>Schedule</th>
+                      <th>Budget</th>
+                      <th>Location & Target Audience</th>
+                      <th>Workflow Status</th>
+                      <th>Spend & Leads</th>
+                      <th>Lifecycle Workflow Action</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="metaCampaignsTableBody">
+                    <tr><td colspan="8" style="text-align:center; padding:1.5rem; color:#94A3B8;">Loading campaigns...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- ==================== SUB-PANEL 2: AD SETS ==================== -->
+          <div id="metaTabAdSets" class="meta-tab-panel">
+            <div class="crm-table-card" style="margin-bottom:1.5rem;">
+              <div style="padding:1rem 1.25rem; border-bottom:1px solid #E2E8F0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">
+                <div style="display:flex; align-items:center; gap:0.75rem;">
+                  <strong style="font-size:0.95rem;">Meta Ad Sets</strong>
+                  <select id="metaAdSetCampaignFilter" class="form-control" style="font-size:0.8rem; padding:0.25rem 0.5rem; width:180px;" onchange="loadMetaAdSets()">
+                    <option value="">All Campaigns</option>
+                  </select>
+                </div>
+                <div style="display:flex; gap:0.5rem;">
+                  <button class="btn btn-primary btn-sm" onclick="openCreateAdSetModal()">+ Create Ad Set</button>
+                  <button class="btn btn-outline btn-sm" onclick="loadMetaAdSets()">🔄 Refresh</button>
+                </div>
+              </div>
+              <div style="overflow-x:auto;">
+                <table class="crm-data-table">
+                  <thead>
+                    <tr>
+                      <th>Ad Set Name</th>
+                      <th>Campaign</th>
+                      <th>Optimization & Billing</th>
+                      <th>Daily Budget</th>
+                      <th>Targeting & Placements</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="metaAdSetsTableBody">
+                    <tr><td colspan="7" style="text-align:center; padding:1.5rem; color:#94A3B8;">Loading ad sets...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- ==================== SUB-PANEL 3: ADS ==================== -->
+          <div id="metaTabAds" class="meta-tab-panel">
+            <div class="crm-table-card" style="margin-bottom:1.5rem;">
+              <div style="padding:1rem 1.25rem; border-bottom:1px solid #E2E8F0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">
+                <div style="display:flex; align-items:center; gap:0.75rem;">
+                  <strong style="font-size:0.95rem;">Individual Ads</strong>
+                  <select id="metaAdsAdSetFilter" class="form-control" style="font-size:0.8rem; padding:0.25rem 0.5rem; width:180px;" onchange="loadMetaAds()">
+                    <option value="">All Ad Sets</option>
+                  </select>
+                </div>
+                <div style="display:flex; gap:0.5rem;">
+                  <button class="btn btn-primary btn-sm" onclick="openCreateAdModal()">+ Create Ad</button>
+                  <button class="btn btn-outline btn-sm" onclick="loadMetaAds()">🔄 Refresh</button>
+                </div>
+              </div>
+              <div style="overflow-x:auto;">
+                <table class="crm-data-table">
+                  <thead>
+                    <tr>
+                      <th>Ad Name</th>
+                      <th>Ad Set & Campaign</th>
+                      <th>Creative Spec</th>
+                      <th>Headline & Primary Text</th>
+                      <th>CTA</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="metaAdsTableBody">
+                    <tr><td colspan="7" style="text-align:center; padding:1.5rem; color:#94A3B8;">Loading ads...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- ==================== SUB-PANEL 4: CREATIVES (CONNECTED TO STUDIO) ==================== -->
+          <div id="metaTabCreatives" class="meta-tab-panel">
+            <!-- Studio Connection Banner -->
+            <div style="background:linear-gradient(135deg, #064E3B 0%, #022C22 100%); color:#fff; border-radius:var(--radius-lg); padding:1.5rem; margin-bottom:1.5rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+              <div>
+                <h3 style="color:#34D399; margin:0 0 0.35rem 0; font-size:1.15rem;">🎨 Connected Creative Studio</h3>
+                <p style="color:#CBD5E1; margin:0; font-size:0.85rem;">Creatives generated and approved in Creative Studio are automatically available here for Meta Ad assignment.</p>
+              </div>
+              <div style="display:flex; gap:0.75rem;">
+                <button class="btn btn-accent btn-sm" onclick="switchAdminView('creative-studio')">✨ Open Creative Studio</button>
+                <button class="btn btn-white btn-sm" onclick="openCreateCreativeModal()">+ Add Custom Creative</button>
+              </div>
+            </div>
+
+            <!-- Creatives Cards Grid -->
+            <div id="metaCreativesGrid" class="creative-card-grid">
+              <div style="grid-column: 1 / -1; text-align:center; padding:2rem; color:#94A3B8;">Loading creatives...</div>
+            </div>
+          </div>
+
+          <!-- ==================== SUB-PANEL 5: PERFORMANCE ==================== -->
+          <div id="metaTabPerformance" class="meta-tab-panel">
+            <div class="crm-table-card" style="padding:1.5rem; margin-bottom:1.5rem;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
+                <div style="display:flex; align-items:center; gap:0.75rem;">
+                  <label style="font-weight:700; font-size:0.9rem; color:#0F172A;">Select Campaign:</label>
+                  <select id="metaPerfCampaignSelect" class="form-control" style="width:260px;" onchange="loadSelectedCampaignPerformance()">
+                    <option value="">Select a Campaign...</option>
+                  </select>
+                </div>
+                <button class="btn btn-primary btn-sm" onclick="syncSelectedCampaignMetrics()">🔄 Synchronize Live Metrics</button>
+              </div>
+
+              <!-- Notice: Zero Fake Metrics Guarantee -->
+              <div id="metaPerfNoticeBanner" style="padding:0.75rem 1rem; border-radius:var(--radius-md); background:#EFF6FF; border:1px solid #BFDBFE; color:#1E40AF; font-size:0.825rem; margin-bottom:1.25rem;">
+                ℹ️ Synchronizing available live metrics from Meta Marketing API v20.0 insights. If API metrics are unavailable, zero fake data is displayed.
+              </div>
+
+              <!-- KPI Metrics Grid -->
+              <div class="perf-metrics-grid">
+                <div class="perf-metric-card">
+                  <div class="metric-label">Campaign Status</div>
+                  <div class="metric-val" id="perfDisplayStatus" style="font-size:1.15rem;">—</div>
+                  <div class="metric-sub" id="perfDisplayObjective">Objective: —</div>
+                </div>
+                <div class="perf-metric-card">
+                  <div class="metric-label">Total Spend</div>
+                  <div class="metric-val" id="perfDisplaySpend" style="color:#0F172A;">—</div>
+                  <div class="metric-sub" id="perfDisplaySpendStatus">Real Insights</div>
+                </div>
+                <div class="perf-metric-card">
+                  <div class="metric-label">Impressions</div>
+                  <div class="metric-val" id="perfDisplayImpressions">—</div>
+                  <div class="metric-sub">Ad Views</div>
+                </div>
+                <div class="perf-metric-card">
+                  <div class="metric-label">Clicks</div>
+                  <div class="metric-val" id="perfDisplayClicks">—</div>
+                  <div class="metric-sub" id="perfDisplayCtr">CTR: —</div>
+                </div>
+                <div class="perf-metric-card">
+                  <div class="metric-label">Leads Generated</div>
+                  <div class="metric-val" id="perfDisplayLeads" style="color:#059669;">—</div>
+                  <div class="metric-sub" id="perfDisplayCrmLeads">CRM Recorded: —</div>
+                </div>
+                <div class="perf-metric-card">
+                  <div class="metric-label">Cost per Lead (CPL)</div>
+                  <div class="metric-val" id="perfDisplayCpl">—</div>
+                  <div class="metric-sub">Real Cost</div>
+                </div>
+                <div class="perf-metric-card">
+                  <div class="metric-label">Conversions (Bookings)</div>
+                  <div class="metric-val" id="perfDisplayConversions" style="color:#2563EB;">—</div>
+                  <div class="metric-sub" id="perfDisplayConvRate">Conv Rate: —</div>
+                </div>
+              </div>
+
+              <!-- Attributed ROI & Funnel Card -->
+              <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:var(--radius-md); padding:1.25rem;">
+                <h4 style="margin:0 0 0.75rem 0; font-size:0.95rem; color:#0F172A;">📊 CRM Attributed Pipeline & ROAS</h4>
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; font-size:0.85rem;">
+                  <div>
+                    <span style="color:#64748B; display:block;">Attributed Pipeline Value</span>
+                    <strong id="perfDisplayPipeline" style="font-size:1.1rem; color:#064E3B;">—</strong>
+                  </div>
+                  <div>
+                    <span style="color:#64748B; display:block;">Attributed ROAS</span>
+                    <strong id="perfDisplayRoas" style="font-size:1.1rem; color:#059669;">—</strong>
+                  </div>
+                  <div>
+                    <span style="color:#64748B; display:block;">Meta Campaign ID</span>
+                    <code id="perfDisplayMetaId" style="font-size:0.8rem; color:#1E293B;">—</code>
+                  </div>
+                  <div>
+                    <span style="color:#64748B; display:block;">Configured Budget</span>
+                    <strong id="perfDisplayBudget" style="color:#1E293B;">—</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ==================== SUB-PANEL 6: WEBHOOK BUFFER ==================== -->
+          <div id="metaTabWebhooks" class="meta-tab-panel">
+            <div class="crm-table-card">
+              <div style="padding:1rem 1.25rem; border-bottom:1px solid #E2E8F0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">
+                <div>
+                  <strong style="font-size:0.95rem;">Meta Webhook Ingestion & Resilience Buffer</strong>
+                  <div style="font-size:0.75rem; color:#64748B;">Guaranteed zero lead loss with automated retries and real-time CRM normalization.</div>
+                </div>
+                <button class="btn btn-outline btn-sm" onclick="loadMetaWebhookEvents()">🔄 Refresh Events</button>
+              </div>
+              <div style="overflow-x:auto;">
+                <table class="crm-data-table">
+                  <thead>
+                    <tr>
+                      <th>Event ID</th>
+                      <th>Leadgen ID</th>
+                      <th>Platform</th>
+                      <th>Received At</th>
+                      <th>Status</th>
+                      <th>CRM Lead Reference</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="metaEventsTableBody">
+                    <tr><td colspan="7" style="text-align:center; padding:1.5rem; color:#94A3B8;">Loading webhook event stream...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         </section>
+
 
         <!-- ==================== SECTION 7: WHATSAPP BUSINESS HUB ==================== -->
         <section id="admin-sec-whatsapp" class="admin-view-section" style="display:none;">
@@ -837,34 +1175,202 @@
 
         <!-- ==================== SECTION 8: ATTRIBUTION & ANALYTICS ==================== -->
         <section id="admin-sec-analytics" class="admin-view-section" style="display:none;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
             <div>
-              <h2 style="font-size:1.75rem; margin-bottom:0.25rem;">Marketing Attribution & ROI Analytics</h2>
-              <p style="color:#64748B; font-size:0.875rem; margin:0;">Multi-touch customer acquisition cost analysis across advertising channels.</p>
+              <h2 style="font-size:1.75rem; margin-bottom:0.25rem;">Production Marketing Analytics & Attribution</h2>
+              <p style="color:#64748B; font-size:0.875rem; margin:0;">Real-time verified conversion tracking, blended CPL, CAC, ROAS, and multi-touch channel attribution.</p>
             </div>
-            <button class="btn btn-white btn-sm" onclick="showToast('Exporting analytics report...', 'info')">Export PDF</button>
+            <div style="display:flex; gap:0.5rem;">
+              <button class="btn btn-white btn-sm" onclick="loadMarketingAnalytics()">🔄 Refresh Analytics</button>
+            </div>
           </div>
 
-          <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:1.5rem; margin-bottom:2rem;">
-            <div class="stat-box" style="background:#fff; border:1px solid #E2E8F0; text-align:left;">
-              <div style="font-size:0.8rem; color:#64748B; text-transform:uppercase; font-weight:700;">Blended CPL</div>
-              <div style="font-size:2rem; font-weight:800; color:#064E3B; margin:0.25rem 0;">₹234.50</div>
-              <div style="font-size:0.75rem; color:#059669;">↓ 12% lower than industry avg</div>
+          <!-- Real KPI Cards Grid -->
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:1.25rem; margin-bottom:1.5rem;">
+            <div class="stat-card" style="background:#fff; border:1px solid #E2E8F0; padding:1.25rem; border-radius:12px;">
+              <span style="font-size:0.75rem; color:#64748B; text-transform:uppercase; font-weight:700;">Blended CPL</span>
+              <div id="statBlendedCpl" style="font-size:1.75rem; font-weight:800; color:#064E3B; margin:0.25rem 0;">₹0.00</div>
+              <div style="font-size:0.72rem; color:#059669;">Verified spend / total leads</div>
             </div>
-            <div class="stat-box" style="background:#fff; border:1px solid #E2E8F0; text-align:left;">
-              <div style="font-size:0.8rem; color:#64748B; text-transform:uppercase; font-weight:700;">Lead to Booking Rate</div>
-              <div style="font-size:2rem; font-weight:800; color:#064E3B; margin:0.25rem 0;">41.8%</div>
-              <div style="font-size:0.75rem; color:#059669;">↑ 6.4% from speed to lead</div>
+            <div class="stat-card" style="background:#fff; border:1px solid #E2E8F0; padding:1.25rem; border-radius:12px;">
+              <span style="font-size:0.75rem; color:#64748B; text-transform:uppercase; font-weight:700;">Conversion Rate</span>
+              <div id="statConversionRate" style="font-size:1.75rem; font-weight:800; color:#064E3B; margin:0.25rem 0;">0.0%</div>
+              <div style="font-size:0.72rem; color:#059669;">Leads to confirmed bookings</div>
             </div>
-            <div class="stat-box" style="background:#fff; border:1px solid #E2E8F0; text-align:left;">
-              <div style="font-size:0.8rem; color:#64748B; text-transform:uppercase; font-weight:700;">Meta Ads ROAS</div>
-              <div style="font-size:2rem; font-weight:800; color:#064E3B; margin:0.25rem 0;">5.4x</div>
-              <div style="font-size:0.75rem; color:#64748B;">₹45,470 spend = ₹2.45L revenue</div>
+            <div class="stat-card" style="background:#fff; border:1px solid #E2E8F0; padding:1.25rem; border-radius:12px;">
+              <span style="font-size:0.75rem; color:#64748B; text-transform:uppercase; font-weight:700;">Meta Ads ROAS</span>
+              <div id="statMetaRoas" style="font-size:1.75rem; font-weight:800; color:#064E3B; margin:0.25rem 0;">0.0x</div>
+              <div id="statAdSpendSubtitle" style="font-size:0.72rem; color:#64748B;">Spend: ₹0</div>
             </div>
-            <div class="stat-box" style="background:#fff; border:1px solid #E2E8F0; text-align:left;">
-              <div style="font-size:0.8rem; color:#64748B; text-transform:uppercase; font-weight:700;">Average Ticket Size</div>
-              <div style="font-size:2rem; font-weight:800; color:#064E3B; margin:0.25rem 0;">₹9,840</div>
-              <div style="font-size:0.75rem; color:#059669;">Driven by Termite & B2B contracts</div>
+            <div class="stat-card" style="background:#fff; border:1px solid #E2E8F0; padding:1.25rem; border-radius:12px;">
+              <span style="font-size:0.75rem; color:#64748B; text-transform:uppercase; font-weight:700;">Total Revenue</span>
+              <div id="statTotalRevenue" style="font-size:1.75rem; font-weight:800; color:#059669; margin:0.25rem 0;">₹0</div>
+              <div id="statBookingsSubtitle" style="font-size:0.72rem; color:#059669;">From active service bookings</div>
+            </div>
+          </div>
+
+          <!-- Secondary Metrics Bar: Full CRM Funnel Stages -->
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:1rem; margin-bottom:2rem;">
+            <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:0.85rem 1rem;">
+              <div style="font-size:0.72rem; color:#64748B; font-weight:600;">TOTAL LEADS</div>
+              <strong id="statTotalLeads" style="font-size:1.25rem; color:#0F172A;">0</strong>
+            </div>
+            <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:0.85rem 1rem;">
+              <div style="font-size:0.72rem; color:#64748B; font-weight:600;">QUALIFIED</div>
+              <strong id="statQualifiedLeads" style="font-size:1.25rem; color:#0284C7;">0</strong>
+            </div>
+            <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:0.85rem 1rem;">
+              <div style="font-size:0.72rem; color:#64748B; font-weight:600;">SITE VISITS</div>
+              <strong id="statSiteVisits" style="font-size:1.25rem; color:#7C3AED;">0</strong>
+            </div>
+            <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:0.85rem 1rem;">
+              <div style="font-size:0.72rem; color:#64748B; font-weight:600;">QUOTATIONS</div>
+              <strong id="statQuotations" style="font-size:1.25rem; color:#D97706;">0</strong>
+            </div>
+            <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:0.85rem 1rem;">
+              <div style="font-size:0.72rem; color:#64748B; font-weight:600;">BOOKED</div>
+              <strong id="statBookingsCount" style="font-size:1.25rem; color:#059669;">0</strong>
+            </div>
+            <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:0.85rem 1rem;">
+              <div style="font-size:0.72rem; color:#64748B; font-weight:600;">COMPLETED</div>
+              <strong id="statCompletedCount" style="font-size:1.25rem; color:#10B981;">0</strong>
+            </div>
+            <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:0.85rem 1rem;">
+              <div style="font-size:0.72rem; color:#64748B; font-weight:600;">CAC</div>
+              <strong id="statCacCost" style="font-size:1.25rem; color:#0F172A;">Organic</strong>
+            </div>
+            <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:0.85rem 1rem;">
+              <div style="font-size:0.72rem; color:#64748B; font-weight:600;">PAGEVIEWS</div>
+              <strong id="statPageviews" style="font-size:1.25rem; color:#0F172A;">0</strong>
+            </div>
+            <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:0.85rem 1rem;">
+              <div style="font-size:0.72rem; color:#64748B; font-weight:600;">VISITORS</div>
+              <strong id="statUniqueVisitors" style="font-size:1.25rem; color:#0F172A;">0</strong>
+            </div>
+          </div>
+
+          <!-- Multi-Touch Channel Attribution Table -->
+          <div class="crm-table-card" style="margin-bottom:2rem;">
+            <div style="padding:1rem 1.25rem; border-bottom:1px solid #E2E8F0; display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <strong style="font-size:0.95rem;">Multi-Touch Acquisition Channel Performance</strong>
+                <div style="font-size:0.75rem; color:#64748B;">Attributed by first-touch UTM tags, Google Click ID (gclid), and Meta Click ID (fbclid).</div>
+              </div>
+            </div>
+            <table class="crm-data-table">
+              <thead>
+                <tr>
+                  <th>Marketing Channel / Source</th>
+                  <th>Leads Generated</th>
+                  <th>Bookings Closed</th>
+                  <th>Channel Conversion</th>
+                </tr>
+              </thead>
+              <tbody id="analyticsChannelsTableBody">
+                <tr><td colspan="4" style="text-align:center; padding:1.5rem; color:#94A3B8;">Loading attribution channels...</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Campaign Performance Table (Phase 10) -->
+          <div class="crm-table-card" style="margin-bottom:2rem;">
+            <div style="padding:1rem 1.25rem; border-bottom:1px solid #E2E8F0;">
+              <strong style="font-size:0.95rem;">Paid Campaign Performance (Meta & Ads)</strong>
+              <div style="font-size:0.75rem; color:#64748B;">Real-time spend, impressions, clicks, leads, and cost efficiency per active campaign.</div>
+            </div>
+            <div style="overflow-x:auto;">
+              <table class="crm-data-table">
+                <thead>
+                  <tr>
+                    <th>Campaign</th>
+                    <th>Status</th>
+                    <th>Spend</th>
+                    <th>Impressions</th>
+                    <th>Clicks</th>
+                    <th>Leads</th>
+                    <th>CPL</th>
+                    <th>Bookings</th>
+                  </tr>
+                </thead>
+                <tbody id="analyticsCampaignsTableBody">
+                  <tr><td colspan="8" style="text-align:center; padding:1.5rem; color:#94A3B8;">Loading campaign performance...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Trends Grid: Lead Trend & Revenue Trend -->
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-bottom:2rem;">
+            <div class="crm-table-card">
+              <div style="padding:0.85rem 1.25rem; border-bottom:1px solid #E2E8F0;">
+                <strong style="font-size:0.9rem;">📈 Lead Intake Trend (Recent Days)</strong>
+              </div>
+              <table class="crm-data-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th style="text-align:right;">Leads Ingested</th>
+                  </tr>
+                </thead>
+                <tbody id="analyticsLeadTrendTableBody">
+                  <tr><td colspan="2" style="text-align:center; padding:1rem; color:#94A3B8;">Loading lead trend...</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="crm-table-card">
+              <div style="padding:0.85rem 1.25rem; border-bottom:1px solid #E2E8F0;">
+                <strong style="font-size:0.9rem;">💰 Revenue Trend (Bookings Completed)</strong>
+              </div>
+              <table class="crm-data-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Bookings</th>
+                    <th style="text-align:right;">Booked Revenue</th>
+                  </tr>
+                </thead>
+                <tbody id="analyticsRevenueTrendTableBody">
+                  <tr><td colspan="3" style="text-align:center; padding:1rem; color:#94A3B8;">Loading revenue trend...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Two-Column Breakdown: Services & Locations -->
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem;">
+            <div class="crm-table-card">
+              <div style="padding:0.85rem 1.25rem; border-bottom:1px solid #E2E8F0;">
+                <strong style="font-size:0.9rem;">Lead Demand by Service</strong>
+              </div>
+              <table class="crm-data-table">
+                <thead>
+                  <tr>
+                    <th>Service</th>
+                    <th style="text-align:right;">Inquiries</th>
+                  </tr>
+                </thead>
+                <tbody id="analyticsServicesTableBody">
+                  <tr><td colspan="2" style="text-align:center; padding:1rem; color:#94A3B8;">Loading services...</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="crm-table-card">
+              <div style="padding:0.85rem 1.25rem; border-bottom:1px solid #E2E8F0;">
+                <strong style="font-size:0.9rem;">Lead Demand by Locality</strong>
+              </div>
+              <table class="crm-data-table">
+                <thead>
+                  <tr>
+                    <th>Location / Hub</th>
+                    <th style="text-align:right;">Inquiries</th>
+                  </tr>
+                </thead>
+                <tbody id="analyticsLocationsTableBody">
+                  <tr><td colspan="2" style="text-align:center; padding:1rem; color:#94A3B8;">Loading locations...</td></tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </section>
@@ -1094,6 +1600,116 @@
           </div>
         </section>
 
+        <!-- 16. PLATFORM SETTINGS & SYSTEM CONFIGURATION -->
+        <section id="admin-sec-settings" class="admin-view-section" style="display:none;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
+            <div>
+              <h2 style="font-size:1.75rem; margin-bottom:0.25rem;">Enterprise Platform Settings</h2>
+              <p style="color:#64748B; font-size:0.875rem; margin:0;">Configure operational parameters, API cloud integrations, security policies, and backup safeguards.</p>
+            </div>
+            <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+              <button id="btnCheckSystemHealth" class="btn btn-white btn-sm" onclick="checkPlatformHealthStatus()">
+                <span>🩺 Verify System Health</span>
+              </button>
+              <button id="btnExportSystemBackup" class="btn btn-primary btn-sm" onclick="exportPlatformSnapshot()">
+                <span>💾 Export CRM Backup</span>
+              </button>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(360px, 1fr)); gap:1.5rem; margin-bottom:1.5rem;">
+            <!-- Business Profile Card -->
+            <div class="admin-card" style="background:#fff; border:1px solid #E2E8F0; border-radius:16px; padding:1.5rem; box-shadow:var(--shadow-sm);">
+              <h3 style="font-size:1.1rem; margin-bottom:1rem; display:flex; align-items:center; gap:0.5rem;">
+                <span>🏢</span> Business & Dispatch Profile
+              </h3>
+              <div style="display:flex; flex-direction:column; gap:0.85rem; font-size:0.875rem;">
+                <div style="display:flex; justify-content:space-between; border-bottom:1px solid #F1F5F9; padding-bottom:0.5rem;">
+                  <span style="color:#64748B;">Company Entity:</span>
+                  <strong>Universal Pest Control Solutions Pvt Ltd</strong>
+                </div>
+                <div style="display:flex; justify-content:space-between; border-bottom:1px solid #F1F5F9; padding-bottom:0.5rem;">
+                  <span style="color:#64748B;">Headquarters Hub:</span>
+                  <span>Baner High Street, Pune 411045</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; border-bottom:1px solid #F1F5F9; padding-bottom:0.5rem;">
+                  <span style="color:#64748B;">Operating Hours:</span>
+                  <span class="badge badge-success">07:00 AM – 11:00 PM (Daily)</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; border-bottom:1px solid #F1F5F9; padding-bottom:0.5rem;">
+                  <span style="color:#64748B;">24/7 Emergency Dispatch:</span>
+                  <span>Active (45-min Pune Metro response)</span>
+                </div>
+                <div style="display:flex; justify-content:space-between;">
+                  <span style="color:#64748B;">IPCA & ISO Certification:</span>
+                  <span style="color:#059669; font-weight:700;">ISO 9001:2015 Verified</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Cloud Integrations & API Status -->
+            <div class="admin-card" style="background:#fff; border:1px solid #E2E8F0; border-radius:16px; padding:1.5rem; box-shadow:var(--shadow-sm);">
+              <h3 style="font-size:1.1rem; margin-bottom:1rem; display:flex; align-items:center; gap:0.5rem;">
+                <span>☁️</span> Production Cloud Services
+              </h3>
+              <div style="display:flex; flex-direction:column; gap:0.85rem; font-size:0.875rem;">
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #F1F5F9; padding-bottom:0.5rem;">
+                  <span style="color:#64748B;">Express Core API & Health:</span>
+                  <span class="badge badge-success" id="settingsApiHealthBadge">ONLINE (v1.0.0)</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #F1F5F9; padding-bottom:0.5rem;">
+                  <span style="color:#64748B;">MySQL Relational Store:</span>
+                  <span class="badge badge-success" id="settingsDbHealthBadge">CONNECTED</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #F1F5F9; padding-bottom:0.5rem;">
+                  <span style="color:#64748B;">Meta Marketing API & Lead Ads:</span>
+                  <span class="badge badge-success">SECURE (Graph v20.0)</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #F1F5F9; padding-bottom:0.5rem;">
+                  <span style="color:#64748B;">WhatsApp Business Cloud API:</span>
+                  <span class="badge badge-success">WEBHOOK ACTIVE</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <span style="color:#64748B;">Gemini 1.5 Flash Content AI:</span>
+                  <span class="badge badge-success">SERVER-SIDE ENCRYPTED</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Security & Protection Controls -->
+          <div class="admin-card" style="background:#fff; border:1px solid #E2E8F0; border-radius:16px; padding:1.5rem; box-shadow:var(--shadow-sm); margin-bottom:1.5rem;">
+            <h3 style="font-size:1.1rem; margin-bottom:1rem; display:flex; align-items:center; gap:0.5rem;">
+              <span>🛡️</span> Security Shields & Data Policy Safeguards
+            </h3>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:1rem; font-size:0.875rem;">
+              <div style="padding:1rem; background:#F8FAFC; border-radius:12px; border:1px solid #E2E8F0;">
+                <div style="font-weight:700; color:#0F172A; margin-bottom:0.25rem;">Attribution Persistence</div>
+                <p style="color:#64748B; font-size:0.8rem; margin:0;">Original UTM parameters (source, medium, campaign) and click IDs (gclid, fbclid) are locked upon lead creation to prevent accidental overwrites during pipeline progression.</p>
+              </div>
+              <div style="padding:1rem; background:#F8FAFC; border-radius:12px; border:1px solid #E2E8F0;">
+                <div style="font-weight:700; color:#0F172A; margin-bottom:0.25rem;">Rate Limiting & Helmet Shield</div>
+                <p style="color:#64748B; font-size:0.8rem; margin:0;">Express API routes are shielded by 100 req/15min IP windowing. Strict HSTS, X-Content-Type-Options: nosniff, and SAMEORIGIN frame guards are strictly applied.</p>
+              </div>
+              <div style="padding:1rem; background:#F8FAFC; border-radius:12px; border:1px solid #E2E8F0;">
+                <div style="font-weight:700; color:#0F172A; margin-bottom:0.25rem;">Zero Frontend Secret Exposure</div>
+                <p style="color:#64748B; font-size:0.8rem; margin:0;">Meta Graph access tokens, WhatsApp Cloud keys, and Google AI credentials are strictly confined to server-side memory and never delivered to browser clients.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Diagnostic Health Terminal -->
+          <div class="admin-card" style="background:#0F172A; color:#E2E8F0; border-radius:16px; padding:1.5rem; box-shadow:var(--shadow-sm);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+              <div style="font-weight:700; font-size:0.875rem; color:#34D399; display:flex; align-items:center; gap:0.5rem;">
+                <span>🟢</span> Live API Health Diagnostic Output
+              </div>
+              <span id="diagnosticTimestamp" style="font-size:0.75rem; color:#64748B;">Ready</span>
+            </div>
+            <pre id="diagnosticOutputPre" style="background:#022C22; color:#A7F3D0; padding:1rem; border-radius:8px; font-size:0.8rem; overflow-x:auto; margin:0; font-family:monospace;">Universal Pest Control System Diagnostic: Ready. Click "Verify System Health" to query /api/health.</pre>
+          </div>
+        </section>
+
       </div>
     </div>
   </div>
@@ -1196,6 +1812,14 @@
           <strong style="color:#64748B; font-size:0.75rem; text-transform:uppercase;">Lead Source:</strong>
           <div id="drawerLeadSource" style="font-weight:600;">-</div>
         </div>
+        <div>
+          <strong style="color:#64748B; font-size:0.75rem; text-transform:uppercase;">Platform:</strong>
+          <div id="drawerLeadPlatform" style="font-weight:600;">-</div>
+        </div>
+        <div>
+          <strong style="color:#64748B; font-size:0.75rem; text-transform:uppercase;">Ad Set:</strong>
+          <div id="drawerLeadAdSet" style="font-weight:600;">-</div>
+        </div>
       </div>
 
       <!-- Customer Message & Address -->
@@ -1214,7 +1838,9 @@
       <div style="background:#F1F5F9; border-radius:10px; padding:1rem; margin-bottom:1.5rem; font-size:0.8rem; line-height:1.6;">
         <strong style="text-transform:uppercase; color:#475569; display:block; margin-bottom:0.35rem;">Campaign & Attribution Metadata:</strong>
         <div>Campaign: <span id="drawerLeadCampaign" style="font-weight:600;">-</span></div>
+        <div>Ad Set: <span id="drawerLeadMetaAdSet" style="font-weight:600;">-</span></div>
         <div>Ad / Creative: <span id="drawerLeadAdName" style="font-weight:600;">-</span></div>
+        <div>Meta Leadgen ID: <span id="drawerLeadgenId" style="font-family:monospace; color:#0284C7;">-</span></div>
         <div id="drawerUtmDetails" style="color:#64748B; font-size:0.75rem; margin-top:0.35rem;">
           <!-- Dynamically populated UTMs -->
         </div>
@@ -1768,6 +2394,447 @@
             <button type="submit" id="btnSubmitSendTemplate" class="btn btn-whatsapp">🚀 Dispatch Template</button>
           </div>
         </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CONFIGURE META ADS CONNECTION (PHASE 7) -->
+  <div id="modalMetaConfig" class="modal-overlay" style="display:none;">
+    <div class="modal-card" style="max-width:580px; max-height:90vh; overflow-y:auto;">
+      <div class="modal-header">
+        <h3 style="margin:0;">⚙️ Connect Meta Business & Lead Ads Account</h3>
+        <button id="btnCloseMetaConfigModal" class="modal-close-btn" onclick="closeMetaConfigModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="color:#64748B; font-size:0.8rem; margin-top:0; margin-bottom:1rem;">
+          Connect your official Meta Business Portfolio. Access tokens are stored strictly server-side and never exposed to browser code.
+        </p>
+        <form id="formMetaConfig" onsubmit="handleMetaConfigSubmit(event)">
+          <div class="form-group" style="margin-bottom:0.75rem;">
+            <label class="form-label">Portfolio Account Name *</label>
+            <input type="text" id="metaFormAccountName" class="form-control" placeholder="Universal Pest Control — Meta Ads Portfolio" required>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:0.75rem;">
+            <div class="form-group">
+              <label class="form-label">Meta Ad Account ID *</label>
+              <input type="text" id="metaFormAdAccountId" class="form-control" placeholder="act_83921049281" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Business Account ID</label>
+              <input type="text" id="metaFormBusinessId" class="form-control" placeholder="83921049281">
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:0.75rem;">
+            <div class="form-group">
+              <label class="form-label">Facebook Page ID *</label>
+              <input type="text" id="metaFormPageId" class="form-control" placeholder="109283746501928" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Page Name</label>
+              <input type="text" id="metaFormPageName" class="form-control" placeholder="Universal Pest Control Official">
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:0.75rem;">
+            <div class="form-group">
+              <label class="form-label">Instagram Actor ID</label>
+              <input type="text" id="metaFormIgActorId" class="form-control" placeholder="17841405928193821">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Meta Pixel ID</label>
+              <input type="text" id="metaFormPixelId" class="form-control" placeholder="987654321012345">
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:0.75rem;">
+            <div class="form-group">
+              <label class="form-label">Meta App ID</label>
+              <input type="text" id="metaFormAppId" class="form-control" placeholder="928374650192837">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Meta App Secret</label>
+              <input type="password" id="metaFormAppSecret" class="form-control" placeholder="•••••••• (Secret)">
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:0.75rem;">
+            <label class="form-label">Meta System User / Page Access Token</label>
+            <input type="password" id="metaFormAccessToken" class="form-control" placeholder="EAAG... (Stored securely on backend)">
+            <small style="color:#64748B; font-size:0.75rem;">Never shown in browser responses. Leave blank to preserve existing active token.</small>
+          </div>
+          <div class="form-group" style="margin-bottom:1.25rem;">
+            <label class="form-label">Webhook Verify Token</label>
+            <input type="text" id="metaFormWebhookVerifyToken" class="form-control" placeholder="upc_meta_webhook_verify_token_2026">
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:1.5rem;">
+            <button type="button" class="btn btn-outline btn-sm" onclick="testMetaConnection()">⚡ Test Connection</button>
+            <div style="display:flex; gap:0.5rem;">
+              <button type="button" class="btn btn-outline" onclick="closeMetaConfigModal()">Cancel</button>
+              <button type="submit" id="btnSaveMetaConfig" class="btn btn-primary">Save Connection</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: SIMULATE META LEAD AD INGESTION (PHASE 7) -->
+  <div id="modalSimulateMetaLead" class="modal-overlay" style="display:none;">
+    <div class="modal-card" style="max-width:520px;">
+      <div class="modal-header">
+        <h3 style="margin:0;">🧪 Simulate Facebook/Instagram Lead Ad</h3>
+        <button id="btnCloseSimulateLeadModal" class="modal-close-btn" onclick="closeSimulateLeadModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="color:#64748B; font-size:0.8rem; margin-top:0; margin-bottom:1rem;">
+          Test end-to-end Meta Webhook normalization, duplicate detection, and CRM ingestion without running real paid ads.
+        </p>
+        <form id="formSimulateMetaLead" onsubmit="handleSimulateMetaLeadSubmit(event)">
+          <div class="form-group" style="margin-bottom:0.75rem;">
+            <label class="form-label">Lead Platform *</label>
+            <select id="simMetaPlatform" class="form-control" required>
+              <option value="ig">Instagram Lead Ad (INSTAGRAM_LEAD_AD)</option>
+              <option value="fb">Facebook Lead Ad (FACEBOOK_LEAD_AD)</option>
+            </select>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:0.75rem;">
+            <div class="form-group">
+              <label class="form-label">Full Name *</label>
+              <input type="text" id="simMetaName" class="form-control" value="Pooja Kulkarni" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Mobile Number *</label>
+              <input type="tel" id="simMetaPhone" class="form-control" value="+91 98220 55431" required>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:0.75rem;">
+            <div class="form-group">
+              <label class="form-label">Email</label>
+              <input type="email" id="simMetaEmail" class="form-control" value="pooja.kulkarni@gmail.com">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Service Inquired *</label>
+              <select id="simMetaService" class="form-control" required>
+                <option value="Termite Control" selected>Termite Control</option>
+                <option value="Cockroach Control">Cockroach Control</option>
+                <option value="Bed Bug Treatment">Bed Bug Treatment</option>
+                <option value="Commercial Kitchen Pest Control">Commercial Kitchen Pest Control</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:0.75rem;">
+            <div class="form-group">
+              <label class="form-label">Campaign Name</label>
+              <input type="text" id="simMetaCampaign" class="form-control" value="Termite Monsoon Shield 2026">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Ad / Creative Name</label>
+              <input type="text" id="simMetaAd" class="form-control" value="Monsoon Termite Shield Reel">
+            </div>
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1.5rem;">
+            <button type="button" class="btn btn-outline" onclick="closeSimulateLeadModal()">Cancel</button>
+            <button type="submit" id="btnSubmitSimulateLead" class="btn btn-accent">🚀 Ingest via Webhook</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== PHASE 8 MODALS ==================== -->
+
+  <!-- MODAL: CREATE META CAMPAIGN -->
+  <div id="modalCreateCampaign" class="modal-overlay" style="display:none;">
+    <div class="modal-card" style="max-width:620px; max-height:90vh; overflow-y:auto;">
+      <div class="modal-header">
+        <h3 style="margin:0;">📢 Create Meta Campaign</h3>
+        <button class="modal-close-btn" onclick="closeCreateCampaignModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="color:#64748B; font-size:0.8rem; margin-top:0; margin-bottom:1.25rem;">
+          Configure advertising objective, budgets, schedule, and audience targeting for Meta Marketing API. Starts in <strong>DRAFT</strong> state.
+        </p>
+        <form id="formCreateCampaign" onsubmit="handleCreateCampaignSubmit(event)">
+          <div class="form-group" style="margin-bottom:0.75rem;">
+            <label class="form-label">Campaign Name *</label>
+            <input type="text" id="campaignFormName" class="form-control" placeholder="e.g. Monsoon Termite Shield 2026" required>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:0.75rem;">
+            <div class="form-group">
+              <label class="form-label">Campaign Objective *</label>
+              <select id="campaignFormObjective" class="form-control" required>
+                <option value="OUTCOME_LEADS" selected>OUTCOME_LEADS (Lead Generation)</option>
+                <option value="OUTCOME_SALES">OUTCOME_SALES (Conversions)</option>
+                <option value="OUTCOME_TRAFFIC">OUTCOME_TRAFFIC (Traffic)</option>
+                <option value="OUTCOME_AWARENESS">OUTCOME_AWARENESS (Brand Awareness)</option>
+                <option value="OUTCOME_ENGAGEMENT">OUTCOME_ENGAGEMENT (Engagement)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Budget Type *</label>
+              <select id="campaignFormBudgetType" class="form-control" onchange="toggleBudgetTypeFields()">
+                <option value="daily" selected>Daily Budget</option>
+                <option value="lifetime">Lifetime Budget</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:0.75rem;">
+            <div class="form-group" id="groupDailyBudget">
+              <label class="form-label">Daily Budget (₹ INR) *</label>
+              <input type="number" id="campaignFormDailyBudget" class="form-control" min="100" step="50" value="1000">
+            </div>
+            <div class="form-group" id="groupLifetimeBudget" style="display:none;">
+              <label class="form-label">Lifetime Budget (₹ INR)</label>
+              <input type="number" id="campaignFormLifetimeBudget" class="form-control" min="500" step="100" placeholder="15000">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Target Location *</label>
+              <input type="text" id="campaignFormLocation" class="form-control" value="Pune, PCMC, Maharashtra" required>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:0.75rem;">
+            <div class="form-group">
+              <label class="form-label">Schedule Start *</label>
+              <input type="datetime-local" id="campaignFormStartTime" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Schedule End (Optional)</label>
+              <input type="datetime-local" id="campaignFormEndTime" class="form-control">
+            </div>
+          </div>
+
+          <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:var(--radius-md); padding:1rem; margin-bottom:1rem;">
+            <strong style="font-size:0.85rem; color:#0F172A; display:block; margin-bottom:0.5rem;">Target Audience Demographics</strong>
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.5rem; margin-bottom:0.5rem;">
+              <div class="form-group">
+                <label class="form-label" style="font-size:0.75rem;">Min Age</label>
+                <input type="number" id="campaignFormAgeMin" class="form-control" value="25" min="18" max="65">
+              </div>
+              <div class="form-group">
+                <label class="form-label" style="font-size:0.75rem;">Max Age</label>
+                <input type="number" id="campaignFormAgeMax" class="form-control" value="65" min="18" max="65">
+              </div>
+              <div class="form-group">
+                <label class="form-label" style="font-size:0.75rem;">Gender</label>
+                <select id="campaignFormGender" class="form-control">
+                  <option value="ALL" selected>All Genders</option>
+                  <option value="MEN">Men</option>
+                  <option value="WOMEN">Women</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label class="form-label" style="font-size:0.75rem;">Target Interests (comma-separated)</label>
+              <input type="text" id="campaignFormInterests" class="form-control" value="Homeowners, Interior Design, Real Estate, Villa, Renovation">
+            </div>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1.25rem;">
+            <button type="button" class="btn btn-outline" onclick="closeCreateCampaignModal()">Cancel</button>
+            <button type="submit" id="btnSubmitCampaign" class="btn btn-primary">Create Campaign (Draft)</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CREATE META AD SET -->
+  <div id="modalCreateAdSet" class="modal-overlay" style="display:none;">
+    <div class="modal-card" style="max-width:560px; max-height:90vh; overflow-y:auto;">
+      <div class="modal-header">
+        <h3 style="margin:0;">🎯 Create Meta Ad Set</h3>
+        <button class="modal-close-btn" onclick="closeCreateAdSetModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="color:#64748B; font-size:0.8rem; margin-top:0; margin-bottom:1rem;">
+          Configure placement, optimization goal, and budget allocation for this Ad Set.
+        </p>
+        <form id="formCreateAdSet" onsubmit="handleCreateAdSetSubmit(event)">
+          <div class="form-group" style="margin-bottom:0.75rem;">
+            <label class="form-label">Parent Campaign *</label>
+            <select id="adsetFormCampaignId" class="form-control" required>
+              <option value="">Select a Campaign...</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:0.75rem;">
+            <label class="form-label">Ad Set Name *</label>
+            <input type="text" id="adsetFormName" class="form-control" placeholder="e.g. Pune Villa Owners — Feed & Reels" required>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:0.75rem;">
+            <div class="form-group">
+              <label class="form-label">Optimization Goal *</label>
+              <select id="adsetFormOptimization" class="form-control" required>
+                <option value="LEAD_GENERATION" selected>LEAD_GENERATION</option>
+                <option value="QUALITY_LEAD">QUALITY_LEAD</option>
+                <option value="LINK_CLICKS">LINK_CLICKS</option>
+                <option value="OFFSITE_CONVERSIONS">OFFSITE_CONVERSIONS</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Billing Event *</label>
+              <select id="adsetFormBillingEvent" class="form-control" required>
+                <option value="IMPRESSIONS" selected>IMPRESSIONS</option>
+                <option value="LINK_CLICKS">LINK_CLICKS</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:0.75rem;">
+            <div class="form-group">
+              <label class="form-label">Ad Set Daily Budget (₹ INR)</label>
+              <input type="number" id="adsetFormBudget" class="form-control" placeholder="800" min="100">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Target Placements</label>
+              <select id="adsetFormPlacements" class="form-control">
+                <option value="ALL" selected>Automatic Placements (Feeds + Reels + Stories)</option>
+                <option value="INSTAGRAM_REELS">Instagram Reels Only</option>
+                <option value="FACEBOOK_FEED">Facebook Feed Only</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1.25rem;">
+            <button type="button" class="btn btn-outline" onclick="closeCreateAdSetModal()">Cancel</button>
+            <button type="submit" id="btnSubmitAdSet" class="btn btn-primary">Create Ad Set</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CREATE META AD -->
+  <div id="modalCreateAd" class="modal-overlay" style="display:none;">
+    <div class="modal-card" style="max-width:540px; max-height:90vh; overflow-y:auto;">
+      <div class="modal-header">
+        <h3 style="margin:0;">🖼️ Create Meta Ad</h3>
+        <button class="modal-close-btn" onclick="closeCreateAdModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="color:#64748B; font-size:0.8rem; margin-top:0; margin-bottom:1rem;">
+          Attach an approved creative to an active Ad Set for deployment.
+        </p>
+        <form id="formCreateAd" onsubmit="handleCreateAdSubmit(event)">
+          <div class="form-group" style="margin-bottom:0.75rem;">
+            <label class="form-label">Target Ad Set *</label>
+            <select id="adFormAdSetId" class="form-control" required>
+              <option value="">Select an Ad Set...</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:0.75rem;">
+            <label class="form-label">Ad Name *</label>
+            <input type="text" id="adFormName" class="form-control" placeholder="e.g. Ultrasonic Radar 20% Off Lead Ad" required>
+          </div>
+          <div class="form-group" style="margin-bottom:0.75rem;">
+            <label class="form-label">Select Creative *</label>
+            <select id="adFormCreativeId" class="form-control" required>
+              <option value="">Select an approved creative...</option>
+            </select>
+            <small style="color:#64748B; font-size:0.75rem;">Creatives generated in Creative Studio or added manually appear here.</small>
+          </div>
+          <div class="form-group" style="margin-bottom:0.75rem;">
+            <label class="form-label">Initial Status</label>
+            <select id="adFormStatus" class="form-control">
+              <option value="DRAFT" selected>DRAFT</option>
+              <option value="PAUSED">PAUSED</option>
+              <option value="ACTIVE">ACTIVE</option>
+            </select>
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1.25rem;">
+            <button type="button" class="btn btn-outline" onclick="closeCreateAdModal()">Cancel</button>
+            <button type="submit" id="btnSubmitAd" class="btn btn-primary">Create Ad</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CREATE CREATIVE (CONNECTED TO STUDIO) -->
+  <div id="modalCreateCreative" class="modal-overlay" style="display:none;">
+    <div class="modal-card" style="max-width:600px; max-height:90vh; overflow-y:auto;">
+      <div class="modal-header">
+        <h3 style="margin:0;">🎨 Create Meta Creative Asset</h3>
+        <button class="modal-close-btn" onclick="closeCreateCreativeModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="color:#64748B; font-size:0.8rem; margin-top:0; margin-bottom:1rem;">
+          Define headline, body copy, media visuals, and call to action for Meta Sponsored ads.
+        </p>
+        <form id="formCreateCreative" onsubmit="handleCreateCreativeSubmit(event)">
+          <div class="form-group" style="margin-bottom:0.75rem;">
+            <label class="form-label">Creative Name *</label>
+            <input type="text" id="creativeFormName" class="form-control" placeholder="e.g. Ultrasonic Radar Inspection Termite Creative" required>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 2fr; gap:0.75rem; margin-bottom:0.75rem;">
+            <div class="form-group">
+              <label class="form-label">Media Type *</label>
+              <select id="creativeFormMediaType" class="form-control" onchange="toggleCreativeMediaInput()">
+                <option value="IMAGE" selected>Image</option>
+                <option value="VIDEO">Video</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Media URL *</label>
+              <input type="text" id="creativeFormMediaUrl" class="form-control" value="assets/images/termite.jpg" required>
+            </div>
+          </div>
+
+          <!-- Quick Image Presets -->
+          <div style="margin-bottom:0.75rem;">
+            <span style="font-size:0.75rem; color:#64748B; display:block; margin-bottom:0.25rem;">Quick Asset Presets:</span>
+            <div style="display:flex; gap:0.35rem; flex-wrap:wrap;">
+              <button type="button" class="btn btn-white btn-sm" style="font-size:0.7rem; padding:0.2rem 0.5rem;" onclick="setCreativeMediaPreset('assets/images/termite.jpg')">Termite</button>
+              <button type="button" class="btn btn-white btn-sm" style="font-size:0.7rem; padding:0.2rem 0.5rem;" onclick="setCreativeMediaPreset('assets/images/cockroach.jpg')">Cockroach</button>
+              <button type="button" class="btn btn-white btn-sm" style="font-size:0.7rem; padding:0.2rem 0.5rem;" onclick="setCreativeMediaPreset('assets/images/commercial.jpg')">Commercial</button>
+              <button type="button" class="btn btn-white btn-sm" style="font-size:0.7rem; padding:0.2rem 0.5rem;" onclick="setCreativeMediaPreset('assets/images/bedbug.jpg')">Bed Bug</button>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom:0.75rem;">
+            <label class="form-label">Headline *</label>
+            <input type="text" id="creativeFormHeadline" class="form-control" placeholder="Protect Your Home from Hidden Termite Rot." required>
+          </div>
+          <div class="form-group" style="margin-bottom:0.75rem;">
+            <label class="form-label">Primary Text (Body Copy) *</label>
+            <textarea id="creativeFormPrimaryText" class="form-control" rows="3" placeholder="Ultrasonic radar inspection detects underground colonies before wall damage occurs. 5-Year warranty." required></textarea>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:0.75rem;">
+            <div class="form-group">
+              <label class="form-label">Ad Description</label>
+              <input type="text" id="creativeFormDescription" class="form-control" placeholder="Pune's #1 Rated Pest Extermination.">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Call To Action (CTA) *</label>
+              <select id="creativeFormCta" class="form-control" required>
+                <option value="BOOK_NOW" selected>BOOK_NOW</option>
+                <option value="GET_QUOTE">GET_QUOTE</option>
+                <option value="LEARN_MORE">LEARN_MORE</option>
+                <option value="CONTACT_US">CONTACT_US</option>
+                <option value="SIGN_UP">SIGN_UP</option>
+                <option value="APPLY_NOW">APPLY_NOW</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:0.75rem;">
+            <label class="form-label">Destination URL</label>
+            <input type="url" id="creativeFormDestUrl" class="form-control" value="https://universalpest.in/quote.html">
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1.25rem;">
+            <button type="button" class="btn btn-outline" onclick="closeCreateCreativeModal()">Cancel</button>
+            <button type="submit" id="btnSubmitCreative" class="btn btn-primary">Save Creative</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CAMPAIGN PERFORMANCE DETAILS -->
+  <div id="modalCampaignPerformance" class="modal-overlay" style="display:none;">
+    <div class="modal-card" style="max-width:680px; max-height:90vh; overflow-y:auto;">
+      <div class="modal-header">
+        <h3 style="margin:0;" id="modalPerfTitle">📊 Campaign Performance</h3>
+        <button class="modal-close-btn" onclick="closeCampaignPerformanceModal()">✕</button>
+      </div>
+      <div class="modal-body" id="modalPerfContent">
+        <div style="text-align:center; padding:2rem; color:#94A3B8;">Loading performance...</div>
       </div>
     </div>
   </div>

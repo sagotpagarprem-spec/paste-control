@@ -11,13 +11,38 @@ const { notFoundHandler, errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
 
-// 1. Security Headers via Helmet
+// 1. Production Security Headers via Helmet
 app.use(
   helmet({
-    contentSecurityPolicy: false, // Disabled to allow existing frontend styles & svg inline rendering
-    crossOriginEmbedderPolicy: false
+    contentSecurityPolicy: false, // Allows inline SVG and custom styling while keeping other shields active
+    crossOriginEmbedderPolicy: false,
+    frameguard: { action: 'sameorigin' },
+    xContentTypeOptions: true,
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+    hsts: {
+      maxAge: 31536000,
+      includeSubDomains: true,
+      preload: true
+    }
   })
 );
+
+// 1b. Root Health Check for Cloud Load Balancers & Orchestrators
+const { isConnected, dbConfig } = require('./config/database');
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    success: true,
+    status: 'ONLINE',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+    database: {
+      connected: isConnected,
+      host: dbConfig.host,
+      name: dbConfig.database
+    },
+    version: '1.0.0-production'
+  });
+});
 
 // 2. Cross-Origin Resource Sharing
 app.use(
@@ -40,8 +65,19 @@ app.use('/api', apiLimiter);
 // 5. Mount Core API
 app.use('/api', apiRoutes);
 
-// 6. Serve Static Frontend Files
+// 6. Serve Static Frontend Files & SEO endpoints
 const PUBLIC_DIR = path.join(__dirname, '..');
+
+// SEO Robots & Sitemap
+app.get('/robots.txt', (req, res) => {
+  res.type('text/plain');
+  res.sendFile(path.join(PUBLIC_DIR, 'robots.txt'));
+});
+
+app.get('/sitemap.xml', (req, res) => {
+  res.type('application/xml');
+  res.sendFile(path.join(PUBLIC_DIR, 'sitemap.xml'));
+});
 
 // Admin route alias
 app.get('/admin', (req, res) => {
@@ -63,7 +99,16 @@ app.use(
 // 7. API 404 Handler (only intercepts unmatched /api routes)
 app.use('/api', notFoundHandler);
 
-// 8. Global Centralized Error Handler
+// 8. Global Web 404 Handler for non-API web navigation
+app.use((req, res, next) => {
+  if (req.accepts('html')) {
+    res.status(404).sendFile(path.join(PUBLIC_DIR, '404.html'));
+  } else {
+    next();
+  }
+});
+
+// 9. Global Centralized Error Handler
 app.use(errorHandler);
 
 module.exports = app;
