@@ -34,6 +34,14 @@ function formatLead(lead, notes = [], activities = [], bookings = []) {
     property: lead.property_type,
     propertyType: lead.property_type,
     adName: lead.ad_name,
+    campaignId: lead.campaign_id,
+    adsetName: lead.adset_name,
+    adSet: lead.adset_name,
+    adsetId: lead.adset_id,
+    adSetId: lead.adset_id,
+    adId: lead.ad_id,
+    platform: lead.platform,
+    leadgenId: lead.leadgen_id,
     utmSource: lead.utm_source,
     utmMedium: lead.utm_medium,
     utmCampaign: lead.utm_campaign,
@@ -240,12 +248,16 @@ const leadModel = {
       INSERT INTO leads (
         lead_code, customer_id, name, phone, email, service_name,
         property_type, city, area, address, message,
-        source, campaign, ad_name, utm_source, utm_medium,
-        utm_campaign, utm_content, utm_term, fbclid, gclid,
+        source, platform, campaign, campaign_id, adset_name, adset_id, ad_name, ad_id, leadgen_id, raw_meta_payload,
+        utm_source, utm_medium, utm_campaign, utm_content, utm_term, fbclid, gclid,
         landing_page, referrer, status, urgency, estimated_value,
         assigned_to, follow_up_date, is_duplicate, duplicate_count, duplicate_of_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
+
+    const rawPayloadStr = data.raw_meta_payload
+      ? (typeof data.raw_meta_payload === 'string' ? data.raw_meta_payload : JSON.stringify(data.raw_meta_payload))
+      : null;
 
     const params = [
       leadCode,
@@ -260,8 +272,15 @@ const leadModel = {
       data.address || null,
       data.message || data.notes || null,
       data.source || 'Website',
+      data.platform || null,
       data.campaign || data.utm_campaign || data.utmCampaign || null,
-      data.ad_name || data.adName || null,
+      data.campaign_id || data.campaignId || null,
+      data.adset_name || data.adSet || data.adsetName || null,
+      data.adset_id || data.adSetId || data.adsetId || null,
+      data.ad_name || data.ad || data.adName || null,
+      data.ad_id || data.adId || null,
+      data.leadgen_id || data.leadgenId || null,
+      rawPayloadStr,
       data.utm_source || data.utmSource || null,
       data.utm_medium || data.utmMedium || null,
       data.utm_campaign || data.utmCampaign || null,
