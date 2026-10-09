@@ -1,11 +1,100 @@
 /* ===================================================================
-   UNIVERSAL PEST CONTROL — RESPONSIVE STYLES
+   UNIVERSAL PEST CONTROL — UNIFIED RESPONSIVE SYSTEM
+   Progressive Fluid Breakpoint Architecture
+   Tested at: 360, 375, 390, 430, 576, 768, 992, 1024, 1200, 1440, 1920
    =================================================================== */
 
-/* Desktops & Laptops (Max 1280px) */
-@media (max-width: 1280px) {
+/* -------------------------------------------------------------
+   1. GLOBAL FLUID & OVERFLOW SHIELDS (ALL VIEWPORTS)
+   ------------------------------------------------------------- */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  max-width: 100%;
+  overflow-x: hidden;
+  position: relative;
+}
+
+img, picture, video, canvas, svg {
+  max-width: 100%;
+  height: auto;
+}
+
+input, select, textarea, button {
+  max-width: 100%;
+}
+
+.table-wrapper, .crm-table-container, .table-responsive {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* -------------------------------------------------------------
+   2. LARGE SCREENS & ULTRA-WIDE (1440px & 1920px)
+   ------------------------------------------------------------- */
+@media (min-width: 1440px) {
+  .container {
+    max-width: var(--container-wide-max-width, 1400px);
+  }
+
+  .kpi-cards-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.75rem;
+  }
+
+  .admin-content-area {
+    padding: 2.5rem;
+  }
+}
+
+@media (min-width: 1920px) {
+  .container {
+    max-width: 1540px;
+  }
+
+  .hero-grid {
+    gap: 4.5rem;
+  }
+
+  .services-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2rem;
+  }
+}
+
+/* -------------------------------------------------------------
+   3. DESKTOPS & STANDARD LAPTOPS (MAX 1200px)
+   ------------------------------------------------------------- */
+@media (max-width: 1200px) {
+  .nav-menu {
+    gap: 0.25rem;
+  }
+
+  .nav-link {
+    padding: 0.55rem 0.65rem;
+    font-size: 0.875rem;
+  }
+
+  .header-actions {
+    gap: 0.5rem;
+  }
+
   .services-grid {
     grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+  }
+
+  .kpi-cards-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+  }
+
+  .creative-studio-grid {
+    gap: 1.5rem;
   }
 
   .footer-top {
@@ -13,31 +102,70 @@
   }
 }
 
-/* Tablets Landscape & Small Laptops (Max 1024px) */
-@media (max-width: 1024px) {
+/* -------------------------------------------------------------
+   4. TABLETS LANDSCAPE & SMALL LAPTOPS (MAX 992px)
+   ------------------------------------------------------------- */
+@media (max-width: 992px) {
+  /* Public Navigation Switch to Drawer */
+  .nav-menu {
+    display: none !important;
+  }
+
+  .mobile-toggle {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Hero Section Stacking */
   .hero-grid {
     grid-template-columns: 1fr;
     gap: 2.5rem;
   }
 
+  .hero-visual-wrap {
+    max-width: 600px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
   .hero-floating-stat {
-    left: 20px;
-    bottom: 20px;
+    left: 12px;
+    bottom: 12px;
   }
 
   .hero-floating-guarantee {
-    right: 20px;
+    right: 12px;
+    top: 12px;
   }
 
-  .trust-indicators-grid {
-    grid-template-columns: repeat(3, 1fr);
+  /* Two-column inner pages and grids stack to single column */
+  .section-grid {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+
+  .two-column {
+    grid-template-columns: 1fr;
+  }
+
+  .three-column {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .four-column {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .services-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 
   .problem-solution-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .services-grid {
+  .testimonials-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 
@@ -49,12 +177,32 @@
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .testimonials-grid {
-    grid-template-columns: repeat(2, 1fr);
+  .trust-indicators-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  /* Admin Layout - Off Canvas Sidebar */
+  .admin-sidebar {
+    position: fixed;
+    left: -270px;
+    top: 0;
+    z-index: var(--z-modal, 900);
+    height: 100vh;
+    box-shadow: 10px 0 35px rgba(0, 0, 0, 0.25);
+    transition: left var(--transition-smooth);
+  }
+
+  .admin-sidebar.mobile-open {
+    left: 0;
+  }
+
+  .admin-search-box {
+    width: 220px;
   }
 
   .kpi-cards-grid {
     grid-template-columns: repeat(2, 1fr);
+    gap: 1.25rem;
   }
 
   .admin-charts-grid {
@@ -69,28 +217,51 @@
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .nav-menu {
-    display: none;
-  }
-
-  .mobile-toggle {
-    display: block;
-  }
-
   .footer-top {
     grid-template-columns: repeat(2, 1fr);
     gap: 2.5rem;
   }
 }
 
-/* Tablets Portrait & Large Mobiles (Max 768px) */
+/* -------------------------------------------------------------
+   5. TABLETS PORTRAIT & LARGE MOBILES (MAX 768px)
+   ------------------------------------------------------------- */
 @media (max-width: 768px) {
+  /* Announcement bar */
   .top-bar {
     display: none;
   }
 
   .header-inner {
-    height: 70px;
+    height: var(--header-height-mobile, 68px);
+  }
+
+  .brand-title {
+    font-size: 1.2rem;
+  }
+
+  /* Coordinated Mobile Bottom CTA Strategy */
+  .mobile-bottom-bar {
+    display: block;
+  }
+
+  body {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Floating actions hidden on mobile to avoid competing with bottom bar */
+  .floating-actions {
+    display: none !important;
+  }
+
+  /* All Multi-column layouts cleanly collapse to 1 column */
+  .two-column, 
+  .three-column, 
+  .four-column, 
+  .form-grid, 
+  .form-grid-3, 
+  .modal-grid {
+    grid-template-columns: 1fr !important;
   }
 
   .hero-section {
@@ -103,6 +274,7 @@
 
   .hero-quick-calc {
     grid-template-columns: 1fr;
+    max-width: 100%;
   }
 
   .trust-indicators-grid {
@@ -119,7 +291,7 @@
   }
 
   .ba-container {
-    height: 380px;
+    height: 340px;
   }
 
   .stats-grid {
@@ -127,16 +299,8 @@
     gap: 1rem;
   }
 
-  .stat-value {
-    font-size: 2.25rem;
-  }
-
   .how-it-works-grid {
     grid-template-columns: 1fr;
-  }
-
-  .lead-gen-card {
-    padding: 1.75rem 1.25rem;
   }
 
   .lead-form-grid {
@@ -183,40 +347,10 @@
   .footer-bottom {
     flex-direction: column;
     text-align: center;
+    gap: 1rem;
   }
 
-  /* Mobile Sticky Bottom Bar Enabled */
-  .mobile-bottom-bar {
-    display: block;
-  }
-
-  body {
-    padding-bottom: 70px;
-  }
-
-  /* Floating action adjustments on mobile */
-  .floating-actions {
-    bottom: 85px;
-    right: 16px;
-  }
-
-  .floating-btn {
-    padding: 0.65rem 0.95rem;
-    font-size: 0.8rem;
-  }
-
-  /* Admin Mobile Adjustments */
-  .admin-sidebar {
-    position: fixed;
-    left: -260px;
-    top: 0;
-    transition: left var(--transition-smooth);
-  }
-
-  .admin-sidebar.mobile-open {
-    left: 0;
-  }
-
+  /* Admin Header & Toolbars on Mobile */
   .admin-topbar {
     padding: 0.75rem 1rem;
   }
@@ -231,85 +365,120 @@
 
   .kpi-cards-grid {
     grid-template-columns: 1fr;
+    gap: 1rem;
   }
 
+  /* Lead Drawer Full-Width on Mobile */
   .lead-drawer {
-    width: 100%;
-    right: -100%;
+    width: 100% !important;
+    max-width: 100vw !important;
+    right: -100% !important;
+  }
+
+  .lead-drawer.open {
+    right: 0 !important;
+  }
+
+  .drawer-header {
+    padding: 1rem 1.25rem;
+  }
+
+  .drawer-body {
+    padding: 1.25rem 1rem;
   }
 
   .technician-jobs-grid {
     grid-template-columns: 1fr;
   }
 
+  /* WhatsApp Native Mobile Single Panel Flow */
   .whatsapp-hub-container {
-    grid-template-columns: 1fr;
-    height: auto;
+    grid-template-columns: 1fr !important;
+    height: calc(100vh - 140px) !important;
+    min-height: 520px;
+  }
+
+  .wa-threads-sidebar {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
   }
 
   .wa-chat-window {
-    height: 500px;
+    display: none;
+    width: 100%;
+    height: 100%;
+  }
+
+  .whatsapp-hub-container.chat-active .wa-threads-sidebar {
+    display: none;
+  }
+
+  .whatsapp-hub-container.chat-active .wa-chat-window {
+    display: flex;
+  }
+
+  .wa-mobile-back-btn {
+    display: inline-flex !important;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  /* Modal Dialog Fluid System */
+  .modal-overlay {
+    padding: 0.75rem;
+  }
+
+  .modal-box {
+    width: 100%;
+    max-width: 100%;
+    max-height: calc(100vh - 2rem);
+    border-radius: var(--radius-lg, 16px);
+  }
+
+  .modal-header, .modal-body, .modal-footer {
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
   }
 }
 
-/* Small Smart Phones (Max 430px / 390px / 360px) */
-@media (max-width: 430px) {
+/* -------------------------------------------------------------
+   6. SMALL SMARTPHONES (MAX 576px / 430px)
+   ------------------------------------------------------------- */
+@media (max-width: 576px) {
   .hero-title {
-    font-size: 1.85rem;
-    line-height: 1.25;
+    font-size: clamp(1.85rem, 5.5vw, 2.35rem);
+    line-height: 1.2;
   }
 
   .hero-floating-stat, .hero-floating-guarantee {
     position: static;
     margin-top: 1rem;
     width: 100%;
+    box-sizing: border-box;
+  }
+
+  .hero-cta-group {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .hero-cta-group .btn {
+    width: 100%;
+    justify-content: center;
   }
 
   .ba-container {
     height: 280px;
   }
 
-  .modal-box, .modal-card {
-    padding: 1rem;
-    width: 95vw !important;
-    max-width: 95vw !important;
-  }
-
   .wizard-content {
-    padding: 1rem 0.5rem;
+    padding: 1.5rem 1rem;
   }
 
   .btn {
     min-height: 44px;
-  }
-
-  .crm-data-table, .crm-table {
-    display: block;
-    width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-    .crm-table-card, .admin-card {
-    overflow-x: auto;
-  }
-
-  .whatsapp-hub-container {
-    height: auto !important;
-  }
-
-  .wa-threads-sidebar {
-    max-height: 240px;
-  }
-
-  .wa-chat-window {
-    height: 480px !important;
-  }
-
-  .floating-cta-container {
-    bottom: 12px;
-    right: 12px;
-    gap: 0.5rem;
   }
 
   .admin-view-header {
@@ -329,102 +498,84 @@
     text-align: center;
     justify-content: center;
   }
-}
-
-/* Extra Small Smart Phones (360px - 390px) */
-@media (max-width: 390px) {
-  html {
-    font-size: 15px;
-  }
-
-  .container {
-    padding-left: 1rem;
-    padding-right: 1rem;
-  }
-
-  .hero-title {
-    font-size: 1.65rem;
-  }
-
-  .hero-cta-group {
-    flex-direction: column;
-    width: 100%;
-  }
-
-  .hero-cta-group .btn {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .hero-stats-row {
-    grid-template-columns: 1fr;
-    gap: 0.75rem;
-  }
-
-  .trust-strip-items {
-    flex-direction: column;
-    gap: 0.75rem;
-  }
-
-  .modal-box, .modal-card {
-    width: 98vw !important;
-    max-width: 98vw !important;
-    padding: 0.85rem !important;
-    border-radius: 12px;
-  }
-
-  .booking-steps-nav {
-    overflow-x: auto;
-    white-space: nowrap;
-    padding-bottom: 0.5rem;
-  }
-
-  .table-responsive, .crm-table-responsive {
-    width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
 
   .perf-metrics-grid {
     grid-template-columns: 1fr;
   }
 }
 
-/* Large Screens (1440px) */
-@media (min-width: 1440px) {
+/* -------------------------------------------------------------
+   7. COMPACT SMARTPHONES (MAX 390px & 360px)
+   ------------------------------------------------------------- */
+@media (max-width: 390px) {
+  html {
+    font-size: 15px;
+  }
+
   .container {
-    max-width: 1360px;
+    padding-left: 0.85rem;
+    padding-right: 0.85rem;
   }
 
-  .kpi-cards-grid {
-    grid-template-columns: repeat(4, 1fr);
-    gap: 1.75rem;
+  .hero-title {
+    font-size: 1.65rem;
   }
 
-  .admin-content-area {
-    padding: 2.5rem;
+  .wizard-options-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .wizard-steps-indicator {
+    overflow-x: auto;
+    white-space: nowrap;
+    padding-bottom: 0.35rem;
+  }
+
+  .modal-box {
+    max-height: calc(100vh - 1.5rem);
+    border-radius: var(--radius-md, 12px);
+  }
+
+  .modal-header, .modal-body, .modal-footer {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .brand-title {
+    font-size: 1.15rem;
+  }
+
+  .header-actions .admin-switch-btn span:last-child {
+    display: none;
+  }
+
+  .mobile-bottom-inner {
+    gap: 0.4rem;
+  }
+
+  .mobile-btn-action {
+    font-size: 0.68rem;
+    padding: 0.45rem 0.15rem;
   }
 }
 
-/* Ultra-wide Monitors (1920px) */
-@media (min-width: 1920px) {
-  .container {
-    max-width: 1520px;
+@media (max-width: 360px) {
+  .hero-title {
+    font-size: 1.5rem;
   }
 
-  .hero-grid {
-    gap: 4rem;
+  .btn {
+    padding: 0.65rem 0.85rem;
+    font-size: 0.825rem;
   }
 
-  .services-grid {
-    grid-template-columns: repeat(4, 1fr);
-    gap: 2rem;
+  .card-grid {
+    grid-template-columns: 1fr;
   }
 
-  .kpi-cards-grid {
-    grid-template-columns: repeat(4, 1fr);
-    gap: 2rem;
+  .drawer-tabs {
+    overflow-x: auto;
+    white-space: nowrap;
   }
 }
-
-

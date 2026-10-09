@@ -453,7 +453,7 @@
             </div>
           </div>
 
-          <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:1.5rem; margin-bottom:2rem;">
+          <div class="three-column" style="margin-bottom:2rem;">
             <!-- Overdue Column -->
             <div style="background:#fff; border-radius:12px; border:1px solid #FECACA; padding:1.25rem; box-shadow:var(--shadow-sm);">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
@@ -546,7 +546,7 @@
           </div>
 
           <!-- KPI Metrics Row -->
-          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
+          <div class="metrics-grid" style="margin-bottom:1.5rem;">
             <div class="stat-card" style="background:#FFFFFF; padding:1.25rem; border-radius:12px; border:1px solid var(--border-subtle);">
               <span style="font-size:0.8rem; color:#64748B; font-weight:600; text-transform:uppercase;">Total Technicians</span>
               <div style="font-size:1.75rem; font-weight:800; color:#0F172A; margin-top:0.25rem;" id="techTotalCount">5</div>
@@ -589,7 +589,7 @@
           </div>
 
           <!-- Technicians Roster Grid -->
-          <div id="techniciansRosterGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(360px, 1fr)); gap:1.25rem;">
+          <div id="techniciansRosterGrid" class="card-grid">
             <!-- Hydrated dynamically by renderAdminTechnicians() -->
           </div>
         </section>
@@ -621,7 +621,7 @@
                 </select>
               </div>
 
-              <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+              <div class="form-grid">
                 <div class="form-group">
                   <label class="form-label">Target City / Hub</label>
                   <input type="text" id="aiStudioLocation" class="form-control" value="Pune">
@@ -637,7 +637,7 @@
                 </div>
               </div>
 
-              <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+              <div class="form-grid">
                 <div class="form-group">
                   <label class="form-label">Target Audience</label>
                   <select id="aiStudioAudience" class="form-control">
@@ -683,13 +683,13 @@
 
                 <div class="form-group">
                   <label class="form-label">Primary Body Copy</label>
-                  <textarea id="studioPrimaryTextInput" class="form-control" rows="3">Non-destructive Ultrasonic Radar detection finds underground colonies before damage spreads. 5-Year Government-approved warranty.</textarea>
+                  <textarea id="studioPrimaryTextInput" class="form-control" rows="3">Non-destructive Ultrasonic Radar detection finds underground colonies before damage spreads. Comprehensive long-term service warranty.</textarea>
                 </div>
 
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+                <div class="form-grid">
                   <div class="form-group">
                     <label class="form-label">Ad Description</label>
-                    <input type="text" id="studioDescriptionInput" class="form-control" value="Pune's #1 Rated Termite Defense. Instant booking.">
+                    <input type="text" id="studioDescriptionInput" class="form-control" value="Certified Precision Termite Defense. Instant booking.">
                   </div>
                   <div class="form-group">
                     <label class="form-label">CTA Text</label>
@@ -774,20 +774,22 @@
         <!-- ==================== SECTION 6: META ADS MANAGER (PHASE 8) ==================== -->
         <section id="admin-sec-meta-ads" class="admin-view-section" style="display:none;">
           <!-- Top Header -->
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
+          <div class="page-header" style="margin-bottom:1.5rem;">
             <div>
               <h2 style="font-size:1.75rem; margin-bottom:0.25rem;">Meta Ads & Campaign Management</h2>
               <p style="color:#64748B; font-size:0.875rem; margin:0;">Official Meta Marketing API integration for Universal Pest Control. Campaigns, Ad Sets, Ads & Creatives.</p>
             </div>
-            <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+            <div class="page-actions">
               <span class="badge badge-success" id="metaConnectionStatusBadge">● Meta Connected</span>
               <button class="btn btn-primary btn-sm" onclick="openCreateCampaignModal()">+ New Campaign</button>
-              <button class="btn btn-white btn-sm" onclick="openCreateAdSetModal()">+ New Ad Set</button>
-              <button class="btn btn-white btn-sm" onclick="openCreateAdModal()">+ New Ad</button>
-              <button class="btn btn-white btn-sm" onclick="openCreateCreativeModal()">+ New Creative</button>
-              <button class="btn btn-outline btn-sm" id="btnTestMetaConnection" onclick="testMetaConnection()">⚡ Test Connection</button>
-              <button class="btn btn-white btn-sm" id="btnOpenMetaConfigModal" onclick="openMetaConfigModal()">⚙️ Account Settings</button>
-              <button class="btn btn-accent btn-sm" id="btnOpenSimulateLeadModal" onclick="openSimulateLeadModal()">🧪 Simulate Lead Ad</button>
+              <div class="action-group">
+                <button class="btn btn-white btn-sm" onclick="openCreateAdSetModal()">+ New Ad Set</button>
+                <button class="btn btn-white btn-sm" onclick="openCreateAdModal()">+ New Ad</button>
+                <button class="btn btn-white btn-sm" onclick="openCreateCreativeModal()">+ New Creative</button>
+                <button class="btn btn-outline btn-sm" id="btnTestMetaConnection" onclick="testMetaConnection()">⚡ Test Connection</button>
+                <button class="btn btn-white btn-sm" id="btnOpenMetaConfigModal" onclick="openMetaConfigModal()">⚙️ Settings</button>
+                <button class="btn btn-accent btn-sm" id="btnOpenSimulateLeadModal" onclick="openSimulateLeadModal()">🧪 Simulate Lead</button>
+              </div>
             </div>
           </div>
 
@@ -809,7 +811,7 @@
               </div>
             </div>
 
-            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:1rem; font-size:0.8rem;">
+            <div class="responsive-grid four-column" style="gap:1rem; font-size:0.8rem;">
               <div>
                 <span style="color:#64748B; display:block;">Ad Account ID</span>
                 <strong id="metaAdAccountIdDisplay" style="color:#1E293B; font-family:monospace;">act_83921049281</strong>
@@ -1047,7 +1049,7 @@
               <!-- Attributed ROI & Funnel Card -->
               <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:var(--radius-md); padding:1.25rem;">
                 <h4 style="margin:0 0 0.75rem 0; font-size:0.95rem; color:#0F172A;">📊 CRM Attributed Pipeline & ROAS</h4>
-                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; font-size:0.85rem;">
+                <div class="responsive-grid four-column" style="gap:1rem; font-size:0.85rem;">
                   <div>
                     <span style="color:#64748B; display:block;">Attributed Pipeline Value</span>
                     <strong id="perfDisplayPipeline" style="font-size:1.1rem; color:#064E3B;">—</strong>
@@ -1116,7 +1118,7 @@
             </div>
           </div>
 
-          <div class="whatsapp-hub-container" style="display:grid; grid-template-columns:320px 1fr; height:700px; background:#fff; border-radius:var(--radius-lg); border:1px solid #E2E8F0; overflow:hidden; box-shadow:0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+          <div class="whatsapp-hub-container">
             <!-- Sidebar Threads -->
             <div class="wa-threads-sidebar" style="border-right:1px solid #E2E8F0; display:flex; flex-direction:column; background:#F8FAFC;">
               <div style="padding:1rem; border-bottom:1px solid #E2E8F0; background:#fff;">
@@ -1139,13 +1141,16 @@
             <!-- Active Chat Stream -->
             <div class="wa-chat-window" style="display:flex; flex-direction:column; background:#EFEAE2; position:relative;">
               <div class="wa-chat-header" style="padding:0.9rem 1.25rem; background:#F8FAFC; border-bottom:1px solid #E2E8F0; display:flex; justify-content:space-between; align-items:center; z-index:2;">
-                <div>
-                  <div style="display:flex; align-items:center; gap:0.5rem;">
-                    <strong id="waActiveCustomer" style="font-size:1rem; color:#0F172A;">Select a Conversation</strong>
-                    <span id="waActivePhoneBadge" class="badge badge-secondary" style="font-size:0.72rem;">--</span>
-                  </div>
-                  <div id="waActiveContext" style="font-size:0.75rem; color:#64748B; margin-top:0.2rem;">
-                    Lead: None • Service: None • Status: None
+                <div style="display:flex; align-items:center; gap:0.75rem;">
+                  <button type="button" class="btn btn-white btn-sm wa-mobile-back-btn" onclick="document.querySelector('.whatsapp-hub-container')?.classList.remove('chat-active')" title="Back to conversations">← Back</button>
+                  <div>
+                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                      <strong id="waActiveCustomer" style="font-size:1rem; color:#0F172A;">Select a Conversation</strong>
+                      <span id="waActivePhoneBadge" class="badge badge-secondary" style="font-size:0.72rem;">--</span>
+                    </div>
+                    <div id="waActiveContext" style="font-size:0.75rem; color:#64748B; margin-top:0.2rem;">
+                      Lead: None • Service: None • Status: None
+                    </div>
                   </div>
                 </div>
                 <div style="display:flex; gap:0.5rem; align-items:center;">
@@ -1186,7 +1191,7 @@
           </div>
 
           <!-- Real KPI Cards Grid -->
-          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:1.25rem; margin-bottom:1.5rem;">
+          <div class="stats-grid" style="margin-bottom:1.5rem;">
             <div class="stat-card" style="background:#fff; border:1px solid #E2E8F0; padding:1.25rem; border-radius:12px;">
               <span style="font-size:0.75rem; color:#64748B; text-transform:uppercase; font-weight:700;">Blended CPL</span>
               <div id="statBlendedCpl" style="font-size:1.75rem; font-weight:800; color:#064E3B; margin:0.25rem 0;">₹0.00</div>
@@ -1210,7 +1215,7 @@
           </div>
 
           <!-- Secondary Metrics Bar: Full CRM Funnel Stages -->
-          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:1rem; margin-bottom:2rem;">
+          <div class="responsive-grid" style="gap:1rem; margin-bottom:2rem;">
             <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:0.85rem 1rem;">
               <div style="font-size:0.72rem; color:#64748B; font-weight:600;">TOTAL LEADS</div>
               <strong id="statTotalLeads" style="font-size:1.25rem; color:#0F172A;">0</strong>
@@ -1300,7 +1305,7 @@
           </div>
 
           <!-- Trends Grid: Lead Trend & Revenue Trend -->
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-bottom:2rem;">
+          <div class="two-column" style="margin-bottom:2rem;">
             <div class="crm-table-card">
               <div style="padding:0.85rem 1.25rem; border-bottom:1px solid #E2E8F0;">
                 <strong style="font-size:0.9rem;">📈 Lead Intake Trend (Recent Days)</strong>
@@ -1338,7 +1343,7 @@
           </div>
 
           <!-- Two-Column Breakdown: Services & Locations -->
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem;">
+          <div class="two-column">
             <div class="crm-table-card">
               <div style="padding:0.85rem 1.25rem; border-bottom:1px solid #E2E8F0;">
                 <strong style="font-size:0.9rem;">Lead Demand by Service</strong>
@@ -1617,7 +1622,7 @@
             </div>
           </div>
 
-          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(360px, 1fr)); gap:1.5rem; margin-bottom:1.5rem;">
+          <div class="responsive-grid two-column" style="margin-bottom:1.5rem;">
             <!-- Business Profile Card -->
             <div class="admin-card" style="background:#fff; border:1px solid #E2E8F0; border-radius:16px; padding:1.5rem; box-shadow:var(--shadow-sm);">
               <h3 style="font-size:1.1rem; margin-bottom:1rem; display:flex; align-items:center; gap:0.5rem;">
@@ -1682,7 +1687,7 @@
             <h3 style="font-size:1.1rem; margin-bottom:1rem; display:flex; align-items:center; gap:0.5rem;">
               <span>🛡️</span> Security Shields & Data Policy Safeguards
             </h3>
-            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:1rem; font-size:0.875rem;">
+            <div class="responsive-grid three-column" style="gap:1rem; font-size:0.875rem;">
               <div style="padding:1rem; background:#F8FAFC; border-radius:12px; border:1px solid #E2E8F0;">
                 <div style="font-weight:700; color:#0F172A; margin-bottom:0.25rem;">Attribution Persistence</div>
                 <p style="color:#64748B; font-size:0.8rem; margin:0;">Original UTM parameters (source, medium, campaign) and click IDs (gclid, fbclid) are locked upon lead creation to prevent accidental overwrites during pipeline progression.</p>
@@ -1760,7 +1765,7 @@
       </div>
 
       <!-- Lead Assignment & Follow-Up Bar -->
-      <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:12px; padding:1rem 1.25rem; margin-bottom:1.25rem; display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+      <div class="form-grid" style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:12px; padding:1rem 1.25rem; margin-bottom:1.25rem;">
         <div>
           <span style="font-size:0.75rem; text-transform:uppercase; font-weight:700; color:#64748B;">Assigned Sales Representative</span>
           <select id="drawerAssignedSelect" class="form-control" style="font-size:0.85rem; margin-top:0.35rem; font-weight:600;">
@@ -1787,7 +1792,7 @@
       </div>
 
       <!-- Core Lead Attributes -->
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1.25rem; font-size:0.875rem;">
+      <div class="form-grid" style="margin-bottom:1.25rem; font-size:0.875rem;">
         <div>
           <strong style="color:#64748B; font-size:0.75rem; text-transform:uppercase;">Phone:</strong>
           <div id="drawerLeadPhone" style="font-weight:600;">-</div>
@@ -1880,7 +1885,7 @@
   </div>
 
   <!-- CUSTOMER PROFILE DRAWER -->
-  <div id="customerProfileDrawer" class="lead-drawer" style="width:460px;">
+  <div id="customerProfileDrawer" class="lead-drawer">
     <div class="drawer-header">
       <div>
         <h3 id="custDrawerName" style="margin-bottom:0.25rem;">Customer Profile</h3>
@@ -1891,7 +1896,7 @@
     <div class="drawer-body" style="padding:1.5rem;">
       <!-- Details Card -->
       <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:10px; padding:1rem; margin-bottom:1.5rem;">
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; font-size:0.85rem;">
+        <div class="form-grid" style="font-size:0.85rem;">
           <div><span style="color:#64748B;">Email:</span> <strong id="custDrawerEmail">-</strong></div>
           <div><span style="color:#64748B;">City:</span> <strong id="custDrawerCity">-</strong></div>
           <div><span style="color:#64748B;">Property:</span> <strong id="custDrawerProperty">-</strong></div>
@@ -1938,7 +1943,7 @@
 
   <!-- MODAL: SCHEDULE FOLLOW-UP -->
   <div id="modalScheduleFollowup" class="modal-overlay" style="display:none;">
-    <div class="modal-card" style="max-width:480px;">
+    <div class="modal-card modal-md">
       <div class="modal-header">
         <h3>Schedule Lead Follow-up</h3>
         <button id="btnCloseFollowupModal" class="modal-close-btn">✕</button>
@@ -1950,7 +1955,7 @@
             <option value="">Choose Lead...</option>
           </select>
         </div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+        <div class="form-grid">
           <div class="form-group">
             <label class="form-label">Date *</label>
             <input type="date" id="fuModalDate" class="form-control" required>
@@ -1977,14 +1982,14 @@
 
   <!-- MODAL: CMS SERVICE -->
   <div id="modalCmsService" class="modal-overlay" style="display:none;">
-    <div class="modal-card" style="max-width:640px; max-height:90vh; overflow-y:auto;">
+    <div class="modal-card modal-lg">
       <div class="modal-header">
         <h3 id="modalServiceTitle">Add / Edit Service</h3>
         <button id="btnCloseServiceModal" class="modal-close-btn">✕</button>
       </div>
       <div class="modal-body">
         <input type="hidden" id="serviceEditId">
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+        <div class="form-grid">
           <div class="form-group">
             <label class="form-label">Service Name *</label>
             <input type="text" id="serviceInputName" class="form-control" placeholder="e.g. Cockroach Herbal Gel" required>
@@ -1994,7 +1999,7 @@
             <input type="text" id="serviceInputSlug" class="form-control" placeholder="e.g. cockroach-control" required>
           </div>
         </div>
-        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.75rem;">
+        <div class="form-grid-3">
           <div class="form-group">
             <label class="form-label">Category</label>
             <select id="serviceInputCategory" class="form-control">
@@ -2018,7 +2023,7 @@
             </select>
           </div>
         </div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+        <div class="form-grid">
           <div class="form-group">
             <label class="form-label">Estimated Duration</label>
             <input type="text" id="serviceInputDuration" class="form-control" placeholder="e.g. 45 - 60 Mins">
@@ -2044,7 +2049,7 @@
           <label class="form-label">Key Benefits / Perks (one per line)</label>
           <textarea id="serviceInputBenefits" class="form-control" rows="3" placeholder="Bayer Maxforce Gel Technology&#10;100% Odorless non-toxic&#10;1-Year Warranty"></textarea>
         </div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+        <div class="form-grid">
           <div class="form-group">
             <label class="form-label">SEO Title</label>
             <input type="text" id="serviceInputSeoTitle" class="form-control" placeholder="e.g. Cockroach Control Pune">
@@ -2061,7 +2066,7 @@
 
   <!-- MODAL: CMS OFFER -->
   <div id="modalCmsOffer" class="modal-overlay" style="display:none;">
-    <div class="modal-card" style="max-width:540px; max-height:90vh; overflow-y:auto;">
+    <div class="modal-card modal-md">
       <div class="modal-header">
         <h3 id="modalOfferTitle">Add / Edit Promotional Offer</h3>
         <button id="btnCloseOfferModal" class="modal-close-btn">✕</button>
@@ -2072,7 +2077,7 @@
           <label class="form-label">Offer Title *</label>
           <input type="text" id="offerInputTitle" class="form-control" placeholder="e.g. First Time Customer 20% Off" required>
         </div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+        <div class="form-grid">
           <div class="form-group">
             <label class="form-label">Discount Text *</label>
             <input type="text" id="offerInputDiscount" class="form-control" placeholder="e.g. 20% OFF" required>
@@ -2082,7 +2087,7 @@
             <input type="text" id="offerInputCta" class="form-control" placeholder="e.g. WELCOME20" required>
           </div>
         </div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+        <div class="form-grid">
           <div class="form-group">
             <label class="form-label">Applicable Service</label>
             <input type="text" id="offerInputService" class="form-control" placeholder="e.g. Cockroach Control">
@@ -2096,7 +2101,7 @@
             </select>
           </div>
         </div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+        <div class="form-grid">
           <div class="form-group">
             <label class="form-label">Valid From</label>
             <input type="date" id="offerInputValidFrom" class="form-control">
@@ -2121,14 +2126,14 @@
 
   <!-- MODAL: CMS REVIEW -->
   <div id="modalCmsReview" class="modal-overlay" style="display:none;">
-    <div class="modal-card" style="max-width:500px;">
+    <div class="modal-card modal-md">
       <div class="modal-header">
         <h3 id="modalReviewTitle">Add / Edit Review</h3>
         <button id="btnCloseReviewModal" class="modal-close-btn">✕</button>
       </div>
       <div class="modal-body">
         <input type="hidden" id="reviewEditId">
-        <div style="display:grid; grid-template-columns:1.2fr 0.8fr; gap:0.75rem;">
+        <div class="form-grid">
           <div class="form-group">
             <label class="form-label">Customer Name *</label>
             <input type="text" id="reviewInputCustomer" class="form-control" placeholder="e.g. Anjali Mehta" required>
@@ -2145,7 +2150,7 @@
             </select>
           </div>
         </div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+        <div class="form-grid">
           <div class="form-group">
             <label class="form-label">Service</label>
             <input type="text" id="reviewInputService" class="form-control" placeholder="e.g. Termite Radar Inspection">
@@ -2159,7 +2164,7 @@
           <label class="form-label">Review Content *</label>
           <textarea id="reviewInputText" class="form-control" rows="3" placeholder="Customer testimony and feedback..." required></textarea>
         </div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+        <div class="form-grid">
           <div class="form-group">
             <label class="form-label">Moderation Status</label>
             <select id="reviewInputStatus" class="form-control">
@@ -2182,7 +2187,7 @@
 
   <!-- MODAL: CMS BLOG -->
   <div id="modalCmsBlog" class="modal-overlay" style="display:none;">
-    <div class="modal-card" style="max-width:680px; max-height:90vh; overflow-y:auto;">
+    <div class="modal-card modal-lg">
       <div class="modal-header">
         <h3 id="modalBlogTitle">New / Edit Blog Article</h3>
         <button id="btnCloseBlogModal" class="modal-close-btn">✕</button>
@@ -2193,7 +2198,7 @@
           <label class="form-label">Article Title *</label>
           <input type="text" id="blogInputTitle" class="form-control" placeholder="e.g. How to Detect Subterranean Termites Before Wood Hollows" required>
         </div>
-        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.75rem;">
+        <div class="form-grid-3">
           <div class="form-group">
             <label class="form-label">Slug</label>
             <input type="text" id="blogInputSlug" class="form-control" placeholder="e.g. how-to-detect-subterranean-termites">
@@ -2211,7 +2216,7 @@
             </select>
           </div>
         </div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+        <div class="form-grid">
           <div class="form-group">
             <label class="form-label">Author Name</label>
             <input type="text" id="blogInputAuthor" class="form-control" placeholder="e.g. Dr. S. Rao (Entomologist)" value="Dr. S. Rao (Entomologist)">
@@ -2229,7 +2234,7 @@
           <label class="form-label">Article Content (Markdown / Text) *</label>
           <textarea id="blogInputContent" class="form-control" rows="6" placeholder="Full article body content..." required></textarea>
         </div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+        <div class="form-grid">
           <div class="form-group">
             <label class="form-label">SEO Title</label>
             <input type="text" id="blogInputSeoTitle" class="form-control" placeholder="Meta title">
@@ -2246,14 +2251,14 @@
 
   <!-- MODAL: CMS SERVICE AREA -->
   <div id="modalCmsArea" class="modal-overlay" style="display:none;">
-    <div class="modal-card" style="max-width:480px;">
+    <div class="modal-card modal-md">
       <div class="modal-header">
         <h3 id="modalAreaTitle">Add / Edit Coverage Area</h3>
         <button id="btnCloseAreaModal" class="modal-close-btn">✕</button>
       </div>
       <div class="modal-body">
         <input type="hidden" id="areaEditId">
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+        <div class="form-grid">
           <div class="form-group">
             <label class="form-label">City *</label>
             <input type="text" id="areaInputCity" class="form-control" placeholder="Pune" value="Pune" required>
@@ -2275,7 +2280,7 @@
           <label class="form-label">Service Availability Details</label>
           <input type="text" id="areaInputAvailability" class="form-control" placeholder="e.g. All Services (Termite, Cockroach, Bedbug, Commercial)">
         </div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+        <div class="form-grid">
           <div class="form-group">
             <label class="form-label">SEO Title</label>
             <input type="text" id="areaInputSeoTitle" class="form-control" placeholder="Locality SEO title">
@@ -2291,15 +2296,15 @@
   </div>
 
   <!-- Modal 10: Technician Management Modal (Phase 5) -->
-  <div id="modalTechnician" class="modal-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center;">
-    <div class="modal-content" style="background:#FFFFFF; border-radius:12px; width:95%; max-width:620px; max-height:90vh; overflow-y:auto; box-shadow:0 20px 40px rgba(0,0,0,0.2);">
-      <div style="padding:1.25rem 1.5rem; border-bottom:1px solid #E2E8F0; display:flex; justify-content:space-between; align-items:center; background:#F8FAFC; border-radius:12px 12px 0 0;">
+  <div id="modalTechnician" class="modal-overlay" style="display:none;">
+    <div class="modal-card modal-lg">
+      <div class="modal-header">
         <h3 id="modalTechTitle" style="margin:0; font-size:1.15rem; color:#0F172A;">➕ Add New Field Technician</h3>
         <button class="btn btn-sm btn-white" onclick="closeModalTech()">✕</button>
       </div>
-      <div style="padding:1.5rem;">
+      <div class="modal-body">
         <input type="hidden" id="techFormId">
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+        <div class="form-grid">
           <div class="form-group">
             <label class="form-label">Full Name *</label>
             <input type="text" id="techFormName" class="form-control" placeholder="e.g. Vikram Shinde" required>
@@ -2309,7 +2314,7 @@
             <input type="text" id="techFormPhone" class="form-control" placeholder="+91 98230 44129" required>
           </div>
         </div>
-        <div style="display:grid; grid-template-columns:1.2fr 0.8fr; gap:0.75rem;">
+        <div class="form-grid">
           <div class="form-group">
             <label class="form-label">Email Address</label>
             <input type="email" id="techFormEmail" class="form-control" placeholder="technician@universalpest.in">
@@ -2323,7 +2328,7 @@
             </select>
           </div>
         </div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+        <div class="form-grid">
           <div class="form-group">
             <label class="form-label">Availability State *</label>
             <select id="techFormAvailability" class="form-control">
@@ -2414,7 +2419,7 @@
             <label class="form-label">Portfolio Account Name *</label>
             <input type="text" id="metaFormAccountName" class="form-control" placeholder="Universal Pest Control — Meta Ads Portfolio" required>
           </div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:0.75rem;">
+          <div class="form-grid" style="margin-bottom:0.75rem;">
             <div class="form-group">
               <label class="form-label">Meta Ad Account ID *</label>
               <input type="text" id="metaFormAdAccountId" class="form-control" placeholder="act_83921049281" required>
@@ -2424,7 +2429,7 @@
               <input type="text" id="metaFormBusinessId" class="form-control" placeholder="83921049281">
             </div>
           </div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:0.75rem;">
+          <div class="form-grid" style="margin-bottom:0.75rem;">
             <div class="form-group">
               <label class="form-label">Facebook Page ID *</label>
               <input type="text" id="metaFormPageId" class="form-control" placeholder="109283746501928" required>
@@ -2434,7 +2439,7 @@
               <input type="text" id="metaFormPageName" class="form-control" placeholder="Universal Pest Control Official">
             </div>
           </div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:0.75rem;">
+          <div class="form-grid" style="margin-bottom:0.75rem;">
             <div class="form-group">
               <label class="form-label">Instagram Actor ID</label>
               <input type="text" id="metaFormIgActorId" class="form-control" placeholder="17841405928193821">
@@ -2444,7 +2449,7 @@
               <input type="text" id="metaFormPixelId" class="form-control" placeholder="987654321012345">
             </div>
           </div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:0.75rem;">
+          <div class="form-grid" style="margin-bottom:0.75rem;">
             <div class="form-group">
               <label class="form-label">Meta App ID</label>
               <input type="text" id="metaFormAppId" class="form-control" placeholder="928374650192837">
@@ -2477,7 +2482,7 @@
 
   <!-- MODAL: SIMULATE META LEAD AD INGESTION (PHASE 7) -->
   <div id="modalSimulateMetaLead" class="modal-overlay" style="display:none;">
-    <div class="modal-card" style="max-width:520px;">
+    <div class="modal-card modal-md">
       <div class="modal-header">
         <h3 style="margin:0;">🧪 Simulate Facebook/Instagram Lead Ad</h3>
         <button id="btnCloseSimulateLeadModal" class="modal-close-btn" onclick="closeSimulateLeadModal()">✕</button>
@@ -2494,7 +2499,7 @@
               <option value="fb">Facebook Lead Ad (FACEBOOK_LEAD_AD)</option>
             </select>
           </div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:0.75rem;">
+          <div class="form-grid" style="margin-bottom:0.75rem;">
             <div class="form-group">
               <label class="form-label">Full Name *</label>
               <input type="text" id="simMetaName" class="form-control" value="Pooja Kulkarni" required>
@@ -2504,7 +2509,7 @@
               <input type="tel" id="simMetaPhone" class="form-control" value="+91 98220 55431" required>
             </div>
           </div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:0.75rem;">
+          <div class="form-grid" style="margin-bottom:0.75rem;">
             <div class="form-group">
               <label class="form-label">Email</label>
               <input type="email" id="simMetaEmail" class="form-control" value="pooja.kulkarni@gmail.com">
@@ -2519,7 +2524,7 @@
               </select>
             </div>
           </div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:0.75rem;">
+          <div class="form-grid" style="margin-bottom:0.75rem;">
             <div class="form-group">
               <label class="form-label">Campaign Name</label>
               <input type="text" id="simMetaCampaign" class="form-control" value="Termite Monsoon Shield 2026">
@@ -2542,7 +2547,7 @@
 
   <!-- MODAL: CREATE META CAMPAIGN -->
   <div id="modalCreateCampaign" class="modal-overlay" style="display:none;">
-    <div class="modal-card" style="max-width:620px; max-height:90vh; overflow-y:auto;">
+    <div class="modal-card modal-lg">
       <div class="modal-header">
         <h3 style="margin:0;">📢 Create Meta Campaign</h3>
         <button class="modal-close-btn" onclick="closeCreateCampaignModal()">✕</button>
@@ -2557,7 +2562,7 @@
             <input type="text" id="campaignFormName" class="form-control" placeholder="e.g. Monsoon Termite Shield 2026" required>
           </div>
 
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:0.75rem;">
+          <div class="form-grid" style="margin-bottom:0.75rem;">
             <div class="form-group">
               <label class="form-label">Campaign Objective *</label>
               <select id="campaignFormObjective" class="form-control" required>
@@ -2577,7 +2582,7 @@
             </div>
           </div>
 
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:0.75rem;">
+          <div class="form-grid" style="margin-bottom:0.75rem;">
             <div class="form-group" id="groupDailyBudget">
               <label class="form-label">Daily Budget (₹ INR) *</label>
               <input type="number" id="campaignFormDailyBudget" class="form-control" min="100" step="50" value="1000">
@@ -2592,7 +2597,7 @@
             </div>
           </div>
 
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:0.75rem;">
+          <div class="form-grid" style="margin-bottom:0.75rem;">
             <div class="form-group">
               <label class="form-label">Schedule Start *</label>
               <input type="datetime-local" id="campaignFormStartTime" class="form-control" required>
@@ -2605,7 +2610,7 @@
 
           <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:var(--radius-md); padding:1rem; margin-bottom:1rem;">
             <strong style="font-size:0.85rem; color:#0F172A; display:block; margin-bottom:0.5rem;">Target Audience Demographics</strong>
-            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.5rem; margin-bottom:0.5rem;">
+            <div class="form-grid-3" style="gap:0.5rem; margin-bottom:0.5rem;">
               <div class="form-group">
                 <label class="form-label" style="font-size:0.75rem;">Min Age</label>
                 <input type="number" id="campaignFormAgeMin" class="form-control" value="25" min="18" max="65">
@@ -2640,7 +2645,7 @@
 
   <!-- MODAL: CREATE META AD SET -->
   <div id="modalCreateAdSet" class="modal-overlay" style="display:none;">
-    <div class="modal-card" style="max-width:560px; max-height:90vh; overflow-y:auto;">
+    <div class="modal-card modal-lg">
       <div class="modal-header">
         <h3 style="margin:0;">🎯 Create Meta Ad Set</h3>
         <button class="modal-close-btn" onclick="closeCreateAdSetModal()">✕</button>
@@ -2660,7 +2665,7 @@
             <label class="form-label">Ad Set Name *</label>
             <input type="text" id="adsetFormName" class="form-control" placeholder="e.g. Pune Villa Owners — Feed & Reels" required>
           </div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:0.75rem;">
+          <div class="form-grid" style="margin-bottom:0.75rem;">
             <div class="form-group">
               <label class="form-label">Optimization Goal *</label>
               <select id="adsetFormOptimization" class="form-control" required>
@@ -2678,7 +2683,7 @@
               </select>
             </div>
           </div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:0.75rem;">
+          <div class="form-grid" style="margin-bottom:0.75rem;">
             <div class="form-group">
               <label class="form-label">Ad Set Daily Budget (₹ INR)</label>
               <input type="number" id="adsetFormBudget" class="form-control" placeholder="800" min="100">
@@ -2703,7 +2708,7 @@
 
   <!-- MODAL: CREATE META AD -->
   <div id="modalCreateAd" class="modal-overlay" style="display:none;">
-    <div class="modal-card" style="max-width:540px; max-height:90vh; overflow-y:auto;">
+    <div class="modal-card modal-md">
       <div class="modal-header">
         <h3 style="margin:0;">🖼️ Create Meta Ad</h3>
         <button class="modal-close-btn" onclick="closeCreateAdModal()">✕</button>
@@ -2749,7 +2754,7 @@
 
   <!-- MODAL: CREATE CREATIVE (CONNECTED TO STUDIO) -->
   <div id="modalCreateCreative" class="modal-overlay" style="display:none;">
-    <div class="modal-card" style="max-width:600px; max-height:90vh; overflow-y:auto;">
+    <div class="modal-card modal-lg">
       <div class="modal-header">
         <h3 style="margin:0;">🎨 Create Meta Creative Asset</h3>
         <button class="modal-close-btn" onclick="closeCreateCreativeModal()">✕</button>
@@ -2763,7 +2768,7 @@
             <label class="form-label">Creative Name *</label>
             <input type="text" id="creativeFormName" class="form-control" placeholder="e.g. Ultrasonic Radar Inspection Termite Creative" required>
           </div>
-          <div style="display:grid; grid-template-columns:1fr 2fr; gap:0.75rem; margin-bottom:0.75rem;">
+          <div class="form-grid" style="margin-bottom:0.75rem;">
             <div class="form-group">
               <label class="form-label">Media Type *</label>
               <select id="creativeFormMediaType" class="form-control" onchange="toggleCreativeMediaInput()">
@@ -2794,12 +2799,12 @@
           </div>
           <div class="form-group" style="margin-bottom:0.75rem;">
             <label class="form-label">Primary Text (Body Copy) *</label>
-            <textarea id="creativeFormPrimaryText" class="form-control" rows="3" placeholder="Ultrasonic radar inspection detects underground colonies before wall damage occurs. 5-Year warranty." required></textarea>
+            <textarea id="creativeFormPrimaryText" class="form-control" rows="3" placeholder="Ultrasonic radar inspection detects underground colonies before wall damage occurs. Comprehensive long-term service warranty." required></textarea>
           </div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:0.75rem;">
+          <div class="form-grid" style="margin-bottom:0.75rem;">
             <div class="form-group">
               <label class="form-label">Ad Description</label>
-              <input type="text" id="creativeFormDescription" class="form-control" placeholder="Pune's #1 Rated Pest Extermination.">
+              <input type="text" id="creativeFormDescription" class="form-control" placeholder="Certified eco-safe pest management.">
             </div>
             <div class="form-group">
               <label class="form-label">Call To Action (CTA) *</label>
@@ -2828,7 +2833,7 @@
 
   <!-- MODAL: CAMPAIGN PERFORMANCE DETAILS -->
   <div id="modalCampaignPerformance" class="modal-overlay" style="display:none;">
-    <div class="modal-card" style="max-width:680px; max-height:90vh; overflow-y:auto;">
+    <div class="modal-card modal-lg">
       <div class="modal-header">
         <h3 style="margin:0;" id="modalPerfTitle">📊 Campaign Performance</h3>
         <button class="modal-close-btn" onclick="closeCampaignPerformanceModal()">✕</button>

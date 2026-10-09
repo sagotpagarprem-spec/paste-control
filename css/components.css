@@ -323,12 +323,13 @@
 .ba-container {
   position: relative;
   width: 100%;
-  height: 520px;
+  height: clamp(280px, 45vw, 520px);
   border-radius: var(--radius-xl);
   overflow: hidden;
   box-shadow: var(--shadow-xl);
   user-select: none;
   border: 4px solid #FFFFFF;
+  container-type: inline-size;
 }
 
 .ba-image {
@@ -362,9 +363,9 @@
   position: absolute;
   top: 0;
   left: 0;
-  width: 980px;
+  width: 100cqw;
   max-width: none;
-  height: 520px;
+  height: 100%;
   object-fit: cover;
 }
 
@@ -868,68 +869,127 @@
   padding: 0 1.5rem 1.25rem 1.5rem;
 }
 
-/* 11. SMART MULTI-STEP LEAD MODAL & WIZARD */
+/* 11. UNIFIED RESPONSIVE MODAL SYSTEM */
 .modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
+  width: 100vw;
+  height: 100vh;
   background: rgba(15, 23, 42, 0.65);
-  backdrop-filter: blur(6px);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   z-index: var(--z-modal);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1.5rem;
+  padding: 1.25rem;
   opacity: 0;
   visibility: hidden;
-  transition: all var(--transition-normal);
+  transition: opacity var(--transition-normal), visibility var(--transition-normal);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
-.modal-overlay.active {
+.modal-overlay.active, 
+.modal-overlay[style*="display: flex"], 
+.modal-overlay[style*="display: block"] {
   opacity: 1;
   visibility: visible;
 }
 
 .modal-box {
-  background: #FFFFFF;
-  border-radius: var(--radius-xl);
+  background: var(--bg-surface, #FFFFFF);
+  border-radius: var(--radius-xl, 20px);
   box-shadow: var(--shadow-xl);
+  border: 1px solid var(--border-subtle);
   width: 100%;
-  max-width: 680px;
-  max-height: 90vh;
-  overflow-y: auto;
+  max-width: 640px;
+  max-height: calc(100vh - 2.5rem);
+  display: flex;
+  flex-direction: column;
   position: relative;
-  transform: translateY(20px);
+  overflow: hidden;
+  transform: translateY(14px) scale(0.98);
   transition: transform var(--transition-smooth);
+  margin: auto;
 }
 
-.modal-overlay.active .modal-box {
-  transform: translateY(0);
+.modal-overlay.active .modal-box,
+.modal-overlay[style*="display: flex"] .modal-box,
+.modal-overlay[style*="display: block"] .modal-box {
+  transform: translateY(0) scale(1);
+}
+
+.modal-sm { max-width: 440px; }
+.modal-md { max-width: 600px; }
+.modal-lg { max-width: 780px; }
+.modal-xl { max-width: 960px; }
+
+.modal-header {
+  padding: 1.25rem 1.75rem;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-surface);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  flex-shrink: 0;
+}
+
+.modal-title {
+  font-family: var(--font-family-heading);
+  font-size: var(--font-size-md, 1.125rem);
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.modal-body {
+  padding: 1.75rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  flex-grow: 1;
+  -webkit-overflow-scrolling: touch;
+}
+
+.modal-footer {
+  padding: 1rem 1.75rem;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-subtle, #F8FAFC);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 .modal-close-btn {
   position: absolute;
-  top: 20px;
-  right: 20px;
-  background: #F1F5F9;
+  top: 16px;
+  right: 16px;
+  background: var(--bg-subtle, #F1F5F9);
   border: none;
   width: 36px;
   height: 36px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--text-muted);
-  font-size: 1.2rem;
+  font-size: 1.15rem;
   z-index: 10;
+  transition: all var(--transition-fast);
 }
 
 .modal-close-btn:hover {
-  background: #E2E8F0;
+  background: var(--border-subtle);
   color: var(--text-main);
+  transform: scale(1.05);
 }
 
 /* Step Wizard Progress */
@@ -1011,6 +1071,28 @@
   font-family: var(--font-family-heading);
   font-size: 0.85rem;
   font-weight: 600;
+}
+
+.wizard-options-2col {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.service-detail-sidebar {
+  background: var(--bg-surface, #FFFFFF);
+  border-radius: var(--radius-xl, 20px);
+  box-shadow: var(--shadow-xl);
+  border: 1px solid var(--border-subtle);
+  padding: 2rem;
+  position: sticky;
+  top: 100px;
+}
+
+@media (max-width: 992px) {
+  .service-detail-sidebar {
+    position: static;
+    margin-top: 1.5rem;
+    box-shadow: var(--shadow-md);
+  }
 }
 
 /* 12. COMPLETE 8-STEP BOOKING ENGINE */

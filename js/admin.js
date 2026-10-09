@@ -1296,6 +1296,12 @@ async function openWhatsAppThread(phone, customerName, leadData = null) {
   // Highlight active thread item
   renderWaThreadsList(waConversationsCache);
 
+  // On mobile screens, activate full-width chat window
+  const waContainer = document.querySelector('.whatsapp-hub-container');
+  if (waContainer) {
+    waContainer.classList.add('chat-active');
+  }
+
   if (!stream) return;
   stream.innerHTML = `<div style="text-align:center; padding:2rem; color:#94A3B8;">Loading conversation history...</div>`;
 
@@ -4172,7 +4178,7 @@ async function openCampaignPerformanceModal(id) {
           ${isApiAvailable ? '✅ Live Meta Marketing API metrics synchronized via Meta Insights.' : `⚠️ Live Meta Marketing API insights unavailable for this campaign. Zero fake metrics displayed. Captured CRM Leads: ${metrics.crmLeadsRecorded || 0}.`}
         </div>
 
-        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:0.75rem; margin-bottom:1.25rem;">
+        <div class="three-column" style="gap:0.75rem; margin-bottom:1.25rem;">
           <div class="perf-metric-card" style="padding:1rem;">
             <div class="metric-label">Status</div>
             <div style="margin-top:0.25rem;">${getCampaignStatusBadge(data.status)}</div>
@@ -4187,7 +4193,7 @@ async function openCampaignPerformanceModal(id) {
           </div>
         </div>
 
-        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:0.75rem; margin-bottom:1.25rem;">
+        <div class="three-column" style="gap:0.75rem; margin-bottom:1.25rem;">
           <div class="perf-metric-card" style="padding:1rem;">
             <div class="metric-label">Impressions</div>
             <div class="metric-val" style="font-size:1.15rem;">${metrics.impressionsFormatted || 'Unavailable'}</div>
@@ -4204,7 +4210,7 @@ async function openCampaignPerformanceModal(id) {
 
         <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:var(--radius-md); padding:1rem; font-size:0.85rem;">
           <strong style="display:block; margin-bottom:0.5rem; color:#0F172A;">Attribution & CRM Summary</strong>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
+          <div class="two-column" style="gap:0.5rem;">
             <div>Conversions (Booked): <strong>${metrics.conversions || 0}</strong></div>
             <div>Conversion Rate: <strong>${metrics.conversionRate || '0.0%'}</strong></div>
             <div>Pipeline Value: <strong>${metrics.pipelineValue || '₹0'}</strong></div>
