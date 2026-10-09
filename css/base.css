@@ -529,6 +529,7 @@ select.form-control {
   flex-direction: column;
   gap: 12px;
   pointer-events: none;
+  max-width: calc(100% - 32px);
 }
 
 .toast {
@@ -540,15 +541,32 @@ select.form-control {
   display: flex;
   align-items: center;
   gap: 12px;
-  min-width: 320px;
+  min-width: 260px;
   max-width: 440px;
+  width: auto;
   pointer-events: auto;
   animation: slideUp 0.3s ease forwards;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
 }
 
 .toast.toast-success { border-left-color: var(--brand-accent); }
 .toast.toast-error { border-left-color: var(--status-danger); }
 .toast.toast-info { border-left-color: var(--brand-primary); }
+
+@media (max-width: 480px) {
+  .toast-container {
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+    right: 16px;
+    left: 16px;
+    max-width: 100%;
+  }
+  .toast {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+  }
+}
 
 /* Accessibility */
 @media (prefers-reduced-motion: reduce) {

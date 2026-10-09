@@ -21,40 +21,138 @@ document.addEventListener('DOMContentLoaded', () => {
 /* 1. NAVIGATION & VIEW ROUTING */
 function initNavigation() {
   const header = document.querySelector('.main-header');
-  window.addEventListener('scroll', () => {
-    if (window.scrollY > 40) {
-      header.classList.add('scrolled');
+  if (header) {
+    window.addEventListener('scroll', () => {
+      if (window.scrollY > 40) {
+        header.classList.add('scrolled');
+      } else {
+        header.classList.remove('scrolled');
+      }
+    }, { passive: true });
+  }
+
+  // Mobile drawer elements
+  const mobileToggle = document.getElementById('mobileMenuToggle') || document.querySelector('.mobile-toggle');
+  const drawer = document.getElementById('mobileDrawer') || document.querySelector('.mobile-drawer');
+  const drawerClose = document.getElementById('drawerCloseBtn') || document.querySelector('.drawer-close');
+  const backdrop = document.getElementById('mobileDrawerBackdrop') || document.querySelector('.mobile-drawer-backdrop');
+
+  // Unified Mobile Drawer State Controller
+  function openDrawer() {
+    if (!drawer) return;
+    drawer.classList.add('open');
+    if (backdrop) backdrop.classList.add('active');
+    if (mobileToggle) {
+      mobileToggle.setAttribute('aria-expanded', 'true');
+    }
+    document.body.classList.add('drawer-scroll-locked');
+    if (drawerClose) {
+      drawerClose.focus();
     } else {
-      header.classList.remove('scrolled');
+      drawer.focus();
+    }
+  }
+
+  function closeDrawer() {
+    if (!drawer) return;
+    drawer.classList.remove('open');
+    if (backdrop) backdrop.classList.remove('active');
+    if (mobileToggle) {
+      mobileToggle.setAttribute('aria-expanded', 'false');
+    }
+    document.body.classList.remove('drawer-scroll-locked');
+    if (mobileToggle && document.activeElement !== mobileToggle) {
+      mobileToggle.focus();
+    }
+  }
+
+  window.openMobileDrawer = openDrawer;
+  window.closeMobileDrawer = closeDrawer;
+
+  if (mobileToggle) {
+    mobileToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (drawer && drawer.classList.contains('open')) {
+        closeDrawer();
+      } else {
+        openDrawer();
+      }
+    });
+  }
+
+  if (drawerClose) {
+    drawerClose.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeDrawer();
+    });
+  }
+
+  if (backdrop) {
+    backdrop.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeDrawer();
+    });
+  }
+
+  // Keyboard navigation: Escape key closes drawer, Tab traps focus
+  document.addEventListener('keydown', (e) => {
+    if (!drawer || !drawer.classList.contains('open')) return;
+
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      closeDrawer();
+      return;
+    }
+
+    if (e.key === 'Tab') {
+      const focusableEls = drawer.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+      if (focusableEls.length === 0) return;
+      const firstEl = focusableEls[0];
+      const lastEl = focusableEls[focusableEls.length - 1];
+
+      if (e.shiftKey) {
+        if (document.activeElement === firstEl) {
+          e.preventDefault();
+          lastEl.focus();
+        }
+      } else {
+        if (document.activeElement === lastEl) {
+          e.preventDefault();
+          firstEl.focus();
+        }
+      }
     }
   });
 
-  // Mobile drawer
-  const mobileToggle = document.querySelector('.mobile-toggle');
-  const drawer = document.querySelector('.mobile-drawer');
-  const drawerClose = document.querySelector('.drawer-close');
-
-  if (mobileToggle && drawer) {
-    mobileToggle.addEventListener('click', () => drawer.classList.add('open'));
-  }
-  if (drawerClose && drawer) {
-    drawerClose.addEventListener('click', () => drawer.classList.remove('open'));
-  }
-
-  // View Switcher (SPA-style navigation)
-  const navLinks = document.querySelectorAll('[data-view-target]');
-  navLinks.forEach(link => {
-    link.addEventListener('click', (e) => {
-      e.preventDefault();
-      const targetView = link.getAttribute('data-view-target');
-      switchView(targetView);
-      if (drawer) drawer.classList.remove('open');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+  // Close drawer if user clicks any interactive element inside drawer
+  if (drawer) {
+    drawer.addEventListener('click', (e) => {
+      const target = e.target.closest('a, button[data-service-detail], .trigger-lead-modal');
+      if (target && !target.classList.contains('drawer-close')) {
+        closeDrawer();
+      }
     });
+  }
+
+  // View Switcher (SPA-style navigation) - Event delegation to avoid duplicate handlers
+  document.addEventListener('click', (e) => {
+    const link = e.target.closest('[data-view-target]');
+    if (!link) return;
+    e.preventDefault();
+    const targetView = link.getAttribute('data-view-target');
+    if (targetView) {
+      switchView(targetView);
+      closeDrawer();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   });
 }
 
 function switchView(viewName) {
+  if (typeof window.closeMobileDrawer === 'function') {
+    window.closeMobileDrawer();
+  }
+
   const allViews = document.querySelectorAll('.page-view');
   allViews.forEach(v => v.style.display = 'none');
 
@@ -655,7 +753,7 @@ function updateBookingReview() {
 const SERVICES_DATA = {
   cockroach: {
     title: 'Cockroach Control & Prevention',
-    badge: '100% Odorless Herbal Gel',
+    badge: 'Low-Odor Herbal Gel',
     tagline: 'Eradicate German & American cockroaches with zero need to empty kitchen cabinets.',
     price: 'From ₹1,499',
     symptoms: [
@@ -736,15 +834,22 @@ let publicCmsState = {
 };
 
 function initServiceDetailSwitch() {
-  const serviceDetailLinks = document.querySelectorAll('[data-service-detail]');
-  serviceDetailLinks.forEach(link => {
-    link.addEventListener('click', (e) => {
-      e.preventDefault();
-      const serviceKey = link.getAttribute('data-service-detail');
+  if (window._serviceDetailSwitchInitialized) return;
+  window._serviceDetailSwitchInitialized = true;
+
+  document.addEventListener('click', (e) => {
+    const link = e.target.closest('[data-service-detail]');
+    if (!link) return;
+    e.preventDefault();
+    const serviceKey = link.getAttribute('data-service-detail');
+    if (serviceKey) {
       renderServiceDetailPage(serviceKey);
       switchView('service-detail');
+      if (typeof window.closeMobileDrawer === 'function') {
+        window.closeMobileDrawer();
+      }
       window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
+    }
   });
 }
 
@@ -853,7 +958,7 @@ function initServiceAreaChecker() {
           <div>
             <h4 style="color:#064E3B; margin-bottom:0.25rem;">Active Service Hub: ${matchedArea.area}</h4>
             <p style="color:#065F46; font-size:0.875rem; margin:0;">
-              2 Senior Technicians available in <strong>"${input.value.trim()}"</strong>. Rapid arrival guaranteed within 45 minutes.<br>
+              2 Senior Technicians available in <strong>"${input.value.trim()}"</strong>. Rapid dispatch targeted within 45 minutes.<br>
               <small style="opacity:0.9;">Available: ${matchedArea.serviceAvailability || 'All Services'}</small>
             </p>
           </div>
@@ -865,7 +970,7 @@ function initServiceAreaChecker() {
           <div style="width:44px; height:44px; border-radius:50%; background:#10B981; color:#fff; display:flex; align-items:center; justify-content:center; font-size:1.25rem;">✓</div>
           <div>
             <h4 style="color:#064E3B; margin-bottom:0.25rem;">Active Service Hub Detected!</h4>
-            <p style="color:#065F46; font-size:0.875rem; margin:0;">Mobile dispatch team servicing "${input.value.trim()}" zone. Guaranteed arrival in under 45 minutes.</p>
+            <p style="color:#065F46; font-size:0.875rem; margin:0;">Mobile dispatch team servicing "${input.value.trim()}" zone. Rapid dispatch targeted within 45 minutes.</p>
           </div>
         </div>
       `;

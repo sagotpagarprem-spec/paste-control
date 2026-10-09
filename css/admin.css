@@ -142,6 +142,10 @@
 .admin-content-area {
   padding: 2rem;
   flex-grow: 1;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 /* 3. KPI DASHBOARD CARDS */
@@ -355,6 +359,19 @@
   border: 1px solid var(--border-subtle);
   box-shadow: var(--shadow-sm);
   overflow: hidden;
+  width: 100%;
+  max-width: 100%;
+}
+
+.crm-table-card > .table-wrapper,
+.admin-card > .table-wrapper {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .table-toolbar {
@@ -371,15 +388,24 @@
   display: flex;
   gap: 0.75rem;
   align-items: center;
+  flex-wrap: wrap;
 }
 
-.crm-data-table {
+.crm-data-table,
+.crm-table {
   width: 100%;
   border-collapse: collapse;
   text-align: left;
+  min-width: 620px;
 }
 
-.crm-data-table th {
+.two-column .crm-data-table,
+.two-column .crm-table {
+  min-width: 280px;
+}
+
+.crm-data-table th,
+.crm-table th {
   background: #F8FAFC;
   padding: 0.85rem 1.25rem;
   font-size: 0.78rem;
@@ -388,17 +414,20 @@
   letter-spacing: 0.05em;
   color: var(--text-muted);
   border-bottom: 1px solid var(--border-subtle);
+  white-space: nowrap;
 }
 
-.crm-data-table td {
-  padding: 1rem 1.25rem;
+.crm-data-table td,
+.crm-table td {
+  padding: 0.85rem 1.25rem;
   font-size: 0.885rem;
   border-bottom: 1px solid var(--border-subtle);
   color: var(--text-secondary);
   vertical-align: middle;
 }
 
-.crm-data-table tr:hover td {
+.crm-data-table tr:hover td,
+.crm-table tr:hover td {
   background: #F8FAFC;
 }
 
@@ -407,9 +436,10 @@
   position: fixed;
   top: 0;
   right: -620px;
-  width: min(580px, 100vw);
-  max-width: 100vw;
+  width: min(580px, 100%);
+  max-width: 100%;
   height: 100vh;
+  height: 100dvh;
   background: #FFFFFF;
   box-shadow: -10px 0 40px rgba(0, 0, 0, 0.18);
   z-index: var(--z-drawer);
@@ -420,6 +450,28 @@
 
 .lead-drawer.open {
   right: 0;
+}
+
+.admin-sidebar-backdrop {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 890;
+  opacity: 0;
+  transition: opacity var(--transition-normal);
+}
+
+.admin-sidebar-backdrop.active {
+  display: block;
+  opacity: 1;
 }
 
 .drawer-header {
@@ -655,13 +707,34 @@
 }
 
 .wa-chat-header {
-  padding: 1rem 1.5rem;
+  padding: 0.9rem 1.25rem;
   background: #FFFFFF;
   border-bottom: 1px solid var(--border-subtle);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
   flex-shrink: 0;
+  z-index: 2;
+}
+
+.wa-chat-header-user {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.wa-chat-customer-info {
+  min-width: 0;
+}
+
+.wa-quick-actions {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 .wa-mobile-back-btn {
@@ -670,20 +743,23 @@
 
 .wa-messages-stream {
   flex-grow: 1;
-  padding: 1.5rem;
+  padding: 1.25rem;
   overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
 }
 
 .wa-bubble {
-  max-width: 70%;
-  padding: 0.75rem 1rem;
+  max-width: 75%;
+  padding: 0.65rem 0.9rem;
   border-radius: var(--radius-md);
   font-size: 0.875rem;
   line-height: 1.4;
   position: relative;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .wa-bubble.incoming {
@@ -699,11 +775,18 @@
 }
 
 .wa-chat-input-bar {
-  padding: 1rem 1.5rem;
+  padding: 0.75rem 1.25rem;
   background: #F8FAFC;
   border-top: 1px solid var(--border-subtle);
   display: flex;
   gap: 0.75rem;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.wa-chat-input-bar input {
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 /* 10. TECHNICIAN DISPATCH VIEW */

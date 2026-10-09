@@ -35,6 +35,7 @@
           <span class="brand-title" style="color:#FFFFFF; font-size:1.1rem;">UPC <span>ENTERPRISE</span></span>
           <span class="brand-tagline" style="color:#94A3B8; font-size:0.6rem;">CRM & Ads Command</span>
         </div>
+        <button id="adminSidebarCloseBtn" class="drawer-close" aria-label="Close Sidebar" style="display:none; margin-left:auto; background:rgba(255,255,255,0.12); color:#fff; width:36px; height:36px; border-radius:50%; border:none; cursor:pointer; align-items:center; justify-content:center; font-size:1rem;">✕</button>
       </div>
 
       <div class="admin-nav-group">Core Operations</div>
@@ -119,6 +120,9 @@
         </a>
       </div>
     </aside>
+
+    <!-- Mobile Sidebar Backdrop -->
+    <div class="admin-sidebar-backdrop" id="adminSidebarBackdrop" aria-hidden="true"></div>
 
     <!-- 2. ADMIN MAIN VIEWPORT -->
     <div class="admin-main">
@@ -253,39 +257,41 @@
               <h3 style="font-size:1.1rem; margin:0;">Today's Dispatched Bookings</h3>
               <button class="btn btn-outline btn-sm" onclick="switchAdminSection('bookings')">View All Bookings →</button>
             </div>
-            <table class="crm-data-table">
-              <thead>
-                <tr>
-                  <th>Booking ID</th>
-                  <th>Customer</th>
-                  <th>Service</th>
-                  <th>Time Slot</th>
-                  <th>Technician</th>
-                  <th>Status</th>
-                  <th>Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td><strong>UPC-2026-8941</strong></td>
-                  <td>Dr. Rajiv Malhotra</td>
-                  <td>Termite Radar Inspection</td>
-                  <td>11:00 AM – 01:00 PM</td>
-                  <td>Vikram Shinde</td>
-                  <td><span class="badge badge-primary">Assigned</span></td>
-                  <td><strong>₹14,500</strong></td>
-                </tr>
-                <tr>
-                  <td><strong>UPC-2026-8942</strong></td>
-                  <td>Chef Ananya Deshmukh</td>
-                  <td>Commercial Pest & Cockroach Gel AMC</td>
-                  <td>03:00 PM – 05:00 PM</td>
-                  <td>Ramesh Pawar</td>
-                  <td><span class="badge badge-success">Confirmed</span></td>
-                  <td><strong>₹28,000</strong></td>
-                </tr>
-              </tbody>
-            </table>
+            <div class="table-wrapper">
+              <table class="crm-data-table">
+                <thead>
+                  <tr>
+                    <th>Booking ID</th>
+                    <th>Customer</th>
+                    <th>Service</th>
+                    <th>Time Slot</th>
+                    <th>Technician</th>
+                    <th>Status</th>
+                    <th>Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>UPC-2026-8941</strong></td>
+                    <td>Dr. Rajiv Malhotra</td>
+                    <td>Termite Radar Inspection</td>
+                    <td>11:00 AM – 01:00 PM</td>
+                    <td>Vikram Shinde</td>
+                    <td><span class="badge badge-primary">Assigned</span></td>
+                    <td><strong>₹14,500</strong></td>
+                  </tr>
+                  <tr>
+                    <td><strong>UPC-2026-8942</strong></td>
+                    <td>Chef Ananya Deshmukh</td>
+                    <td>Commercial Pest & Cockroach Gel AMC</td>
+                    <td>03:00 PM – 05:00 PM</td>
+                    <td>Ramesh Pawar</td>
+                    <td><span class="badge badge-success">Confirmed</span></td>
+                    <td><strong>₹28,000</strong></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </section>
 
@@ -351,25 +357,27 @@
                   <button class="btn btn-white btn-sm" onclick="exportCrmLeadsCsv()">Export CSV</button>
                 </div>
               </div>
-              <table class="crm-data-table">
-                <thead>
-                  <tr>
-                    <th>Lead ID</th>
-                    <th>Customer Name & Phone</th>
-                    <th>Service Required</th>
-                    <th>Property</th>
-                    <th>Locality</th>
-                    <th>Source</th>
-                    <th>Status</th>
-                    <th>Assigned To</th>
-                    <th>Est. Value</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody id="crmTableBody">
-                  <!-- Populated via JS -->
-                </tbody>
-              </table>
+              <div class="table-wrapper">
+                <table class="crm-data-table">
+                  <thead>
+                    <tr>
+                      <th>Lead ID</th>
+                      <th>Customer Name & Phone</th>
+                      <th>Service Required</th>
+                      <th>Property</th>
+                      <th>Locality</th>
+                      <th>Source</th>
+                      <th>Status</th>
+                      <th>Assigned To</th>
+                      <th>Est. Value</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="crmTableBody">
+                    <!-- Populated via JS -->
+                  </tbody>
+                </table>
+              </div>
 
               <!-- Table Pagination -->
               <div class="table-pagination" style="display:flex; justify-content:space-between; align-items:center; padding:1rem 1.5rem; border-top:1px solid #E2E8F0; font-size:0.85rem; color:#64748B;">
@@ -414,24 +422,26 @@
               </div>
               <div id="bookingPaginationInfo" style="font-size:0.85rem; color:#64748B;">Showing bookings</div>
             </div>
-            <table class="crm-data-table">
-              <thead>
-                <tr>
-                  <th>Booking ID</th>
-                  <th>Customer Name & Phone</th>
-                  <th>Service</th>
-                  <th>Scheduled Date</th>
-                  <th>Time Window</th>
-                  <th>Technician</th>
-                  <th>Status</th>
-                  <th>Amount</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="bookingsTableBody">
-                <!-- Dynamically populated via JS -->
-              </tbody>
-            </table>
+            <div class="table-wrapper">
+              <table class="crm-data-table">
+                <thead>
+                  <tr>
+                    <th>Booking ID</th>
+                    <th>Customer Name & Phone</th>
+                    <th>Service</th>
+                    <th>Scheduled Date</th>
+                    <th>Time Window</th>
+                    <th>Technician</th>
+                    <th>Status</th>
+                    <th>Amount</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="bookingsTableBody">
+                  <!-- Dynamically populated via JS -->
+                </tbody>
+              </table>
+            </div>
           </div>
         </section>
 
@@ -509,22 +519,24 @@
               </div>
               <div id="customerPaginationInfo" style="font-size:0.85rem; color:#64748B;">Showing customers</div>
             </div>
-            <table class="crm-data-table">
-              <thead>
-                <tr>
-                  <th>Customer Name & Contact</th>
-                  <th>Location</th>
-                  <th>Property Type</th>
-                  <th>Total Bookings</th>
-                  <th>Lifetime Value</th>
-                  <th>Member Since</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody id="customersTableBody">
-                <!-- Populated via JS -->
-              </tbody>
-            </table>
+            <div class="table-wrapper">
+              <table class="crm-data-table">
+                <thead>
+                  <tr>
+                    <th>Customer Name & Contact</th>
+                    <th>Location</th>
+                    <th>Property Type</th>
+                    <th>Total Bookings</th>
+                    <th>Lifetime Value</th>
+                    <th>Member Since</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="customersTableBody">
+                  <!-- Populated via JS -->
+                </tbody>
+              </table>
+            </div>
           </div>
         </section>
 
@@ -875,7 +887,7 @@
                   <button class="btn btn-outline btn-sm" onclick="loadMetaCampaigns()">🔄 Refresh</button>
                 </div>
               </div>
-              <div style="overflow-x:auto;">
+              <div class="table-wrapper">
                 <table class="crm-data-table">
                   <thead>
                     <tr>
@@ -912,7 +924,7 @@
                   <button class="btn btn-outline btn-sm" onclick="loadMetaAdSets()">🔄 Refresh</button>
                 </div>
               </div>
-              <div style="overflow-x:auto;">
+              <div class="table-wrapper">
                 <table class="crm-data-table">
                   <thead>
                     <tr>
@@ -948,7 +960,7 @@
                   <button class="btn btn-outline btn-sm" onclick="loadMetaAds()">🔄 Refresh</button>
                 </div>
               </div>
-              <div style="overflow-x:auto;">
+              <div class="table-wrapper">
                 <table class="crm-data-table">
                   <thead>
                     <tr>
@@ -1081,7 +1093,7 @@
                 </div>
                 <button class="btn btn-outline btn-sm" onclick="loadMetaWebhookEvents()">🔄 Refresh Events</button>
               </div>
-              <div style="overflow-x:auto;">
+              <div class="table-wrapper">
                 <table class="crm-data-table">
                   <thead>
                     <tr>
@@ -1139,25 +1151,25 @@
             </div>
 
             <!-- Active Chat Stream -->
-            <div class="wa-chat-window" style="display:flex; flex-direction:column; background:#EFEAE2; position:relative;">
-              <div class="wa-chat-header" style="padding:0.9rem 1.25rem; background:#F8FAFC; border-bottom:1px solid #E2E8F0; display:flex; justify-content:space-between; align-items:center; z-index:2;">
-                <div style="display:flex; align-items:center; gap:0.75rem;">
+            <div class="wa-chat-window">
+              <div class="wa-chat-header">
+                <div class="wa-chat-header-user">
                   <button type="button" class="btn btn-white btn-sm wa-mobile-back-btn" onclick="document.querySelector('.whatsapp-hub-container')?.classList.remove('chat-active')" title="Back to conversations">← Back</button>
-                  <div>
-                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                  <div class="wa-chat-customer-info">
+                    <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
                       <strong id="waActiveCustomer" style="font-size:1rem; color:#0F172A;">Select a Conversation</strong>
                       <span id="waActivePhoneBadge" class="badge badge-secondary" style="font-size:0.72rem;">--</span>
                     </div>
-                    <div id="waActiveContext" style="font-size:0.75rem; color:#64748B; margin-top:0.2rem;">
+                    <div id="waActiveContext" style="font-size:0.75rem; color:#64748B; margin-top:0.2rem; overflow-wrap:anywhere;">
                       Lead: None • Service: None • Status: None
                     </div>
                   </div>
                 </div>
-                <div style="display:flex; gap:0.5rem; align-items:center;">
+                <div class="wa-quick-actions">
                   <button class="btn btn-sm btn-white" data-wa-quick="lead_welcome_inspection" title="Send Free Inspection Template">🎯 Welcome</button>
                   <button class="btn btn-sm btn-white" data-wa-quick="booking_confirmed_v1" title="Send Booking Confirmation Template">📋 Confirm</button>
                   <button class="btn btn-sm btn-white" data-wa-quick="technician_assigned_v1" title="Send Technician ETA Template">👷 Dispatch</button>
-                  <button class="btn btn-sm btn-whatsapp" onclick="openSendTemplateModal()" style="font-size:0.75rem; padding:0.35rem 0.65rem;">+ More Templates</button>
+                  <button class="btn btn-sm btn-whatsapp" onclick="openSendTemplateModal()" style="font-size:0.75rem; padding:0.35rem 0.65rem;">+ Templates</button>
                 </div>
               </div>
 
@@ -1262,19 +1274,21 @@
                 <div style="font-size:0.75rem; color:#64748B;">Attributed by first-touch UTM tags, Google Click ID (gclid), and Meta Click ID (fbclid).</div>
               </div>
             </div>
-            <table class="crm-data-table">
-              <thead>
-                <tr>
-                  <th>Marketing Channel / Source</th>
-                  <th>Leads Generated</th>
-                  <th>Bookings Closed</th>
-                  <th>Channel Conversion</th>
-                </tr>
-              </thead>
-              <tbody id="analyticsChannelsTableBody">
-                <tr><td colspan="4" style="text-align:center; padding:1.5rem; color:#94A3B8;">Loading attribution channels...</td></tr>
-              </tbody>
-            </table>
+            <div class="table-wrapper">
+              <table class="crm-data-table">
+                <thead>
+                  <tr>
+                    <th>Marketing Channel / Source</th>
+                    <th>Leads Generated</th>
+                    <th>Bookings Closed</th>
+                    <th>Channel Conversion</th>
+                  </tr>
+                </thead>
+                <tbody id="analyticsChannelsTableBody">
+                  <tr><td colspan="4" style="text-align:center; padding:1.5rem; color:#94A3B8;">Loading attribution channels...</td></tr>
+                </tbody>
+              </table>
+            </div>
           </div>
 
           <!-- Campaign Performance Table (Phase 10) -->
@@ -1283,7 +1297,7 @@
               <strong style="font-size:0.95rem;">Paid Campaign Performance (Meta & Ads)</strong>
               <div style="font-size:0.75rem; color:#64748B;">Real-time spend, impressions, clicks, leads, and cost efficiency per active campaign.</div>
             </div>
-            <div style="overflow-x:auto;">
+            <div class="table-wrapper">
               <table class="crm-data-table">
                 <thead>
                   <tr>
@@ -1310,35 +1324,39 @@
               <div style="padding:0.85rem 1.25rem; border-bottom:1px solid #E2E8F0;">
                 <strong style="font-size:0.9rem;">📈 Lead Intake Trend (Recent Days)</strong>
               </div>
-              <table class="crm-data-table">
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th style="text-align:right;">Leads Ingested</th>
-                  </tr>
-                </thead>
-                <tbody id="analyticsLeadTrendTableBody">
-                  <tr><td colspan="2" style="text-align:center; padding:1rem; color:#94A3B8;">Loading lead trend...</td></tr>
-                </tbody>
-              </table>
+              <div class="table-wrapper">
+                <table class="crm-data-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th style="text-align:right;">Leads Ingested</th>
+                    </tr>
+                  </thead>
+                  <tbody id="analyticsLeadTrendTableBody">
+                    <tr><td colspan="2" style="text-align:center; padding:1rem; color:#94A3B8;">Loading lead trend...</td></tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             <div class="crm-table-card">
               <div style="padding:0.85rem 1.25rem; border-bottom:1px solid #E2E8F0;">
                 <strong style="font-size:0.9rem;">💰 Revenue Trend (Bookings Completed)</strong>
               </div>
-              <table class="crm-data-table">
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Bookings</th>
-                    <th style="text-align:right;">Booked Revenue</th>
-                  </tr>
-                </thead>
-                <tbody id="analyticsRevenueTrendTableBody">
-                  <tr><td colspan="3" style="text-align:center; padding:1rem; color:#94A3B8;">Loading revenue trend...</td></tr>
-                </tbody>
-              </table>
+              <div class="table-wrapper">
+                <table class="crm-data-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Bookings</th>
+                      <th style="text-align:right;">Booked Revenue</th>
+                    </tr>
+                  </thead>
+                  <tbody id="analyticsRevenueTrendTableBody">
+                    <tr><td colspan="3" style="text-align:center; padding:1rem; color:#94A3B8;">Loading revenue trend...</td></tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
 
@@ -1348,34 +1366,38 @@
               <div style="padding:0.85rem 1.25rem; border-bottom:1px solid #E2E8F0;">
                 <strong style="font-size:0.9rem;">Lead Demand by Service</strong>
               </div>
-              <table class="crm-data-table">
-                <thead>
-                  <tr>
-                    <th>Service</th>
-                    <th style="text-align:right;">Inquiries</th>
-                  </tr>
-                </thead>
-                <tbody id="analyticsServicesTableBody">
-                  <tr><td colspan="2" style="text-align:center; padding:1rem; color:#94A3B8;">Loading services...</td></tr>
-                </tbody>
-              </table>
+              <div class="table-wrapper">
+                <table class="crm-data-table">
+                  <thead>
+                    <tr>
+                      <th>Service</th>
+                      <th style="text-align:right;">Inquiries</th>
+                    </tr>
+                  </thead>
+                  <tbody id="analyticsServicesTableBody">
+                    <tr><td colspan="2" style="text-align:center; padding:1rem; color:#94A3B8;">Loading services...</td></tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             <div class="crm-table-card">
               <div style="padding:0.85rem 1.25rem; border-bottom:1px solid #E2E8F0;">
                 <strong style="font-size:0.9rem;">Lead Demand by Locality</strong>
               </div>
-              <table class="crm-data-table">
-                <thead>
-                  <tr>
-                    <th>Location / Hub</th>
-                    <th style="text-align:right;">Inquiries</th>
-                  </tr>
-                </thead>
-                <tbody id="analyticsLocationsTableBody">
-                  <tr><td colspan="2" style="text-align:center; padding:1rem; color:#94A3B8;">Loading locations...</td></tr>
-                </tbody>
-              </table>
+              <div class="table-wrapper">
+                <table class="crm-data-table">
+                  <thead>
+                    <tr>
+                      <th>Location / Hub</th>
+                      <th style="text-align:right;">Inquiries</th>
+                    </tr>
+                  </thead>
+                  <tbody id="analyticsLocationsTableBody">
+                    <tr><td colspan="2" style="text-align:center; padding:1rem; color:#94A3B8;">Loading locations...</td></tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </section>
@@ -1417,7 +1439,7 @@
 
           <!-- Services Table -->
           <div class="admin-card" style="background:#fff; border:1px solid #E2E8F0; border-radius:16px; overflow:hidden; box-shadow:var(--shadow-sm);">
-            <div style="overflow-x:auto;">
+            <div class="table-wrapper">
               <table class="crm-table">
                 <thead>
                   <tr>
@@ -1454,7 +1476,7 @@
 
           <!-- Offers Table -->
           <div class="admin-card" style="background:#fff; border:1px solid #E2E8F0; border-radius:16px; overflow:hidden; box-shadow:var(--shadow-sm);">
-            <div style="overflow-x:auto;">
+            <div class="table-wrapper">
               <table class="crm-table">
                 <thead>
                   <tr>
@@ -1501,7 +1523,7 @@
 
           <!-- Reviews Table -->
           <div class="admin-card" style="background:#fff; border:1px solid #E2E8F0; border-radius:16px; overflow:hidden; box-shadow:var(--shadow-sm);">
-            <div style="overflow-x:auto;">
+            <div class="table-wrapper">
               <table class="crm-table">
                 <thead>
                   <tr>
@@ -1546,7 +1568,7 @@
 
           <!-- Blog Table -->
           <div class="admin-card" style="background:#fff; border:1px solid #E2E8F0; border-radius:16px; overflow:hidden; box-shadow:var(--shadow-sm);">
-            <div style="overflow-x:auto;">
+            <div class="table-wrapper">
               <table class="crm-table">
                 <thead>
                   <tr>
@@ -1583,7 +1605,7 @@
 
           <!-- Areas Table -->
           <div class="admin-card" style="background:#fff; border:1px solid #E2E8F0; border-radius:16px; overflow:hidden; box-shadow:var(--shadow-sm);">
-            <div style="overflow-x:auto;">
+            <div class="table-wrapper">
               <table class="crm-table">
                 <thead>
                   <tr>
@@ -1871,7 +1893,7 @@
   </div>
 
   <!-- NOTIFICATION CENTER DRAWER -->
-  <div id="adminNotifDrawer" class="lead-drawer" style="width:400px;">
+  <div id="adminNotifDrawer" class="lead-drawer" style="width:400px; max-width:100%;">
     <div class="drawer-header" style="display:flex; justify-content:space-between; align-items:center;">
       <div>
         <h3 style="margin:0;">System Notifications</h3>

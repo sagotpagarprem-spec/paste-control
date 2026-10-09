@@ -249,6 +249,15 @@ input, select, textarea, button {
     padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
   }
 
+  /* Header action button streamlining on mobile */
+  .header-lead-btn {
+    display: none !important;
+  }
+
+  .header-track-text {
+    display: none;
+  }
+
   /* Floating actions hidden on mobile to avoid competing with bottom bar */
   .floating-actions {
     display: none !important;
@@ -371,7 +380,7 @@ input, select, textarea, button {
   /* Lead Drawer Full-Width on Mobile */
   .lead-drawer {
     width: 100% !important;
-    max-width: 100vw !important;
+    max-width: 100% !important;
     right: -100% !important;
   }
 
@@ -395,7 +404,8 @@ input, select, textarea, button {
   .whatsapp-hub-container {
     grid-template-columns: 1fr !important;
     height: calc(100vh - 140px) !important;
-    min-height: 520px;
+    height: calc(100dvh - 140px) !important;
+    min-height: 480px;
   }
 
   .wa-threads-sidebar {
@@ -417,6 +427,37 @@ input, select, textarea, button {
 
   .whatsapp-hub-container.chat-active .wa-chat-window {
     display: flex;
+  }
+
+  .wa-chat-header {
+    padding: 0.75rem 1rem;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .wa-chat-header-user {
+    width: 100%;
+  }
+
+  .wa-quick-actions {
+    width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+    padding-bottom: 0.25rem;
+  }
+
+  .wa-quick-actions .btn {
+    font-size: 0.72rem;
+    padding: 0.3rem 0.5rem;
+  }
+
+  .wa-bubble {
+    max-width: 88%;
+  }
+
+  .wa-chat-input-bar {
+    padding: 0.65rem 0.75rem;
   }
 
   .wa-mobile-back-btn {
@@ -479,6 +520,18 @@ input, select, textarea, button {
 
   .btn {
     min-height: 44px;
+  }
+
+  .admin-topbar {
+    padding: 0.65rem 0.85rem;
+  }
+
+  .admin-topbar-actions {
+    gap: 0.4rem;
+  }
+
+  #adminUserName {
+    display: none;
   }
 
   .admin-view-header {

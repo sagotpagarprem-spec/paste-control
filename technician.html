@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Field Ops & Technician Portal | Universal Pest Control</title>
   <meta name="description" content="Mobile-first technician field dispatch interface for job execution, customer navigation, and status tracking.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -88,10 +88,14 @@
       position: sticky;
       top: 106px;
       z-index: 90;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
     }
 
     .tech-tab-btn {
-      flex: 1;
+      flex: 1 0 auto;
+      min-width: 100px;
+      min-height: 44px;
       text-align: center;
       padding: 0.85rem 0.5rem;
       font-size: 0.88rem;

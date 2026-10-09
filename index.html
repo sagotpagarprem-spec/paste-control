@@ -4,13 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Universal Pest Control | Premium Eco-Safe Pest Management & Inspection</title>
-  <meta name="description" content="Universal Pest Control provides enterprise-grade, eco-friendly pest control, termite radar inspection, cockroach gel treatment, and commercial HACCP solutions with 100% warranty.">
+  <meta name="description" content="Universal Pest Control provides enterprise-grade, eco-friendly pest control, termite radar inspection, cockroach gel treatment, and commercial HACCP solutions with comprehensive service warranty.">
   <link rel="canonical" href="https://universalpestcontrol.in/">
 
   <!-- Open Graph / Facebook / WhatsApp Preview -->
   <meta property="og:type" content="website">
   <meta property="og:title" content="Universal Pest Control | Advanced Eco-Safe Pest Science">
-  <meta property="og:description" content="Certified odorless pest control, termite radar inspection, cockroach herbal gel baiting, and commercial HACCP solutions with 100% warranty.">
+  <meta property="og:description" content="Certified odorless pest control, termite radar inspection, cockroach herbal gel baiting, and commercial HACCP solutions with verified service warranty.">
   <meta property="og:url" content="https://universalpestcontrol.in/">
   <meta property="og:image" content="https://universalpestcontrol.in/assets/images/hero.jpg">
   <meta property="og:site_name" content="Universal Pest Control">
@@ -81,7 +81,7 @@
             "name": "Do I need to leave my house during pest control treatment?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "No. Universal Pest Control uses 100% odorless Bayer gel baiting and certified eco-friendly solutions that are completely safe for children, senior citizens, and pets without vacating."
+              "text": "No. Universal Pest Control uses low-odor and odorless Bayer gel baiting and certified eco-friendly solutions that are safe for children, senior citizens, and pets when applied as directed by certified technicians without vacating."
             }
           },
           {
@@ -212,32 +212,33 @@
       <!-- Header Action CTAs -->
       <div class="header-actions">
         <!-- Live Service Tracking Button (Phase 5) -->
-        <button class="btn btn-white btn-sm" onclick="openTrackBookingModal()" title="Track live technician dispatch status" style="border:1px solid #CBD5E1; font-weight:700; color:#0F172A; display:inline-flex; align-items:center; gap:0.35rem;">
-          📍 Track Service
+        <button class="btn btn-white btn-sm header-track-btn" onclick="openTrackBookingModal()" title="Track live technician dispatch status" style="border:1px solid #CBD5E1; font-weight:700; color:#0F172A; display:inline-flex; align-items:center; gap:0.35rem;">
+          <span>📍</span> <span class="header-track-text">Track Service</span>
         </button>
 
         <!-- Direct Link / Switch to Admin & CRM Platform -->
         <a href="admin.html" class="admin-switch-btn" title="Open Enterprise CRM & Ads Dashboard">
           <span class="admin-pulse-dot"></span>
-          <span>Admin CRM</span>
+          <span class="admin-switch-text">Admin CRM</span>
         </a>
 
-        <button class="btn btn-primary btn-sm trigger-lead-modal">
+        <button class="btn btn-primary btn-sm trigger-lead-modal header-lead-btn">
           <span>Get Free Inspection</span>
         </button>
 
-        <button class="mobile-toggle" aria-label="Toggle Menu">☰</button>
+        <button class="mobile-toggle" id="mobileMenuToggle" aria-label="Open Navigation Menu" aria-expanded="false" aria-controls="mobileDrawer">☰</button>
       </div>
     </div>
   </nav>
 
-  <!-- MOBILE NAVIGATION DRAWER -->
-  <div class="mobile-drawer">
+  <!-- MOBILE NAVIGATION DRAWER & BACKDROP -->
+  <div class="mobile-drawer-backdrop" id="mobileDrawerBackdrop" aria-hidden="true"></div>
+  <div class="mobile-drawer" id="mobileDrawer" role="dialog" aria-modal="true" aria-label="Navigation Menu" tabindex="-1">
     <div class="mobile-drawer-header">
       <div class="brand-text">
         <span class="brand-title">UNIVERSAL <span>PEST</span></span>
       </div>
-      <button class="drawer-close" aria-label="Close Menu">✕</button>
+      <button class="drawer-close" id="drawerCloseBtn" aria-label="Close Navigation Menu">✕</button>
     </div>
     <ul class="mobile-nav-list">
       <li class="mobile-nav-item"><a data-view-target="home">Home</a></li>
@@ -394,7 +395,7 @@
             <div class="trust-item">
               <div class="trust-icon-box">🤝</div>
               <div>
-                <div class="trust-title">100% Warranty</div>
+                <div class="trust-title">Service Warranty</div>
                 <div class="trust-desc">Free re-treatment if pests reappear</div>
               </div>
             </div>
@@ -481,7 +482,7 @@
               <div class="ba-image-after">
                 <img src="assets/images/pantry_clean.jpg" alt="Sanitized and Protected Pantry After Universal Pest Treatment">
               </div>
-              <span class="ba-tag ba-tag-after">After: 100% Sanitized & Pest-Free</span>
+              <span class="ba-tag ba-tag-after">After: Thoroughly Sanitized & Cleared</span>
 
               <!-- Draggable Divider Handle -->
               <div class="ba-slider-handle">
@@ -522,7 +523,7 @@
               </div>
               <div class="service-card-body">
                 <h3 class="service-card-title">Cockroach Control</h3>
-                <p class="service-card-desc">100% odorless herbal & synthetic gel baiting. No need to empty kitchen cupboards or vacate your home.</p>
+                <p class="service-card-desc">Low-odor herbal & synthetic gel baiting formulations. No need to empty kitchen cupboards or vacate your home.</p>
                 <ul class="service-perks-list">
                   <li class="service-perk-item">✓ Bayer Maxforce Gel Technology</li>
                   <li class="service-perk-item">✓ Safe around children & pets</li>
@@ -761,7 +762,7 @@
               <div class="step-number-badge">04</div>
               <h3 class="step-title">Enjoy a Pest-Free Space</h3>
               <p class="step-desc">
-                Receive your digital warranty certificate and automated follow-up schedule with our 100% money-back guarantee.
+                Receive your digital warranty certificate and automated follow-up schedule backed by our satisfaction warranty guarantee.
               </p>
             </div>
           </div>
@@ -980,7 +981,7 @@
                 <span class="faq-icon">+</span>
               </div>
               <div class="faq-answer">
-                Yes, absolutely. We utilize 100% odorless, biological enzyme flushes and government-approved Bayer synthetic pyrethroids and bait gels. Unlike traditional sprays, there are no airborne toxic fumes, meaning pregnant women, infants, and pets can remain safely in the premises.
+                Yes. We utilize low-odor biological enzyme flushes and government-approved Bayer synthetic pyrethroids and bait gels. Formulated to minimize airborne fumes, our treatments are safe for families, infants, and pets when applied as directed by our certified technicians.
               </div>
             </div>
 
@@ -1010,7 +1011,7 @@
                 <span class="faq-icon">+</span>
               </div>
               <div class="faq-answer">
-                All our treatments come with a written warranty (from 1 Year up to 5 Years depending on the package). If you notice any pest activity within the warranty period, we provide a 100% free re-inspection and re-treatment with zero questions asked.
+                All our treatments come with a written warranty (from 1 Year up to 5 Years depending on the package). If you notice any pest activity within the warranty period, we provide complimentary re-inspection and re-treatment in accordance with warranty terms.
               </div>
             </div>
 
@@ -1033,7 +1034,7 @@
           <div>
             <span class="badge badge-warning" style="margin-bottom:0.5rem;">LIMITED SEASONAL OFFER</span>
             <h3 style="color:#FFFFFF; margin-bottom:0.25rem;">Flat 20% Off on Comprehensive Annual Pest AMC</h3>
-            <p style="color:#CBD5E1; font-size:0.925rem; margin:0;">Includes 3 full home visits, 100% warranty, and free mosquito fogging voucher.</p>
+            <p style="color:#CBD5E1; font-size:0.925rem; margin:0;">Includes 3 full home visits, full service warranty, and complimentary mosquito fogging voucher.</p>
           </div>
           <div style="display:flex; gap:1rem; align-items:center;">
             <button class="btn btn-accent btn-lg trigger-lead-modal">Claim 20% Voucher</button>
@@ -1084,7 +1085,7 @@
                 <li>✓ Certified Safe Odorless Formulation</li>
                 <li>✓ Dedicated Senior Field Specialist</li>
                 <li>✓ Free Digital Warranty Certificate</li>
-                <li>✓ 100% Free Re-treatment Policy</li>
+                <li>✓ Complimentary Re-treatment Policy</li>
               </ul>
 
               <button class="btn btn-primary btn-block btn-lg" data-view-target="booking" style="margin-bottom:0.75rem;">
@@ -1107,7 +1108,7 @@
             <span class="section-tag">Home & Family Safety</span>
             <h1 class="section-title">Residential Pest Control</h1>
             <p class="section-subtitle">
-              Protect your children, pets, and kitchen from hazardous pests with 100% odorless, certified eco-friendly treatments designed for apartments, villas, and bungalows.
+              Protect your children, pets, and kitchen from hazardous pests with low-odor, certified eco-friendly treatments designed for apartments, villas, and bungalows.
             </p>
           </div>
 
@@ -1151,7 +1152,7 @@
 
           <div class="two-column" style="align-items:center; margin-bottom:3.5rem;">
             <div>
-              <h3 style="font-size:1.75rem; margin-bottom:1rem; color:#064E3B;">Guaranteed FSSAI & HACCP Compliance</h3>
+              <h3 style="font-size:1.75rem; margin-bottom:1rem; color:#064E3B;">Audit-Ready FSSAI & HACCP Compliance Support</h3>
               <p style="line-height:1.65; color:#334155; margin-bottom:1.5rem;">
                 A single pest sighting in a commercial establishment can cause severe reputational loss, customer complaints, and audit fines. Universal Pest Control provides discreet, zero-downtime service scheduled around your non-operating hours.
               </p>
@@ -1408,7 +1409,7 @@
                   </div>
                   <div class="booking-summary-row">
                     <span style="color:#64748B;">Written Warranty</span>
-                    <strong style="color:#059669;">100% Free Re-treatment Policy</strong>
+                    <strong style="color:#059669;">Complimentary Re-treatment Warranty</strong>
                   </div>
                   <div class="booking-summary-row">
                     <span>Total Transparent Amount</span>
@@ -1694,7 +1695,7 @@
             <span class="section-tag">About Universal Pest Control</span>
             <h1 class="section-title">Setting The Benchmark In Precision Pest Science</h1>
             <p class="section-subtitle">
-              Founded on the belief that pest management must be scientific, odorless, and completely safe for families and ecological balance.
+              Founded on the belief that pest management must be scientific, low-odor, and safe for families and ecological balance when expertly applied.
             </p>
           </div>
 
@@ -1947,7 +1948,7 @@
             <span class="brand-tagline" style="color:#94A3B8;">Advanced Pest Science</span>
           </div>
           <p>
-            India's premier technology-driven pest management enterprise. Eco-friendly, odorless, certified formulations delivering complete eradication across residential and industrial properties.
+            India's premier technology-driven pest management enterprise. Eco-friendly, low-odor, certified formulations delivering thorough protection across residential and industrial properties.
           </p>
           <div class="footer-contact-item">
             <span>📍</span>

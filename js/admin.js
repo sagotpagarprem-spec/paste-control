@@ -98,14 +98,53 @@ function initAdminNavigation() {
     });
   });
 
-  // Mobile sidebar toggle
+  // Mobile sidebar toggle and backdrop
   const adminMobileBtn = document.getElementById('adminSidebarToggle');
   const sidebar = document.querySelector('.admin-sidebar');
+  const sidebarClose = document.getElementById('adminSidebarCloseBtn');
+  const sidebarBackdrop = document.getElementById('adminSidebarBackdrop');
+
+  function openAdminSidebar() {
+    if (sidebar) sidebar.classList.add('mobile-open');
+    if (sidebarBackdrop) sidebarBackdrop.classList.add('active');
+  }
+
+  function closeAdminSidebar() {
+    if (sidebar) sidebar.classList.remove('mobile-open');
+    if (sidebarBackdrop) sidebarBackdrop.classList.remove('active');
+  }
+
+  window.closeAdminSidebar = closeAdminSidebar;
+
   if (adminMobileBtn && sidebar) {
-    adminMobileBtn.addEventListener('click', () => {
-      sidebar.classList.toggle('mobile-open');
+    adminMobileBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (sidebar.classList.contains('mobile-open')) {
+        closeAdminSidebar();
+      } else {
+        openAdminSidebar();
+      }
     });
   }
+
+  if (sidebarClose) {
+    sidebarClose.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeAdminSidebar();
+    });
+  }
+
+  if (sidebarBackdrop) {
+    sidebarBackdrop.addEventListener('click', closeAdminSidebar);
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeAdminSidebar();
+      const openDrawers = document.querySelectorAll('.lead-drawer.open');
+      openDrawers.forEach(d => d.classList.remove('open'));
+    }
+  });
 }
 
 function switchAdminSection(viewKey) {
@@ -126,8 +165,12 @@ function switchAdminSection(viewKey) {
   });
 
   // Close mobile sidebar
-  const sidebar = document.querySelector('.admin-sidebar');
-  if (sidebar) sidebar.classList.remove('mobile-open');
+  if (typeof window.closeAdminSidebar === 'function') {
+    window.closeAdminSidebar();
+  } else {
+    const sidebar = document.querySelector('.admin-sidebar');
+    if (sidebar) sidebar.classList.remove('mobile-open');
+  }
 
   // Trigger real backend hydrations on view change
   if (viewKey === 'bookings') renderAdminBookings();
