@@ -21,6 +21,8 @@
   top: 0;
   height: 100vh;
   z-index: 90;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   transition: width var(--transition-normal);
 }
 
@@ -48,7 +50,6 @@
   gap: 0.25rem;
   padding: 0 0.75rem;
   flex-grow: 1;
-  overflow-y: auto;
 }
 
 .admin-nav-item a {
@@ -99,7 +100,9 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  max-width: 100%;
   overflow-x: hidden;
+  overflow-x: clip;
 }
 
 .admin-topbar {
@@ -363,6 +366,7 @@
   max-width: 100%;
 }
 
+.table-wrapper,
 .crm-table-card > .table-wrapper,
 .admin-card > .table-wrapper {
   border: none;

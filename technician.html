@@ -94,11 +94,11 @@
 
     .tech-tab-btn {
       flex: 1 0 auto;
-      min-width: 100px;
-      min-height: 44px;
+      min-width: 110px;
+      min-height: 48px;
       text-align: center;
-      padding: 0.85rem 0.5rem;
-      font-size: 0.88rem;
+      padding: 0.85rem 0.65rem;
+      font-size: 0.85rem;
       font-weight: 700;
       color: var(--tech-sub);
       border: none;
@@ -109,6 +109,7 @@
       align-items: center;
       justify-content: center;
       gap: 0.35rem;
+      white-space: nowrap;
       transition: all 0.2s;
     }
 
@@ -221,7 +222,7 @@
         </div>
       </div>
       <div>
-        <select id="techHeaderAvailSelect" style="background:#064E3B; color:#A7F3D0; border:1px solid #059669; border-radius:6px; padding:0.35rem 0.5rem; font-size:0.75rem; font-weight:700;">
+        <select id="techHeaderAvailSelect" style="background:#064E3B; color:#A7F3D0; border:1px solid #059669; border-radius:8px; padding:0.45rem 0.65rem; font-size:0.825rem; font-weight:700; min-height:40px; cursor:pointer;">
           <option value="AVAILABLE">🟢 Available</option>
           <option value="ON_JOB">🟡 On Job</option>
           <option value="OFF_DUTY">⚪ Off Duty</option>

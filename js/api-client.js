@@ -457,19 +457,6 @@ class UPCApiClient {
     }
   };
 
-  // Technicians API
-  technicians = {
-    getAll: async () => {
-      return await this.request('/technicians', { method: 'GET' });
-    },
-
-    updateStatus: async (id, status) => {
-      return await this.request(`/technicians/${id}/status`, {
-        method: 'PUT',
-        body: { status }
-      });
-    }
-  };
 
   // Notifications API
   notifications = {

@@ -411,6 +411,10 @@
   z-index: 5;
 }
 
+.ba-tag-short {
+  display: none;
+}
+
 .ba-tag-before {
   right: 20px;
   background: rgba(220, 38, 38, 0.9);
@@ -421,6 +425,26 @@
   left: 20px;
   background: rgba(16, 185, 129, 0.9);
   color: #FFFFFF;
+}
+
+@media (max-width: 576px) {
+  .ba-tag-full {
+    display: none;
+  }
+  .ba-tag-short {
+    display: inline;
+  }
+  .ba-tag {
+    top: 10px;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.7rem;
+  }
+  .ba-tag-before {
+    right: 10px;
+  }
+  .ba-tag-after {
+    left: 10px;
+  }
 }
 
 .ba-controls-help {
@@ -1036,6 +1060,11 @@
 
 .wizard-content {
   padding: 2.5rem;
+  overflow-y: auto;
+  flex-grow: 1;
+  -webkit-overflow-scrolling: touch;
+  max-height: calc(100vh - 160px);
+  max-height: calc(100dvh - 160px);
 }
 
 .wizard-options-grid {

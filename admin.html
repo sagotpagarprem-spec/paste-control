@@ -23,7 +23,7 @@
   <div class="admin-layout">
 
     <!-- 1. ADMIN SIDEBAR -->
-    <aside class="admin-sidebar">
+    <aside class="admin-sidebar" id="adminSidebar">
       <div class="admin-sidebar-header">
         <div class="brand-icon-shield" style="width:36px; height:36px;">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
@@ -130,7 +130,7 @@
       <!-- Topbar Header -->
       <header class="admin-topbar">
         <div style="display:flex; align-items:center; gap:1rem;">
-          <button id="adminSidebarToggle" class="mobile-toggle" style="display:inline-block;">☰</button>
+          <button id="adminSidebarToggle" class="mobile-toggle" style="display:inline-block;" aria-label="Toggle Navigation Sidebar" aria-expanded="false" aria-controls="adminSidebar">☰</button>
           <div class="admin-search-box">
             <span>🔍</span>
             <input type="text" id="crmSearchInput" placeholder="Search leads, phone, service, locality...">
@@ -138,8 +138,9 @@
         </div>
 
         <div class="admin-topbar-actions">
-          <button class="btn btn-accent btn-sm" onclick="openLeadModal({ property:'Home', pest:'General' })">
-            <span>+ Add New Lead</span>
+          <button class="btn btn-accent btn-sm admin-topbar-lead-btn" onclick="openLeadModal({ property:'Home', pest:'General' })" title="Create Inbound Lead">
+            <span class="btn-text-full">+ Add New Lead</span>
+            <span class="btn-text-mobile" style="display:none;">+ Lead</span>
           </button>
 
           <!-- Notification Bell -->
@@ -1154,7 +1155,7 @@
             <div class="wa-chat-window">
               <div class="wa-chat-header">
                 <div class="wa-chat-header-user">
-                  <button type="button" class="btn btn-white btn-sm wa-mobile-back-btn" onclick="document.querySelector('.whatsapp-hub-container')?.classList.remove('chat-active')" title="Back to conversations">← Back</button>
+                  <button type="button" class="btn btn-white btn-sm wa-mobile-back-btn" id="btnWaMobileBack" aria-label="Back to conversations list" title="Back to conversations">← Back</button>
                   <div class="wa-chat-customer-info">
                     <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
                       <strong id="waActiveCustomer" style="font-size:1rem; color:#0F172A;">Select a Conversation</strong>
@@ -2866,8 +2867,74 @@
     </div>
   </div>
 
+  <!-- MODAL: CREATE INBOUND CRM LEAD -->
+  <div id="modalAdminCreateLead" class="modal-overlay" style="display:none;">
+    <div class="modal-card modal-md" style="max-width:540px; width:95%; max-height:90vh; overflow-y:auto; border-radius:16px;">
+      <div class="modal-header">
+        <h3 style="margin:0; font-size:1.15rem; color:#0F172A;">🎯 Create Inbound CRM Lead</h3>
+        <button class="modal-close-btn" onclick="closeAdminCreateLeadModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:1.25rem 1.5rem;">
+        <p style="color:#64748B; font-size:0.8rem; margin-top:0; margin-bottom:1rem;">
+          Enter direct customer or phone dispatch inquiry. Automatically synched to Kanban & Lead CRM.
+        </p>
+        <form id="formAdminCreateLead" onsubmit="handleAdminCreateLeadSubmit(event)">
+          <div class="form-group" style="margin-bottom:0.75rem;">
+            <label class="form-label" style="font-size:0.8rem; font-weight:700;">Customer Full Name *</label>
+            <input type="text" id="adminLeadName" class="form-control" placeholder="e.g. Ramesh Kulkarni" required>
+          </div>
+          <div class="form-grid" style="margin-bottom:0.75rem; display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+            <div class="form-group">
+              <label class="form-label" style="font-size:0.8rem; font-weight:700;">Mobile Number *</label>
+              <input type="tel" id="adminLeadPhone" class="form-control" placeholder="98230 XXXXX" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="font-size:0.8rem; font-weight:700;">Email Address</label>
+              <input type="email" id="adminLeadEmail" class="form-control" placeholder="optional@gmail.com">
+            </div>
+          </div>
+          <div class="form-grid" style="margin-bottom:0.75rem; display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+            <div class="form-group">
+              <label class="form-label" style="font-size:0.8rem; font-weight:700;">Service Needed *</label>
+              <select id="adminLeadService" class="form-control" required>
+                <option value="Cockroach Odorless Gel">Cockroach Odorless Gel</option>
+                <option value="Termite Radar Control">Termite Radar Control</option>
+                <option value="Bed Bug Thermal Steam">Bed Bug Thermal Steam</option>
+                <option value="Commercial Kitchen & HACCP">Commercial Kitchen & HACCP</option>
+                <option value="Mosquito Prevention">Mosquito Prevention</option>
+                <option value="Rodent Bait Exclusion">Rodent Bait Exclusion</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="font-size:0.8rem; font-weight:700;">Property Type *</label>
+              <select id="adminLeadProperty" class="form-control" required>
+                <option value="Home">Residential Home</option>
+                <option value="Apartment">Apartment (2-3 BHK)</option>
+                <option value="Villa">Villa / Bungalow</option>
+                <option value="Office">Commercial Office</option>
+                <option value="Restaurant">Restaurant / Food Prep</option>
+                <option value="Warehouse">Warehouse / Industrial</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:0.75rem;">
+            <label class="form-label" style="font-size:0.8rem; font-weight:700;">City / Locality</label>
+            <input type="text" id="adminLeadArea" class="form-control" placeholder="e.g. Pune, Baner, Kothrud" value="Pune">
+          </div>
+          <div class="form-group" style="margin-bottom:0.75rem;">
+            <label class="form-label" style="font-size:0.8rem; font-weight:700;">Inspection Notes / Inquiry Details</label>
+            <textarea id="adminLeadNotes" class="form-control" rows="2" placeholder="Urgent inspection needed before weekend..."></textarea>
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1.25rem;">
+            <button type="button" class="btn btn-outline" onclick="closeAdminCreateLeadModal()">Cancel</button>
+            <button type="submit" id="btnSubmitAdminLead" class="btn btn-accent">Create Inbound Lead 🚀</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <!-- Scripts -->
-  <script src="js/api-client.js"></script>
   <script src="js/attribution.js"></script>
   <script src="js/store.js"></script>
   <script src="js/app.js"></script>

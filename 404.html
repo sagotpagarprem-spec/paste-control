@@ -75,7 +75,17 @@
       text-decoration: none;
       display: inline-flex;
       align-items: center;
-      gap: 0.4rem;
+    @media (max-width: 480px) {
+      .actions-row {
+        flex-direction: column;
+        width: 100%;
+      }
+      .btn-home, .btn-wa {
+        width: 100%;
+        box-sizing: border-box;
+        text-align: center;
+        justify-content: center;
+      }
     }
   </style>
 </head>

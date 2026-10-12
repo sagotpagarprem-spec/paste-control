@@ -20,6 +20,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /* 1. NAVIGATION & VIEW ROUTING */
 function initNavigation() {
+  if (window._navInitialized) return;
+  window._navInitialized = true;
   const header = document.querySelector('.main-header');
   if (header) {
     window.addEventListener('scroll', () => {
@@ -313,7 +315,21 @@ function initMultiStepLeadWizard() {
 
   if (closeBtn && modal) {
     closeBtn.addEventListener('click', () => {
-      modal.classList.remove('active');
+      closeLeadModal();
+    });
+  }
+
+  if (modal) {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        closeLeadModal();
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && modal.classList.contains('active')) {
+        closeLeadModal();
+      }
     });
   }
 
@@ -539,7 +555,18 @@ function openLeadModal(prefill = {}) {
   if (prefill.pest) leadFormData.pest = prefill.pest;
   updateWizardUI();
   modal.classList.add('active');
+  document.body.classList.add('modal-open');
 }
+window.openLeadModal = openLeadModal;
+
+function closeLeadModal() {
+  const modal = document.getElementById('smartLeadModal');
+  if (modal) {
+    modal.classList.remove('active');
+    document.body.classList.remove('modal-open');
+  }
+}
+window.closeLeadModal = closeLeadModal;
 
 function updateWizardUI() {
   // Hide all step sections

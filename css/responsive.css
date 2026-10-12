@@ -14,6 +14,7 @@
 html, body {
   max-width: 100%;
   overflow-x: hidden;
+  overflow-x: clip;
   position: relative;
 }
 
@@ -196,6 +197,10 @@ input, select, textarea, button {
     left: 0;
   }
 
+  .admin-sidebar.mobile-open #adminSidebarCloseBtn {
+    display: flex !important;
+  }
+
   .admin-search-box {
     width: 220px;
   }
@@ -256,6 +261,21 @@ input, select, textarea, button {
 
   .header-track-text {
     display: none;
+  }
+
+  .admin-switch-btn {
+    display: none !important;
+  }
+
+  .seasonal-banner-actions {
+    width: 100% !important;
+    flex-direction: column !important;
+    gap: 0.75rem !important;
+  }
+
+  .seasonal-banner-actions .btn {
+    width: 100% !important;
+    justify-content: center !important;
   }
 
   /* Floating actions hidden on mobile to avoid competing with bottom bar */
@@ -523,11 +543,24 @@ input, select, textarea, button {
   }
 
   .admin-topbar {
-    padding: 0.65rem 0.85rem;
+    padding: 0.65rem 0.75rem;
   }
 
   .admin-topbar-actions {
-    gap: 0.4rem;
+    gap: 0.35rem;
+  }
+
+  .admin-topbar-lead-btn .btn-text-full {
+    display: none !important;
+  }
+
+  .admin-topbar-lead-btn .btn-text-mobile {
+    display: inline !important;
+  }
+
+  .admin-topbar-lead-btn {
+    padding: 0.35rem 0.6rem !important;
+    font-size: 0.78rem !important;
   }
 
   #adminUserName {

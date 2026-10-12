@@ -117,15 +117,26 @@
     }
 
     .fill-demo-btn {
-      background: none;
-      border: none;
-      color: #059669;
+      background: #ECFDF5;
+      border: 1px solid #A7F3D0;
+      border-radius: 6px;
+      color: #065F46;
       font-weight: 700;
-      font-size: 0.75rem;
+      font-size: 0.78rem;
       cursor: pointer;
-      padding: 0;
-      margin-top: 0.35rem;
-      text-decoration: underline;
+      padding: 0.35rem 0.75rem;
+      min-height: 34px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 0;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .fill-demo-btn:hover {
+      background: #D1FAE5;
+      border-color: #6EE7B7;
     }
   </style>
 </head>
@@ -183,12 +194,12 @@
             >
           </div>
 
-          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem; font-size:0.825rem;">
-            <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; color:#475569;">
-              <input type="checkbox" id="rememberMe" checked>
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem; font-size:0.825rem; flex-wrap:wrap; gap:0.5rem;">
+            <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; color:#475569; min-height:36px;">
+              <input type="checkbox" id="rememberMe" checked style="width:16px; height:16px; accent-color:#059669;">
               <span>Keep session active</span>
             </label>
-            <a href="index.html" style="color:#059669; text-decoration:none; font-weight:600;">Back to Site</a>
+            <a href="index.html" style="color:#059669; text-decoration:none; font-weight:600; padding:0.25rem 0;">Back to Site</a>
           </div>
 
           <button 

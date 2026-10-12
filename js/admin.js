@@ -3,6 +3,100 @@
    Full Admin Suite (Overview, Kanban CRM, Lead Drawer, AI Creative Studio, WhatsApp, Dispatch)
    =================================================================== */
 
+// HTML escaping utility for safe rendering across CRM, Kanban and Meta ads
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+window.escapeHtml = escapeHtml;
+
+function openLeadModal(prefill = {}) {
+  const modal = document.getElementById('modalAdminCreateLead');
+  if (modal) {
+    if (prefill.property && document.getElementById('adminLeadProperty')) {
+      document.getElementById('adminLeadProperty').value = prefill.property;
+    }
+    if (prefill.pest && document.getElementById('adminLeadService')) {
+      document.getElementById('adminLeadService').value = prefill.pest;
+    }
+    modal.style.display = 'flex';
+  }
+}
+window.openLeadModal = openLeadModal;
+
+function closeAdminCreateLeadModal() {
+  const modal = document.getElementById('modalAdminCreateLead');
+  if (modal) modal.style.display = 'none';
+}
+window.closeAdminCreateLeadModal = closeAdminCreateLeadModal;
+
+async function handleAdminCreateLeadSubmit(event) {
+  event.preventDefault();
+  const name = document.getElementById('adminLeadName')?.value.trim();
+  const phone = document.getElementById('adminLeadPhone')?.value.trim();
+  const email = document.getElementById('adminLeadEmail')?.value.trim();
+  const service = document.getElementById('adminLeadService')?.value;
+  const property = document.getElementById('adminLeadProperty')?.value;
+  const area = document.getElementById('adminLeadArea')?.value.trim() || 'Pune';
+  const notes = document.getElementById('adminLeadNotes')?.value.trim();
+  const btn = document.getElementById('btnSubmitAdminLead');
+
+  if (!name || !phone) {
+    showToast('Name and phone number are required.', 'error');
+    return;
+  }
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Creating Lead...';
+  }
+
+  try {
+    const payload = {
+      name,
+      phone,
+      email: email || null,
+      service: service || 'Cockroach Gel Treatment',
+      property: property || 'Home',
+      area,
+      notes: notes || null,
+      source: 'ADMIN_PORTAL',
+      status: 'NEW_LEAD'
+    };
+
+    if (window.upcApi && window.upcApi.leads && window.upcApi.leads.create) {
+      await window.upcApi.leads.create(payload);
+    } else if (window.upcStore) {
+      window.upcStore.addLead({
+        id: `UPC-LEAD-${Date.now().toString().slice(-4)}`,
+        ...payload,
+        createdAt: new Date().toISOString()
+      });
+    }
+
+    showToast('Lead created successfully in CRM!', 'success');
+    closeAdminCreateLeadModal();
+    document.getElementById('formAdminCreateLead')?.reset();
+
+    if (window.renderCrmKanban) renderCrmKanban();
+    if (window.renderCrmTable) renderCrmTable();
+    if (window.renderAdminOverview) renderAdminOverview();
+  } catch (err) {
+    showToast(err.message || 'Failed to create lead', 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Create Inbound Lead';
+    }
+  }
+}
+window.handleAdminCreateLeadSubmit = handleAdminCreateLeadSubmit;
+
 document.addEventListener('DOMContentLoaded', () => {
   initAdminAuth();
   if (!window.upcStore) return;
@@ -89,6 +183,9 @@ function initAdminAuth() {
 
 /* 1. ADMIN NAVIGATION & SECTION SWITCHING */
 function initAdminNavigation() {
+  if (window._adminNavInitialized) return;
+  window._adminNavInitialized = true;
+
   const menuItems = document.querySelectorAll('.admin-nav-item[data-admin-view]');
   menuItems.forEach(item => {
     item.addEventListener('click', (e) => {
@@ -107,11 +204,25 @@ function initAdminNavigation() {
   function openAdminSidebar() {
     if (sidebar) sidebar.classList.add('mobile-open');
     if (sidebarBackdrop) sidebarBackdrop.classList.add('active');
+    if (sidebarClose) sidebarClose.style.display = 'flex';
+    if (adminMobileBtn) adminMobileBtn.setAttribute('aria-expanded', 'true');
+    if (sidebarClose) {
+      sidebarClose.focus();
+    } else if (sidebar) {
+      sidebar.focus();
+    }
   }
 
   function closeAdminSidebar() {
     if (sidebar) sidebar.classList.remove('mobile-open');
     if (sidebarBackdrop) sidebarBackdrop.classList.remove('active');
+    if (sidebarClose) sidebarClose.style.display = 'none';
+    if (adminMobileBtn) {
+      adminMobileBtn.setAttribute('aria-expanded', 'false');
+      if (document.activeElement !== adminMobileBtn) {
+        adminMobileBtn.focus();
+      }
+    }
   }
 
   window.closeAdminSidebar = closeAdminSidebar;
@@ -139,8 +250,28 @@ function initAdminNavigation() {
   }
 
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      closeAdminSidebar();
+    if (sidebar && sidebar.classList.contains('mobile-open')) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closeAdminSidebar();
+        return;
+      }
+      if (e.key === 'Tab') {
+        const focusables = sidebar.querySelectorAll('button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        const visibleFocusables = Array.from(focusables).filter(el => el.offsetParent !== null || window.getComputedStyle(el).display !== 'none');
+        if (visibleFocusables.length > 0) {
+          const first = visibleFocusables[0];
+          const last = visibleFocusables[visibleFocusables.length - 1];
+          if (e.shiftKey && document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+          } else if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
+      }
+    } else if (e.key === 'Escape') {
       const openDrawers = document.querySelectorAll('.lead-drawer.open');
       openDrawers.forEach(d => d.classList.remove('open'));
     }
@@ -1245,6 +1376,15 @@ function initWhatsAppHub() {
         (c.phone && c.phone.includes(q)) ||
         (c.service && c.service.toLowerCase().includes(q))
       ));
+    });
+  }
+
+  // Back Button for Mobile WhatsApp View
+  const waBackBtn = document.getElementById('btnWaMobileBack') || document.querySelector('.wa-mobile-back-btn');
+  if (waBackBtn) {
+    waBackBtn.addEventListener('click', () => {
+      const waContainer = document.querySelector('.whatsapp-hub-container');
+      if (waContainer) waContainer.classList.remove('chat-active');
     });
   }
 }
