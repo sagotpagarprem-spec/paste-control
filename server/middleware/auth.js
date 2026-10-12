@@ -1,9 +1,15 @@
-// Universal Pest Control — Authentication Middleware
+// Universal Pest Control — Authentication & Authorization Middleware
 const { verifyToken } = require('../utils/jwt');
 const { apiError } = require('../utils/response');
 const { query } = require('../config/database');
+const sessionModel = require('../models/sessionModel');
+const { requireRole, requirePermission } = require('./rbac');
 const logger = require('../utils/logger');
 
+/**
+ * Authenticate incoming requests via HttpOnly cookie or Bearer token
+ * Validates session persistence in MySQL if a session ID is present.
+ */
 async function authenticateToken(req, res, next) {
   try {
     const authHeader = req.headers['authorization'] || req.headers['x-access-token'];
@@ -16,7 +22,7 @@ async function authenticateToken(req, res, next) {
     }
 
     if (!token) {
-      return apiError(res, 'Authentication required. No token provided.', 401);
+      return apiError(res, 'Authentication required. No session or token provided.', 401);
     }
 
     let decoded;
@@ -29,7 +35,58 @@ async function authenticateToken(req, res, next) {
       return apiError(res, 'Invalid authentication token.', 401);
     }
 
-    // Verify user in database if database is connected
+    // 1. If token includes a session ID, validate MySQL server-side session
+    if (decoded.sessionId) {
+      try {
+        const session = await sessionModel.findById(decoded.sessionId);
+        if (!session) {
+          return apiError(res, 'Session has expired or was revoked. Please log in again.', 401);
+        }
+
+        if (!session.user || !session.user.isActive) {
+          return apiError(res, 'User account is inactive or not found.', 401);
+        }
+
+        // Fetch user permissions
+        const roles = session.user.roles || ['admin'];
+        const permRows = await query(
+          `SELECT DISTINCT p.name
+           FROM permissions p
+           JOIN role_permissions rp ON p.id = rp.permission_id
+           JOIN roles r ON rp.role_id = r.id
+           WHERE r.name IN (${roles.map(() => '?').join(',') || 'NULL'})`,
+          roles.length > 0 ? roles : ['admin']
+        );
+
+        const permissions = permRows.map(r => r.name);
+
+        req.session = {
+          sessionId: session.sessionId,
+          expiresAt: session.expiresAt
+        };
+
+        req.user = {
+          id: session.user.id,
+          uuid: session.user.uuid,
+          name: session.user.name,
+          email: session.user.email,
+          phone: session.user.phone,
+          avatarUrl: session.user.avatarUrl,
+          roles,
+          permissions,
+          sessionId: session.sessionId
+        };
+
+        // Touch session to record activity
+        sessionModel.touch(session.sessionId).catch(() => {});
+
+        return next();
+      } catch (dbErr) {
+        logger.warn(`Session database lookup failed (${dbErr.message}), falling back to token claims.`);
+      }
+    }
+
+    // 2. Direct database user lookup (for stateless tokens / testing / API keys)
     try {
       const userRows = await query(
         `SELECT u.id, u.uuid, u.name, u.email, u.phone, u.avatar_url, u.is_active,
@@ -69,7 +126,8 @@ async function authenticateToken(req, res, next) {
         phone: user.phone,
         avatarUrl: user.avatar_url,
         roles,
-        permissions
+        permissions,
+        sessionId: decoded.sessionId || null
       };
     } catch (dbErr) {
       // If DB is temporarily unavailable but token is validly signed, use token claims
@@ -80,7 +138,8 @@ async function authenticateToken(req, res, next) {
         name: decoded.name || 'Admin User',
         email: decoded.email,
         roles: decoded.roles || ['admin'],
-        permissions: decoded.permissions || ['*']
+        permissions: decoded.permissions || ['*'],
+        sessionId: decoded.sessionId || null
       };
     }
 
@@ -92,5 +151,7 @@ async function authenticateToken(req, res, next) {
 }
 
 module.exports = {
-  authenticateToken
+  authenticateToken,
+  requireRole,
+  requirePermission
 };

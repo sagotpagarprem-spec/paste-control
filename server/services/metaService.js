@@ -1,4 +1,5 @@
 // Universal Pest Control — Meta (Facebook & Instagram) Lead Ads Service (Phase 7)
+const crypto = require('crypto');
 const metaModel = require('../models/metaModel');
 const leadService = require('./leadService');
 const notificationModel = require('../models/notificationModel');
@@ -32,6 +33,39 @@ class MetaService {
   async getActiveToken() {
     const rawConfig = await metaModel.getRawConfiguration();
     return rawConfig.access_token || process.env.META_ACCESS_TOKEN || '';
+  }
+
+  /**
+   * Validate official Meta SHA256 Webhook Signature (X-Hub-Signature-256)
+   */
+  async verifySignature(req) {
+    const signature = req.headers['x-hub-signature-256'];
+    const rawConfig = await metaModel.getRawConfiguration();
+    const appSecret = rawConfig.app_secret || process.env.META_APP_SECRET || '';
+
+    // If appSecret is not configured, permit in development / mock mode
+    if (!appSecret) {
+      return true;
+    }
+
+    if (!signature) {
+      logger.warn('Meta webhook missing X-Hub-Signature-256 header.');
+      return false;
+    }
+
+    try {
+      const rawBody = req.rawBody || Buffer.from(JSON.stringify(req.body));
+      const expectedHash = 'sha256=' + crypto.createHmac('sha256', appSecret).update(rawBody).digest('hex');
+      const sigBuffer = Buffer.from(signature);
+      const expBuffer = Buffer.from(expectedHash);
+      if (sigBuffer.length !== expBuffer.length) {
+        return false;
+      }
+      return crypto.timingSafeEqual(sigBuffer, expBuffer);
+    } catch (e) {
+      logger.error(`Signature verification error: ${e.message}`);
+      return false;
+    }
   }
 
   /**

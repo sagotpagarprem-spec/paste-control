@@ -5,12 +5,15 @@ const metaController = require('../controllers/metaController');
 const { authenticateToken } = require('../middleware/auth');
 const { requirePermission } = require('../middleware/rbac');
 
-// 1. Official Meta Webhook Endpoints (Public — Handshake & Event Ingestion)
+// 1. Official Meta Webhook & Public Configuration Endpoints
 // GET /api/meta/webhook (Meta verification handshake)
 router.get('/webhook', metaController.getWebhook);
 
 // POST /api/meta/webhook (Meta Lead Ads webhook notifications)
 router.post('/webhook', metaController.postWebhook);
+
+// GET /api/meta/pixel-config (Public Meta Pixel tracking configuration)
+router.get('/pixel-config', metaController.getPixelConfig);
 
 // 2. Protected Admin Meta Operations
 // GET /api/meta/connection

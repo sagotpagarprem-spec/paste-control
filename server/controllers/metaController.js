@@ -17,11 +17,32 @@ const metaController = {
   },
 
   /**
+   * Public Meta Pixel Configuration Endpoint
+   * GET /api/meta/pixel-config
+   */
+  async getPixelConfig(req, res, next) {
+    try {
+      const config = await metaModel.getSafeConfiguration();
+      const pixelId = config.pixelId || process.env.META_PIXEL_ID || null;
+      return apiSuccess(res, {
+        pixelId,
+        enabled: Boolean(pixelId)
+      }, 'Meta Pixel configuration.');
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
    * Webhook Ingestion Endpoint (Meta Leadgen Event Notifications)
    * POST /api/meta/webhook
    */
   async postWebhook(req, res) {
     try {
+      const isValid = await metaService.verifySignature(req);
+      if (!isValid) {
+        return res.status(401).json({ status: 'INVALID_SIGNATURE', message: 'Signature verification failed.' });
+      }
       const result = await metaService.processWebhook(req.body);
       return res.status(200).json({ status: 'EVENT_RECEIVED', ...result });
     } catch (error) {

@@ -18,12 +18,38 @@ window.escapeHtml = escapeHtml;
 function openLeadModal(prefill = {}) {
   const modal = document.getElementById('modalAdminCreateLead');
   if (modal) {
-    if (prefill.property && document.getElementById('adminLeadProperty')) {
-      document.getElementById('adminLeadProperty').value = prefill.property;
+    const propEl = document.getElementById('adminLeadProperty');
+    const servEl = document.getElementById('adminLeadService');
+    const btn = document.getElementById('btnSubmitAdminLead');
+
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Create Inbound Lead 🚀';
     }
-    if (prefill.pest && document.getElementById('adminLeadService')) {
-      document.getElementById('adminLeadService').value = prefill.pest;
+
+    if (prefill.property && propEl) {
+      const matchingProp = Array.from(propEl.options).find(o => 
+        o.value.toLowerCase() === prefill.property.toLowerCase() || 
+        o.text.toLowerCase().includes(prefill.property.toLowerCase())
+      );
+      if (matchingProp) propEl.value = matchingProp.value;
     }
+
+    if (prefill.pest && servEl) {
+      const p = prefill.pest.toLowerCase();
+      const matchingServ = Array.from(servEl.options).find(o => 
+        o.value.toLowerCase() === p || 
+        o.value.toLowerCase().includes(p) || 
+        p.includes(o.value.toLowerCase()) ||
+        (p === 'general' && o.value === 'Cockroach Odorless Gel')
+      );
+      if (matchingServ) {
+        servEl.value = matchingServ.value;
+      } else {
+        servEl.value = 'Cockroach Odorless Gel';
+      }
+    }
+
     modal.style.display = 'flex';
   }
 }
@@ -34,6 +60,16 @@ function closeAdminCreateLeadModal() {
   if (modal) modal.style.display = 'none';
 }
 window.closeAdminCreateLeadModal = closeAdminCreateLeadModal;
+
+// Backdrop click and Escape handling for modalAdminCreateLead
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    const m = document.getElementById('modalAdminCreateLead');
+    if (m && m.style.display === 'flex') {
+      closeAdminCreateLeadModal();
+    }
+  }
+});
 
 async function handleAdminCreateLeadSubmit(event) {
   event.preventDefault();
@@ -51,17 +87,22 @@ async function handleAdminCreateLeadSubmit(event) {
     return;
   }
 
+  // Prevent duplicate submissions
   if (btn) {
+    if (btn.disabled) return;
     btn.disabled = true;
     btn.textContent = 'Creating Lead...';
   }
+
+  let created = false;
+  let newLeadRecord = null;
 
   try {
     const payload = {
       name,
       phone,
       email: email || null,
-      service: service || 'Cockroach Gel Treatment',
+      service: service || 'Cockroach Odorless Gel',
       property: property || 'Home',
       area,
       notes: notes || null,
@@ -69,29 +110,55 @@ async function handleAdminCreateLeadSubmit(event) {
       status: 'NEW_LEAD'
     };
 
-    if (window.upcApi && window.upcApi.leads && window.upcApi.leads.create) {
-      await window.upcApi.leads.create(payload);
-    } else if (window.upcStore) {
-      window.upcStore.addLead({
-        id: `UPC-LEAD-${Date.now().toString().slice(-4)}`,
+    // 1. Try Backend API first if authenticated
+    if (window.upcApi && window.upcApi.auth && window.upcApi.auth.isAuthenticated() && window.upcApi.leads && window.upcApi.leads.create) {
+      try {
+        const apiRes = await window.upcApi.leads.create(payload);
+        if (apiRes && (apiRes.success || apiRes.data || apiRes.id)) {
+          created = true;
+          newLeadRecord = apiRes.data || apiRes.lead || payload;
+        } else {
+          throw new Error(apiRes?.message || 'Server rejected lead creation');
+        }
+      } catch (apiErr) {
+        console.warn('Backend lead creation notice:', apiErr);
+        if (!window.upcStore) {
+          throw apiErr;
+        }
+      }
+    }
+
+    // 2. Persist in local reactive store (either fallback or sync)
+    if (window.upcStore) {
+      const persisted = window.upcStore.addLead({
+        id: (newLeadRecord && (newLeadRecord.lead_code || newLeadRecord.id)) || `UPC-LEAD-${Date.now().toString().slice(-4)}`,
         ...payload,
-        createdAt: new Date().toISOString()
+        ...(newLeadRecord || {}),
+        createdAt: (newLeadRecord && newLeadRecord.created_at) || new Date().toISOString()
       });
+      if (persisted) {
+        created = true;
+      }
+    }
+
+    // 3. Strict verification: ensure persistence actually succeeded
+    if (!created) {
+      throw new Error('Lead creation failed: Neither API service nor local store was able to persist the record.');
     }
 
     showToast('Lead created successfully in CRM!', 'success');
     closeAdminCreateLeadModal();
     document.getElementById('formAdminCreateLead')?.reset();
 
-    if (window.renderCrmKanban) renderCrmKanban();
-    if (window.renderCrmTable) renderCrmTable();
-    if (window.renderAdminOverview) renderAdminOverview();
+    if (typeof window.renderCrmKanban === 'function') window.renderCrmKanban();
+    if (typeof window.renderCrmTable === 'function') window.renderCrmTable();
+    if (typeof window.renderAdminOverview === 'function') window.renderAdminOverview();
   } catch (err) {
     showToast(err.message || 'Failed to create lead', 'error');
   } finally {
     if (btn) {
       btn.disabled = false;
-      btn.textContent = 'Create Inbound Lead';
+      btn.textContent = 'Create Inbound Lead 🚀';
     }
   }
 }
@@ -556,18 +623,25 @@ function handleKanbanDrop(e, targetStatus) {
 
 async function updateLeadStatusViaApi(leadId, newStatus) {
   const normStatus = normalizeStatus(newStatus);
-  // 1. Update UI Store
-  window.upcStore.updateLeadStatus(leadId, normStatus);
-  showToast(`Lead updated to ${normStatus}`, 'success');
 
-  // 2. Persist to MySQL Backend API
+  // 1. Persist to MySQL Backend API
   if (window.upcApi && window.upcApi.auth.isAuthenticated()) {
     try {
-      await window.upcApi.leads.update(leadId, { status: normStatus });
+      const res = await window.upcApi.leads.updateStatus(leadId, normStatus);
+      if (res && res.data) {
+        window.upcStore.updateLeadStatus(leadId, normStatus);
+        showToast(`Lead status updated to ${normStatus} in database.`, 'success');
+        return res.data;
+      }
     } catch (err) {
-      console.warn('Backend status update error:', err.message);
+      showToast(`Status update failed: ${err.message}`, 'error');
+      return null;
     }
   }
+
+  // Fallback
+  window.upcStore.updateLeadStatus(leadId, normStatus);
+  showToast(`Lead updated to ${normStatus}`, 'success');
 }
 
 function quickAdvanceLead(leadId) {
@@ -665,6 +739,7 @@ function renderCrmTable() {
             ${(lead.adSet || lead.adset_name || lead.ad || lead.ad_name) ? `<div style="font-size:0.7rem; color:#64748B; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:200px;" title="${escapeHtml(lead.adSet || lead.adset_name || '')} • ${escapeHtml(lead.ad || lead.ad_name || '')}">🎯 ${escapeHtml(lead.adSet || lead.adset_name || 'AdSet')} / ${escapeHtml(lead.ad || lead.ad_name || 'Ad')}</div>` : ''}
           </div>
         </td>
+        <td>
           <span class="badge ${statusNorm === 'NEW' ? 'badge-primary' : statusNorm === 'BOOKED' || statusNorm === 'COMPLETED' ? 'badge-success' : 'badge-warning'}">
             ${statusNorm}
           </span>
@@ -802,6 +877,33 @@ function exportCrmLeadsCsv() {
 /* 5. LEAD DETAIL DRAWER WITH LIVE API INTEGRATION */
 let activeDrawerLeadId = null;
 let cachedStaffList = [];
+let cachedTechniciansList = [];
+
+function populateStaffDropdown() {
+  const assignedSelect = document.getElementById('drawerAssignedSelect');
+  if (!assignedSelect) return;
+  const currentVal = assignedSelect.value;
+  assignedSelect.innerHTML = `
+    <option value="">-- Unassigned --</option>
+    ${cachedStaffList.map(s => `
+      <option value="${s.id}">${s.name} (${(s.roles && s.roles[0]) || 'Staff'})</option>
+    `).join('')}
+  `;
+  if (currentVal) assignedSelect.value = currentVal;
+}
+
+function populateTechnicianDropdown() {
+  const techSelect = document.getElementById('drawerTechnicianSelect');
+  if (!techSelect) return;
+  const currentVal = techSelect.value;
+  techSelect.innerHTML = `
+    <option value="">-- Unassigned Technician --</option>
+    ${cachedTechniciansList.map(t => `
+      <option value="${t.id}">${t.name} (${t.phone || 'Field Tech'})</option>
+    `).join('')}
+  `;
+  if (currentVal) techSelect.value = currentVal;
+}
 
 function initLeadDrawer() {
   const closeBtn = document.getElementById('closeLeadDrawer');
@@ -820,6 +922,16 @@ function initLeadDrawer() {
       if (res && res.data) {
         cachedStaffList = res.data;
         populateStaffDropdown();
+      }
+    }).catch(() => {});
+  }
+
+  // Pre-load field technicians for assignment
+  if (window.upcApi && window.upcApi.technicians) {
+    window.upcApi.technicians.getAll().then(res => {
+      if (res && res.data) {
+        cachedTechniciansList = res.data;
+        populateTechnicianDropdown();
       }
     }).catch(() => {});
   }
@@ -868,7 +980,7 @@ function initLeadDrawer() {
     });
   }
 
-  // Assignee Change Selector
+  // Assignee Change Selector (Staff)
   const assignedSelect = document.getElementById('drawerAssignedSelect');
   if (assignedSelect) {
     assignedSelect.addEventListener('change', async () => {
@@ -888,6 +1000,31 @@ function initLeadDrawer() {
           openLeadDrawer(activeDrawerLeadId);
         } catch (e) {
           showToast('Failed to update assignment.', 'error');
+        }
+      }
+    });
+  }
+
+  // Field Technician Selector
+  const techSelect = document.getElementById('drawerTechnicianSelect');
+  if (techSelect) {
+    techSelect.addEventListener('change', async () => {
+      if (!activeDrawerLeadId) return;
+      const techId = techSelect.value ? Number(techSelect.value) : null;
+      if (window.upcApi && window.upcApi.auth.isAuthenticated()) {
+        try {
+          await window.upcApi.leads.assign(activeDrawerLeadId, { technicianId: techId });
+          const techObj = cachedTechniciansList.find(t => t.id === techId);
+          const lead = window.upcStore.data.leads.find(l => (l.id === activeDrawerLeadId || l.lead_code === activeDrawerLeadId || l.dbId == activeDrawerLeadId));
+          if (lead) {
+            lead.assigned_technician_id = techId;
+            lead.technician_name = techObj ? techObj.name : null;
+            window.upcStore.notify();
+          }
+          showToast(`Field technician ${techObj ? techObj.name : 'unassigned'}.`, 'success');
+          openLeadDrawer(activeDrawerLeadId);
+        } catch (e) {
+          showToast('Failed to assign field technician: ' + (e.message || 'Error'), 'error');
         }
       }
     });
@@ -929,19 +1066,41 @@ function initLeadDrawer() {
       }
     });
   }
-}
 
-function populateStaffDropdown() {
-  const assignedSelect = document.getElementById('drawerAssignedSelect');
-  if (!assignedSelect) return;
-  const currentVal = assignedSelect.value;
-  assignedSelect.innerHTML = `
-    <option value="">-- Unassigned --</option>
-    ${cachedStaffList.map(s => `
-      <option value="${s.id}">${s.name} (${(s.roles && s.roles[0]) || 'Staff'})</option>
-    `).join('')}
-  `;
-  if (currentVal) assignedSelect.value = currentVal;
+  // Administrative Archive Lead Button
+  const archiveBtn = document.getElementById('btnArchiveLead');
+  if (archiveBtn) {
+    archiveBtn.addEventListener('click', async () => {
+      if (!activeDrawerLeadId) return;
+      if (!confirm('Are you sure you want to archive this lead? It will be removed from the active CRM view.')) return;
+
+      archiveBtn.disabled = true;
+      archiveBtn.textContent = 'Archiving...';
+      try {
+        if (window.upcApi && window.upcApi.auth.isAuthenticated()) {
+          await window.upcApi.leads.delete(activeDrawerLeadId);
+        }
+        // Remove from local store
+        window.upcStore.data.leads = window.upcStore.data.leads.filter(l => (
+          l.id !== activeDrawerLeadId && l.lead_code !== activeDrawerLeadId && l.dbId != activeDrawerLeadId
+        ));
+        window.upcStore.notify();
+
+        if (drawer) drawer.classList.remove('open');
+        activeDrawerLeadId = null;
+
+        showToast('Lead archived successfully.', 'success');
+        if (typeof renderCrmLeadViews === 'function') {
+          renderCrmLeadViews();
+        }
+      } catch (e) {
+        showToast('Failed to archive lead: ' + (e.message || 'Error'), 'error');
+      } finally {
+        archiveBtn.disabled = false;
+        archiveBtn.textContent = '🗑️ Archive Lead';
+      }
+    });
+  }
 }
 
 async function openLeadDrawer(leadId) {
@@ -965,6 +1124,7 @@ async function openLeadDrawer(leadId) {
   if (!lead) return;
 
   populateStaffDropdown();
+  populateTechnicianDropdown();
 
   // Populate drawer elements
   const displayName = lead.name || 'Anonymous Inquiry';
@@ -994,6 +1154,18 @@ async function openLeadDrawer(leadId) {
   if (addrEl) {
     const notesContent = lead.message || lead.address || (typeof lead.notes === 'string' ? lead.notes : null) || 'No specific address note provided.';
     addrEl.textContent = notesContent;
+  }
+
+  // Preferred Schedule Display
+  const prefWrap = document.getElementById('drawerLeadPreferredWrap');
+  const prefEl = document.getElementById('drawerLeadPreferred');
+  if (prefWrap && prefEl) {
+    if (lead.preferred_date || lead.preferred_time) {
+      prefWrap.style.display = 'block';
+      prefEl.textContent = `${lead.preferred_date || ''} ${lead.preferred_time || ''}`.trim();
+    } else {
+      prefWrap.style.display = 'none';
+    }
   }
 
   // Linked Booking Display
@@ -1030,10 +1202,16 @@ async function openLeadDrawer(leadId) {
   const statusSelect = document.getElementById('drawerStatusSelect');
   if (statusSelect) statusSelect.value = normalizeStatus(lead.status);
 
-  // Assigned Person Selector
+  // Assigned Person Selector (Staff)
   const assignedSelect = document.getElementById('drawerAssignedSelect');
   if (assignedSelect) {
     assignedSelect.value = lead.assigned_to || '';
+  }
+
+  // Assigned Field Technician Selector
+  const techSelect = document.getElementById('drawerTechnicianSelect');
+  if (techSelect) {
+    techSelect.value = lead.assigned_technician_id || lead.assignedTechnicianId || '';
   }
 
   // Follow-Up Date Input

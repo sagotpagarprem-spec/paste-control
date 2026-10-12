@@ -79,6 +79,23 @@ CREATE TABLE IF NOT EXISTS `user_roles` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------
+-- 5b. USER_SESSIONS TABLE (Server-Side Session Store)
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `user_sessions` (
+  `id` VARCHAR(128) PRIMARY KEY,
+  `user_id` INT NOT NULL,
+  `token_hash` VARCHAR(64) NULL,
+  `ip_address` VARCHAR(45) NULL,
+  `user_agent` TEXT NULL,
+  `expires_at` TIMESTAMP NOT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT `fk_user_sessions_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  INDEX `idx_user_sessions_user` (`user_id`),
+  INDEX `idx_user_sessions_expires` (`expires_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------
 -- 6. CUSTOMERS TABLE
 -- ---------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `customers` (
@@ -194,22 +211,30 @@ CREATE TABLE IF NOT EXISTS `leads` (
   `status` VARCHAR(50) NOT NULL DEFAULT 'NEW',
   `urgency` VARCHAR(50) NOT NULL DEFAULT 'Today',
   `estimated_value` DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+  `preferred_date` DATE NULL,
+  `preferred_time` VARCHAR(50) NULL,
+  `admin_notes` TEXT NULL,
   `assigned_to` INT NULL,
+  `assigned_technician_id` INT NULL,
   `follow_up_date` TIMESTAMP NULL DEFAULT NULL,
   `is_duplicate` BOOLEAN NOT NULL DEFAULT FALSE,
   `duplicate_count` INT NOT NULL DEFAULT 0,
   `duplicate_of_id` INT NULL,
+  `is_archived` BOOLEAN NOT NULL DEFAULT FALSE,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT `fk_leads_customer` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_leads_service` FOREIGN KEY (`service_id`) REFERENCES `services` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_leads_assigned` FOREIGN KEY (`assigned_to`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_leads_tech` FOREIGN KEY (`assigned_technician_id`) REFERENCES `technicians` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_leads_dup` FOREIGN KEY (`duplicate_of_id`) REFERENCES `leads` (`id`) ON DELETE SET NULL,
   INDEX `idx_leads_status` (`status`),
   INDEX `idx_leads_phone` (`phone`),
   INDEX `idx_leads_source` (`source`),
   INDEX `idx_leads_created_at` (`created_at`),
   INDEX `idx_leads_assigned_to` (`assigned_to`),
+  INDEX `idx_leads_assigned_tech` (`assigned_technician_id`),
+  INDEX `idx_leads_archived` (`is_archived`),
   INDEX `idx_leads_dup` (`is_duplicate`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

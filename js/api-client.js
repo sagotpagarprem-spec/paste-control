@@ -8,21 +8,35 @@ class UPCApiClient {
     this.baseUrl = baseUrl;
     this.tokenKey = 'upc_auth_token';
     this.userKey = 'upc_auth_user';
+    this._inMemoryToken = null;
+
+    // Security: Clean up any legacy tokens from localStorage to prevent XSS exfiltration
+    try {
+      localStorage.removeItem(this.tokenKey);
+    } catch (e) {}
   }
 
   // Token & Session Storage
+  // Session tokens are strictly HttpOnly cookies and kept in memory only — never persisted in localStorage
   getToken() {
-    return localStorage.getItem(this.tokenKey);
+    return this._inMemoryToken || null;
   }
 
   setSession(token, user) {
-    if (token) localStorage.setItem(this.tokenKey, token);
-    if (user) localStorage.setItem(this.userKey, JSON.stringify(user));
+    this._inMemoryToken = token || null;
+    if (user) {
+      try {
+        localStorage.setItem(this.userKey, JSON.stringify(user));
+      } catch (e) {}
+    }
   }
 
   clearSession() {
-    localStorage.removeItem(this.tokenKey);
-    localStorage.removeItem(this.userKey);
+    this._inMemoryToken = null;
+    try {
+      localStorage.removeItem(this.tokenKey);
+      localStorage.removeItem(this.userKey);
+    } catch (e) {}
   }
 
   getUser() {
@@ -35,8 +49,8 @@ class UPCApiClient {
   }
 
   isAuthenticated() {
-    const token = this.getToken();
-    return Boolean(token && token.trim().length > 10);
+    // Session validity is backed by HttpOnly cookie and confirmed via getUser() / getMe()
+    return Boolean(this.getUser() || this._inMemoryToken);
   }
 
   // Core Request Method
@@ -54,6 +68,7 @@ class UPCApiClient {
     }
 
     const config = {
+      credentials: 'include', // Guarantees HttpOnly session cookie transmission
       ...options,
       headers
     };
@@ -93,7 +108,7 @@ class UPCApiClient {
         method: 'POST',
         body: { email, password }
       });
-      if (res && res.data && res.data.token) {
+      if (res && res.data && res.data.user) {
         this.setSession(res.data.token, res.data.user);
       }
       return res;
@@ -112,7 +127,7 @@ class UPCApiClient {
     getMe: async () => {
       const res = await this.request('/auth/me', { method: 'GET' });
       if (res && res.data) {
-        localStorage.setItem(this.userKey, JSON.stringify(res.data));
+        this.setSession(this._inMemoryToken, res.data);
       }
       return res;
     },
@@ -142,8 +157,22 @@ class UPCApiClient {
 
     update: async (id, updateData) => {
       return await this.request(`/leads/${id}`, {
-        method: 'PUT',
+        method: 'PATCH',
         body: updateData
+      });
+    },
+
+    updateStatus: async (id, status) => {
+      return await this.request(`/leads/${id}/status`, {
+        method: 'PATCH',
+        body: { status }
+      });
+    },
+
+    assign: async (id, assignData = {}) => {
+      return await this.request(`/leads/${id}/assign`, {
+        method: 'PATCH',
+        body: assignData
       });
     },
 
@@ -151,6 +180,12 @@ class UPCApiClient {
       return await this.request(`/leads/${id}/notes`, {
         method: 'POST',
         body: { note }
+      });
+    },
+
+    delete: async (id) => {
+      return await this.request(`/leads/${id}`, {
+        method: 'DELETE'
       });
     }
   };
@@ -677,8 +712,9 @@ class UPCApiClient {
 
   // Production Marketing Analytics API (Phase 10)
   analytics = {
-    getOverview: async () => {
-      return await this.request('/analytics/overview', { method: 'GET' });
+    getOverview: async (params = {}) => {
+      const query = new URLSearchParams(params).toString();
+      return await this.request(`/analytics/overview${query ? `?${query}` : ''}`, { method: 'GET' });
     },
 
     track: async (data) => {

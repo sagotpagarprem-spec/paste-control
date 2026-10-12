@@ -50,14 +50,27 @@ function formatLead(lead, notes = [], activities = [], bookings = []) {
     utmContent: lead.utm_content,
     utmTerm: lead.utm_term,
     landingPage: lead.landing_page,
+    preferredDate: lead.preferred_date || null,
+    preferred_date: lead.preferred_date || null,
+    preferredTime: lead.preferred_time || null,
+    preferred_time: lead.preferred_time || null,
+    adminNotes: lead.admin_notes || null,
+    admin_notes: lead.admin_notes || null,
     estimatedValue: lead.estimated_value,
+    estimatedAmount: lead.estimated_value,
     assignedTo: lead.assigned_to,
     assignedToName: lead.assigned_to_name,
     assignedToEmail: lead.assigned_to_email,
+    assignedTechnicianId: lead.assigned_technician_id || null,
+    assigned_technician_id: lead.assigned_technician_id || null,
+    technicianName: lead.technician_name || null,
+    technician_name: lead.technician_name || null,
     followUpDate: lead.follow_up_date,
     isDuplicate: Boolean(lead.is_duplicate),
     duplicateCount: lead.duplicate_count,
     duplicateOfId: lead.duplicate_of_id,
+    isArchived: Boolean(lead.is_archived),
+    is_archived: Boolean(lead.is_archived),
     createdAt: lead.created_at,
     updatedAt: lead.updated_at,
     notes: formattedNotes,
@@ -71,13 +84,27 @@ const leadModel = {
   /**
    * Find leads with advanced search, filtering, and pagination
    */
-  async findAll({ search = '', status = '', service = '', source = '', assignedTo = '', page = 1, limit = 50 } = {}) {
+  async findAll({
+    search = '',
+    status = '',
+    service = '',
+    source = '',
+    assignedTo = '',
+    includeArchived = false,
+    page = 1,
+    limit = 50
+  } = {}) {
     let baseSql = `
       FROM leads l
       LEFT JOIN users u ON l.assigned_to = u.id
+      LEFT JOIN technicians t ON l.assigned_technician_id = t.id
       WHERE 1=1
     `;
     const params = [];
+
+    if (!includeArchived) {
+      baseSql += ` AND (l.is_archived IS NULL OR l.is_archived = FALSE)`;
+    }
 
     if (status) {
       // Normalize status comparison (e.g., SITE_VISIT vs SITE VISIT, FOLLOW_UP vs FOLLOW-UP)
@@ -97,8 +124,9 @@ const leadModel = {
     }
 
     if (assignedTo) {
-      baseSql += ` AND (l.assigned_to = ? OR u.name LIKE ?)`;
-      params.push(isNaN(assignedTo) ? -1 : Number(assignedTo), `%${assignedTo}%`);
+      baseSql += ` AND (l.assigned_to = ? OR l.assigned_technician_id = ? OR u.name LIKE ? OR t.name LIKE ?)`;
+      const numId = isNaN(assignedTo) ? -1 : Number(assignedTo);
+      params.push(numId, numId, `%${assignedTo}%`, `%${assignedTo}%`);
     }
 
     if (search) {
@@ -109,12 +137,13 @@ const leadModel = {
         l.service_name LIKE ? OR
         l.area LIKE ? OR
         l.city LIKE ? OR
+        l.address LIKE ? OR
         l.lead_code LIKE ? OR
         l.campaign LIKE ? OR
         l.utm_source LIKE ?
       )`;
       const s = `%${search}%`;
-      params.push(s, s, s, s, s, s, s, s, s);
+      params.push(s, s, s, s, s, s, s, s, s, s);
     }
 
     // 1. Get Total Count
@@ -126,13 +155,16 @@ const leadModel = {
     const selectSql = `
       SELECT l.id, l.lead_code, l.customer_id, l.name, l.phone, l.email,
              l.service_name, l.property_type, l.city, l.area, l.address, l.message,
+             l.preferred_date, l.preferred_time, l.admin_notes,
              l.source, l.platform, l.campaign, l.campaign_id, l.adset_name, l.adset_id,
              l.ad_name, l.ad_id, l.leadgen_id, l.utm_source, l.utm_medium,
              l.utm_campaign, l.utm_content, l.utm_term, l.fbclid, l.gclid,
              l.landing_page, l.referrer, l.status, l.urgency, l.estimated_value,
-             l.assigned_to, l.follow_up_date, l.is_duplicate, l.duplicate_count,
-             l.duplicate_of_id, l.created_at, l.updated_at,
-             u.name AS assigned_to_name, u.email AS assigned_to_email
+             l.assigned_to, l.assigned_technician_id, l.follow_up_date,
+             l.is_duplicate, l.duplicate_count, l.duplicate_of_id, l.is_archived,
+             l.created_at, l.updated_at,
+             u.name AS assigned_to_name, u.email AS assigned_to_email,
+             t.name AS technician_name
       ${baseSql}
       ORDER BY l.created_at DESC
       LIMIT ? OFFSET ?
@@ -158,9 +190,12 @@ const leadModel = {
    */
   async findById(id) {
     const rows = await query(
-      `SELECT l.*, u.name AS assigned_to_name, u.email AS assigned_to_email
+      `SELECT l.*,
+              u.name AS assigned_to_name, u.email AS assigned_to_email,
+              t.name AS technician_name
        FROM leads l
        LEFT JOIN users u ON l.assigned_to = u.id
+       LEFT JOIN technicians t ON l.assigned_technician_id = t.id
        WHERE l.id = ? OR l.lead_code = ?
        LIMIT 1`,
       [id, id]
@@ -188,74 +223,71 @@ const leadModel = {
       [lead.id]
     );
 
-    // Fetch any associated bookings
-    const bookings = await query(
-      `SELECT b.id, b.booking_code, b.service_name, b.scheduled_date, b.time_slot, b.amount, b.status
-       FROM bookings b
-       WHERE b.lead_id = ? OR (b.phone = ? AND b.phone != '')
-       ORDER BY b.scheduled_date DESC
-       LIMIT 5`,
-      [lead.id, lead.phone]
-    );
+    // Fetch linked bookings if any
+    let bookings = [];
+    try {
+      bookings = await query(
+        `SELECT b.id, b.booking_code, b.service_name, b.status, b.scheduled_date, b.time_slot AS scheduled_time, b.time_slot
+         FROM bookings b
+         WHERE b.lead_id = ?`,
+        [lead.id]
+      );
+    } catch (e) {}
 
     return formatLead(lead, notes, activities, bookings);
   },
 
   /**
-   * Find recent existing lead for duplicate detection
+   * Check for duplicate inquiry within windowHours (default 48h)
    */
-  async findRecentByPhone(phone, hours = 48) {
-    if (!phone) return null;
-    // Strip special characters to match phone consistently
-    const cleanPhone = phone.replace(/[\s\-\+\(\)]/g, '');
+  async findRecentByPhone(phone, windowHours = 48) {
     const rows = await query(
-      `SELECT * FROM leads
-       WHERE REPLACE(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), '(', '') LIKE ?
-         AND created_at >= NOW() - INTERVAL ? HOUR
-         AND status NOT IN ('COMPLETED', 'LOST')
-       ORDER BY created_at DESC
+      `SELECT id, lead_code, name, phone, email, status, service_name, created_at, duplicate_count
+       FROM leads
+       WHERE phone = ? AND created_at >= NOW() - INTERVAL ? HOUR
+       ORDER BY id DESC
        LIMIT 1`,
-      [`%${cleanPhone.slice(-10)}%`, hours]
+      [phone, windowHours]
     );
-    return rows[0] || null;
+    return rows.length > 0 ? rows[0] : null;
   },
 
   /**
-   * Record duplicate attempt on original lead
+   * Increment duplicate count and log note on original lead
    */
-  async recordDuplicateOnOriginal(originalLeadId, duplicateInfo) {
+  async recordDuplicateOnOriginal(originalId, newInquiryData) {
     await query(
-      `UPDATE leads SET duplicate_count = duplicate_count + 1 WHERE id = ?`,
-      [originalLeadId]
+      `UPDATE leads
+       SET duplicate_count = duplicate_count + 1,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      [originalId]
     );
 
-    const desc = `Repeat inquiry received via ${duplicateInfo.source || 'Website'} for service: ${duplicateInfo.service || 'General'}.`;
+    const desc = `Repeat inquiry received from ${newInquiryData.source || 'Website'} for ${newInquiryData.service || 'service'}${newInquiryData.message ? `: "${newInquiryData.message}"` : ''}`;
     await query(
       `INSERT INTO lead_activities (lead_id, activity_type, description)
        VALUES (?, 'DUPLICATE_SUBMISSION', ?)`,
-      [originalLeadId, desc]
+      [originalId, desc]
     );
-
-    if (duplicateInfo.message || duplicateInfo.notes) {
-      const noteText = `[Repeat Inquiry]: ${duplicateInfo.message || duplicateInfo.notes}`;
-      await query(`INSERT INTO lead_notes (lead_id, note) VALUES (?, ?)`, [originalLeadId, noteText]);
-    }
   },
 
   /**
    * Create new lead with full attribution & tracking data
    */
   async create(data) {
-    const leadCode = data.lead_code || `LD-${Math.floor(100 + Math.random() * 900)}`;
+    const leadCode = data.lead_code || `LD-${Date.now().toString().slice(-6)}${Math.floor(10 + Math.random() * 90)}`;
     const sql = `
       INSERT INTO leads (
         lead_code, customer_id, name, phone, email, service_name,
         property_type, city, area, address, message,
+        preferred_date, preferred_time, admin_notes,
         source, platform, campaign, campaign_id, adset_name, adset_id, ad_name, ad_id, leadgen_id, raw_meta_payload,
         utm_source, utm_medium, utm_campaign, utm_content, utm_term, fbclid, gclid,
         landing_page, referrer, status, urgency, estimated_value,
-        assigned_to, follow_up_date, is_duplicate, duplicate_count, duplicate_of_id, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        assigned_to, assigned_technician_id, follow_up_date,
+        is_duplicate, duplicate_count, duplicate_of_id, is_archived, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const rawPayloadStr = data.raw_meta_payload
@@ -276,6 +308,9 @@ const leadModel = {
       data.area || null,
       data.address || null,
       data.message || data.notes || null,
+      data.preferred_date || data.preferredDate || null,
+      data.preferred_time || data.preferredTime || null,
+      data.admin_notes || data.adminNotes || null,
       data.source || 'Website',
       data.platform || null,
       data.campaign || data.utm_campaign || data.utmCampaign || null,
@@ -297,12 +332,14 @@ const leadModel = {
       data.referrer || null,
       data.status || 'NEW',
       data.urgency || 'Today',
-      data.value || data.estimated_value || data.estimatedValue || 0.00,
+      data.value || data.estimated_value || data.estimatedValue || data.estimated_amount || data.estimatedAmount || 0.00,
       data.assigned_to || data.assignedTo || null,
+      data.assigned_technician_id || data.technicianId || null,
       data.follow_up_date || data.followUpDate || null,
       Boolean(data.is_duplicate || data.isDuplicate),
       Number(data.duplicate_count || data.duplicateCount || 0),
       data.duplicate_of_id || data.duplicateOfId || null,
+      Boolean(data.is_archived || data.isArchived || false),
       createdAtVal
     ];
 
@@ -320,8 +357,8 @@ const leadModel = {
       [newLeadId, activityDesc]
     );
 
-    if (data.notes || data.message) {
-      await query(`INSERT INTO lead_notes (lead_id, note) VALUES (?, ?)`, [newLeadId, data.notes || data.message]);
+    if (data.notes || data.message || data.admin_notes) {
+      await query(`INSERT INTO lead_notes (lead_id, note) VALUES (?, ?)`, [newLeadId, data.notes || data.message || data.admin_notes]);
     }
 
     return this.findById(newLeadId);
@@ -339,15 +376,22 @@ const leadModel = {
       ...data,
       service_name: data.service_name || data.service,
       property_type: data.property_type || data.propertyType || data.property,
-      estimated_value: data.estimated_value !== undefined ? data.estimated_value : (data.value !== undefined ? data.value : data.estimatedValue),
+      estimated_value: data.estimated_value !== undefined ? data.estimated_value : (data.value !== undefined ? data.value : (data.estimatedValue !== undefined ? data.estimatedValue : (data.estimated_amount !== undefined ? data.estimated_amount : data.estimatedAmount))),
       assigned_to: data.assigned_to !== undefined ? data.assigned_to : data.assignedTo,
-      follow_up_date: data.follow_up_date !== undefined ? data.follow_up_date : data.followUpDate
+      assigned_technician_id: data.assigned_technician_id !== undefined ? data.assigned_technician_id : (data.technicianId !== undefined ? data.technicianId : data.assignedTechnicianId),
+      follow_up_date: data.follow_up_date !== undefined ? data.follow_up_date : data.followUpDate,
+      preferred_date: data.preferred_date !== undefined ? data.preferred_date : data.preferredDate,
+      preferred_time: data.preferred_time !== undefined ? data.preferred_time : data.preferredTime,
+      admin_notes: data.admin_notes !== undefined ? data.admin_notes : data.adminNotes,
+      is_archived: data.is_archived !== undefined ? Boolean(data.is_archived) : (data.isArchived !== undefined ? Boolean(data.isArchived) : undefined)
     };
 
     const allowed = [
       'name', 'phone', 'email', 'service_name', 'property_type',
       'city', 'area', 'address', 'message', 'status', 'urgency',
-      'estimated_value', 'assigned_to', 'follow_up_date'
+      'estimated_value', 'assigned_to', 'assigned_technician_id',
+      'follow_up_date', 'preferred_date', 'preferred_time',
+      'admin_notes', 'is_archived'
     ];
 
     for (const key of allowed) {
@@ -376,7 +420,7 @@ const leadModel = {
       );
     }
 
-    // Track assignment change activity
+    // Track staff assignment change activity
     if (cleanData.assigned_to !== undefined && cleanData.assigned_to !== existing.assigned_to) {
       let assigneeName = 'Unassigned';
       if (cleanData.assigned_to) {
@@ -385,8 +429,22 @@ const leadModel = {
       }
       await query(
         `INSERT INTO lead_activities (lead_id, user_id, activity_type, description)
-         VALUES (?, ?, 'ASSIGNMENT', CONCAT('Lead assigned to ', ?))`,
+         VALUES (?, ?, 'ASSIGNMENT', CONCAT('Lead assigned to staff: ', ?))`,
         [existing.id, currentUserId, assigneeName]
+      );
+    }
+
+    // Track technician assignment change activity
+    if (cleanData.assigned_technician_id !== undefined && cleanData.assigned_technician_id !== existing.assigned_technician_id) {
+      let techName = 'Unassigned';
+      if (cleanData.assigned_technician_id) {
+        const tRows = await query(`SELECT name FROM technicians WHERE id = ? LIMIT 1`, [cleanData.assigned_technician_id]);
+        if (tRows.length > 0) techName = tRows[0].name;
+      }
+      await query(
+        `INSERT INTO lead_activities (lead_id, user_id, activity_type, description)
+         VALUES (?, ?, 'ASSIGNMENT', CONCAT('Lead assigned to field technician: ', ?))`,
+        [existing.id, currentUserId, techName]
       );
     }
 
@@ -399,7 +457,40 @@ const leadModel = {
       );
     }
 
+    // Track archive activity
+    if (cleanData.is_archived === true && !existing.is_archived) {
+      await query(
+        `INSERT INTO lead_activities (lead_id, user_id, activity_type, description)
+         VALUES (?, ?, 'ARCHIVED', 'Lead was archived.')`,
+        [existing.id, currentUserId]
+      );
+    }
+
     return this.findById(existing.id);
+  },
+
+  /**
+   * Update lead status specifically
+   */
+  async updateStatus(id, status, currentUserId = null) {
+    return this.update(id, { status }, currentUserId);
+  },
+
+  /**
+   * Assign lead to technician or staff member
+   */
+  async assign(id, { userId = null, technicianId = null } = {}, currentUserId = null) {
+    const updateData = {};
+    if (userId !== undefined) updateData.assigned_to = userId;
+    if (technicianId !== undefined) updateData.assigned_technician_id = technicianId;
+    return this.update(id, updateData, currentUserId);
+  },
+
+  /**
+   * Soft-delete / Archive lead
+   */
+  async archive(id, currentUserId = null) {
+    return this.update(id, { is_archived: true }, currentUserId);
   },
 
   /**
@@ -416,6 +507,9 @@ const leadModel = {
        VALUES (?, ?, 'NOTE_ADDED', CONCAT('Note added: ', LEFT(?, 75)))`,
       [actualId, userId, note]
     );
+
+    // Also update admin_notes summary field on leads table
+    await query(`UPDATE leads SET admin_notes = ? WHERE id = ?`, [note, actualId]);
 
     return this.findById(actualId);
   }

@@ -398,24 +398,45 @@ function initMultiStepLeadWizard() {
       };
 
       // 1. Submit directly to Production Backend API
-      if (window.upcApi) {
-        try {
-          const apiRes = await window.upcApi.leads.create(payload);
-          if (apiRes && apiRes.data && apiRes.data.isDuplicateAlert) {
-            showToast('ℹ️ Repeat inquiry noted! Existing account updated.', 'info');
-          }
-        } catch (err) {
-          console.warn('API lead creation offline, falling back to local store:', err.message);
+      const origBtnText = submitBtn.innerHTML;
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span>Submitting enquiry...</span>';
+
+      try {
+        if (!window.upcApi) {
+          throw new Error('Service connection offline. Please call our helpline directly.');
         }
-      }
 
-      // 2. Save into Reactive Store for UI reactivity
-      if (window.upcStore) {
-        window.upcStore.addLead(leadFormData);
-      }
+        const apiRes = await window.upcApi.leads.create(payload);
+        if (apiRes && apiRes.data && apiRes.data.isDuplicateAlert) {
+          showToast('ℹ️ Repeat inquiry noted! Existing account updated.', 'info');
+        }
 
-      // Show confirmed success step
-      showWizardSuccess();
+        // 2. Save into Reactive Store for UI reactivity only after backend confirmation
+        if (window.upcStore) {
+          window.upcStore.addLead({
+            ...leadFormData,
+            id: apiRes?.data?.id,
+            leadCode: apiRes?.data?.leadCode
+          });
+        }
+
+        // 3. Dispatch Meta Lead conversion event only upon verified server confirmation
+        if (typeof window.trackMetaEvent === 'function') {
+          window.trackMetaEvent('Lead', {
+            content_name: leadFormData.pest || 'Pest Inspection',
+            value: 1500,
+            currency: 'INR'
+          }, apiRes?.data?.leadCode || apiRes?.data?.id);
+        }
+
+        // Show confirmed success step
+        showWizardSuccess();
+      } catch (err) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = origBtnText;
+        showToast(err.message || 'Failed to submit inquiry. Please check your details and try again.', 'error');
+      }
     });
   }
 
@@ -437,6 +458,13 @@ function initMultiStepLeadWizard() {
         return;
       }
 
+      const submitBtn = embeddedForm.querySelector('button[type="submit"]');
+      const origBtnText = submitBtn ? submitBtn.innerHTML : '';
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Submitting...';
+      }
+
       // Collect automated UTM and channel attribution
       const attr = window.getUpcAttribution ? window.getUpcAttribution() : {};
 
@@ -454,38 +482,43 @@ function initMultiStepLeadWizard() {
         urgency: 'High'
       };
 
-      // 1. Production API call
-      if (window.upcApi) {
-        try {
-          const res = await window.upcApi.leads.create(payload);
-          if (res && res.data && res.data.isDuplicateAlert) {
-            showToast('ℹ️ Notice: Active inquiry exists. Your update has been logged!', 'info');
-          } else {
-            showToast('🎉 Free Inspection Request Received! Specialist calling in 15 mins.', 'success');
-          }
-        } catch (err) {
-          showToast('Request received! We will connect with you shortly.', 'success');
+      try {
+        if (!window.upcApi) {
+          throw new Error('Service connection offline. Please call our helpline directly.');
         }
-      } else {
-        showToast('🎉 Free Inspection Request Received! Specialist calling in 15 mins.', 'success');
-      }
 
-      // 2. Store update
-      if (window.upcStore) {
-        window.upcStore.addLead({
-          name,
-          phone,
-          email,
-          service: pest || 'General Pest Control',
-          property: prop || 'Home',
-          city,
-          notes: msg,
-          source: attr.source || 'Homepage Embedded Form',
-          urgency: 'High'
-        });
-      }
+        const res = await window.upcApi.leads.create(payload);
+        if (res && res.data && res.data.isDuplicateAlert) {
+          showToast('ℹ️ Notice: Active inquiry exists. Your update has been logged!', 'info');
+        } else {
+          showToast('🎉 Free Inspection Request Received! Specialist calling in 15 mins.', 'success');
+        }
 
-      embeddedForm.reset();
+        if (window.upcStore) {
+          window.upcStore.addLead({
+            ...payload,
+            id: res?.data?.id,
+            leadCode: res?.data?.leadCode
+          });
+        }
+
+        if (typeof window.trackMetaEvent === 'function') {
+          window.trackMetaEvent('Lead', {
+            content_name: payload.service || 'Free Inspection',
+            value: 1500,
+            currency: 'INR'
+          }, res?.data?.leadCode || res?.data?.id);
+        }
+
+        embeddedForm.reset();
+      } catch (err) {
+        showToast(err.message || 'Failed to submit enquiry. Please verify your details and try again.', 'error');
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = origBtnText;
+        }
+      }
     });
   }
 
@@ -503,6 +536,13 @@ function initMultiStepLeadWizard() {
         return;
       }
 
+      const submitBtn = callbackForm.querySelector('button[type="submit"]');
+      const origBtnText = submitBtn ? submitBtn.innerHTML : '';
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Registering...';
+      }
+
       const attr = window.getUpcAttribution ? window.getUpcAttribution() : {};
 
       const payload = {
@@ -517,18 +557,39 @@ function initMultiStepLeadWizard() {
         urgency: 'Immediate'
       };
 
-      if (window.upcApi) {
-        try {
-          await window.upcApi.leads.create(payload);
-        } catch (err) {}
-      }
+      try {
+        if (!window.upcApi) {
+          throw new Error('Service connection offline. Please call our helpline directly.');
+        }
 
-      if (window.upcStore) {
-        window.upcStore.addLead(payload);
-      }
+        const res = await window.upcApi.leads.create(payload);
+        showToast('📞 Callback registered! Our senior specialist will call you in 15 mins.', 'success');
 
-      showToast('📞 Callback registered! Our senior specialist will call you in 15 mins.', 'success');
-      callbackForm.reset();
+        if (window.upcStore) {
+          window.upcStore.addLead({
+            ...payload,
+            id: res?.data?.id,
+            leadCode: res?.data?.leadCode
+          });
+        }
+
+        if (typeof window.trackMetaEvent === 'function') {
+          window.trackMetaEvent('Lead', {
+            content_name: 'Direct Callback',
+            value: 1000,
+            currency: 'INR'
+          }, res?.data?.leadCode || res?.data?.id);
+        }
+
+        callbackForm.reset();
+      } catch (err) {
+        showToast(err.message || 'Could not register callback request. Please try again.', 'error');
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = origBtnText;
+        }
+      }
     });
   }
 }

@@ -159,6 +159,44 @@ class BookingService {
           logger.warn(`[WhatsApp Auto] Review request message failed: ${err.message}`);
         });
       }
+
+      // Rescheduled notification
+      const dateChanged = (data.scheduledDate && data.scheduledDate !== existing.scheduledDate) ||
+                          (data.scheduled_date && data.scheduled_date !== existing.scheduledDate);
+      const slotChanged = (data.timeSlot && data.timeSlot !== existing.timeSlot) ||
+                          (data.time_slot && data.time_slot !== existing.timeSlot);
+      if (dateChanged || slotChanged) {
+        await notificationModel.create({
+          title: '📅 Booking Rescheduled',
+          message: `Booking #${updated.bookingCode} rescheduled to ${updated.scheduledDate} (${updated.timeSlot}).`,
+          type: 'info',
+          link: '/admin.html'
+        });
+        if (updated.leadId) {
+          await query(
+            `INSERT INTO lead_activities (lead_id, user_id, activity_type, description)
+             VALUES (?, ?, 'BOOKING_RESCHEDULED', ?)`,
+            [updated.leadId, user?.id || null, `Booking #${updated.bookingCode} rescheduled to ${updated.scheduledDate} (${updated.timeSlot})`]
+          );
+        }
+      }
+
+      // Cancellation notification
+      if (newStatus === 'CANCELLED') {
+        await notificationModel.create({
+          title: '❌ Booking Cancelled',
+          message: `Booking #${updated.bookingCode} for ${updated.customerName} has been cancelled.`,
+          type: 'warning',
+          link: '/admin.html'
+        });
+        if (updated.leadId) {
+          await query(
+            `INSERT INTO lead_activities (lead_id, user_id, activity_type, description)
+             VALUES (?, ?, 'BOOKING_CANCELLED', ?)`,
+            [updated.leadId, user?.id || null, `Booking #${updated.bookingCode} was cancelled.`]
+          );
+        }
+      }
     }
 
     if (user) {

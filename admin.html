@@ -138,7 +138,7 @@
         </div>
 
         <div class="admin-topbar-actions">
-          <button class="btn btn-accent btn-sm admin-topbar-lead-btn" onclick="openLeadModal({ property:'Home', pest:'General' })" title="Create Inbound Lead">
+          <button class="btn btn-accent btn-sm admin-topbar-lead-btn" onclick="openLeadModal({ property:'Home', pest:'Cockroach Odorless Gel' })" title="Create Inbound Lead">
             <span class="btn-text-full">+ Add New Lead</span>
             <span class="btn-text-mobile" style="display:none;">+ Lead</span>
           </button>
@@ -1788,11 +1788,17 @@
       </div>
 
       <!-- Lead Assignment & Follow-Up Bar -->
-      <div class="form-grid" style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:12px; padding:1rem 1.25rem; margin-bottom:1.25rem;">
+      <div class="form-grid" style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:12px; padding:1rem 1.25rem; margin-bottom:1.25rem; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
         <div>
           <span style="font-size:0.75rem; text-transform:uppercase; font-weight:700; color:#64748B;">Assigned Sales Representative</span>
           <select id="drawerAssignedSelect" class="form-control" style="font-size:0.85rem; margin-top:0.35rem; font-weight:600;">
             <option value="">-- Unassigned --</option>
+          </select>
+        </div>
+        <div>
+          <span style="font-size:0.75rem; text-transform:uppercase; font-weight:700; color:#64748B;">Assigned Field Technician</span>
+          <select id="drawerTechnicianSelect" class="form-control" style="font-size:0.85rem; margin-top:0.35rem; font-weight:600;">
+            <option value="">-- Unassigned Technician --</option>
           </select>
         </div>
         <div>
@@ -1856,6 +1862,10 @@
           <strong style="color:#64748B; font-size:0.75rem; text-transform:uppercase;">Specific Customer Note / Address:</strong>
           <div id="drawerLeadAddress" style="color:#334155; margin-top:0.25rem; line-height:1.4;">None provided</div>
         </div>
+        <div id="drawerLeadPreferredWrap" style="margin-top:0.5rem; display:none;">
+          <strong style="color:#2563EB; font-size:0.75rem; text-transform:uppercase;">Preferred Schedule:</strong>
+          <div id="drawerLeadPreferred" style="font-weight:600; color:#1E40AF; margin-top:0.25rem;">-</div>
+        </div>
         <div id="drawerLeadBookingWrap" style="margin-top:0.5rem; display:none;">
           <strong style="color:#059669; font-size:0.75rem; text-transform:uppercase;">Linked Booking:</strong>
           <div id="drawerLeadBooking" style="font-weight:600; color:#064E3B;">-</div>
@@ -1889,6 +1899,14 @@
         <div id="drawerTimeline" class="activity-timeline">
           <!-- Populated by JS -->
         </div>
+      </div>
+
+      <!-- Administrative Archive / Delete Lead Action -->
+      <div style="margin-top:1.5rem; padding-top:1rem; border-top:1px solid #E2E8F0; display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-size:0.75rem; color:#94A3B8;">Administrative Lead Actions</span>
+        <button id="btnArchiveLead" class="btn btn-outline btn-sm" style="color:#DC2626; border-color:#FCA5A5;">
+          🗑️ Archive Lead
+        </button>
       </div>
     </div>
   </div>
@@ -2868,7 +2886,7 @@
   </div>
 
   <!-- MODAL: CREATE INBOUND CRM LEAD -->
-  <div id="modalAdminCreateLead" class="modal-overlay" style="display:none;">
+  <div id="modalAdminCreateLead" class="modal-overlay" style="display:none;" onclick="if(event.target === this) closeAdminCreateLeadModal()">
     <div class="modal-card modal-md" style="max-width:540px; width:95%; max-height:90vh; overflow-y:auto; border-radius:16px;">
       <div class="modal-header">
         <h3 style="margin:0; font-size:1.15rem; color:#0F172A;">🎯 Create Inbound CRM Lead</h3>

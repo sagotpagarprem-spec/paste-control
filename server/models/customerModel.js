@@ -80,7 +80,12 @@ const customerModel = {
   },
 
   async findById(id) {
-    const rows = await query(`SELECT * FROM customers WHERE id = ? OR uuid = ? LIMIT 1`, [id, id]);
+    if (!id) return null;
+    const isNum = Number.isInteger(Number(id)) && !String(id).includes('-');
+    const sql = isNum
+      ? `SELECT * FROM customers WHERE id = ? LIMIT 1`
+      : `SELECT * FROM customers WHERE uuid = ? LIMIT 1`;
+    const rows = await query(sql, [id]);
     if (rows.length === 0) return null;
     const customer = rows[0];
 
@@ -239,8 +244,10 @@ const customerModel = {
 
     if (fields.length === 0) return this.findById(id);
 
-    params.push(id, id);
-    await query(`UPDATE customers SET ${fields.join(', ')} WHERE id = ? OR uuid = ?`, params);
+    const isNum = Number.isInteger(Number(id)) && !String(id).includes('-');
+    const whereSql = isNum ? 'WHERE id = ?' : 'WHERE uuid = ?';
+    params.push(id);
+    await query(`UPDATE customers SET ${fields.join(', ')} ${whereSql}`, params);
     return this.findById(id);
   },
 

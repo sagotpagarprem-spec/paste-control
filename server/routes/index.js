@@ -19,7 +19,7 @@ const creativeRoutes = require('./creativeRoutes');
 const analyticsRoutes = require('./analyticsRoutes');
 
 const { apiSuccess } = require('../utils/response');
-const { isConnected, dbConfig } = require('../config/database');
+const db = require('../config/database');
 
 // Health Check Endpoint
 router.get('/health', (req, res) => {
@@ -28,11 +28,11 @@ router.get('/health', (req, res) => {
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),
     database: {
-      connected: isConnected,
-      host: dbConfig.host,
-      name: dbConfig.database
+      connected: db.isConnected,
+      host: db.dbConfig.host,
+      name: db.dbConfig.database
     },
-    version: '1.0.0-phase4'
+    version: '1.0.0-production'
   }, 'Universal Pest Control API service is healthy.');
 });
 

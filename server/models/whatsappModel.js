@@ -167,13 +167,24 @@ const whatsappModel = {
       updates.push('read_at = COALESCE(read_at, CURRENT_TIMESTAMP)');
     }
 
-    params.push(wamIdOrId, wamIdOrId);
-    await query(
-      `UPDATE whatsapp_messages SET ${updates.join(', ')} WHERE id = ? OR wam_id = ?`,
-      params
-    );
+    const isNumeric = Number.isInteger(Number(wamIdOrId)) && !isNaN(parseInt(wamIdOrId, 10)) && !String(wamIdOrId).includes('.');
+    if (isNumeric) {
+      params.push(parseInt(wamIdOrId, 10), String(wamIdOrId));
+      await query(
+        `UPDATE whatsapp_messages SET ${updates.join(', ')} WHERE id = ? OR wam_id = ?`,
+        params
+      );
+    } else {
+      params.push(String(wamIdOrId));
+      await query(
+        `UPDATE whatsapp_messages SET ${updates.join(', ')} WHERE wam_id = ?`,
+        params
+      );
+    }
 
-    const rows = await query(`SELECT * FROM whatsapp_messages WHERE id = ? OR wam_id = ? LIMIT 1`, [wamIdOrId, wamIdOrId]);
+    const rows = isNumeric
+      ? await query(`SELECT * FROM whatsapp_messages WHERE id = ? OR wam_id = ? LIMIT 1`, [parseInt(wamIdOrId, 10), String(wamIdOrId)])
+      : await query(`SELECT * FROM whatsapp_messages WHERE wam_id = ? LIMIT 1`, [String(wamIdOrId)]);
     return rows.length > 0 ? formatMessage(rows[0]) : null;
   },
 

@@ -100,6 +100,23 @@ async function runMigrationAndSeed() {
       }
     }
 
+    // Step 4.2: Ensure user_sessions table exists
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS \`user_sessions\` (
+        \`id\` VARCHAR(128) PRIMARY KEY,
+        \`user_id\` INT NOT NULL,
+        \`token_hash\` VARCHAR(64) NULL,
+        \`ip_address\` VARCHAR(45) NULL,
+        \`user_agent\` TEXT NULL,
+        \`expires_at\` TIMESTAMP NOT NULL,
+        \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        \`updated_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        CONSTRAINT \`fk_user_sessions_user\` FOREIGN KEY (\`user_id\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE,
+        INDEX \`idx_user_sessions_user\` (\`user_id\`),
+        INDEX \`idx_user_sessions_expires\` (\`expires_at\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
     // Step 4.5: Ensure Phase 2 Columns on leads table
     const leadColumnsToAdd = [
       { name: 'address', def: 'TEXT NULL' },
@@ -122,7 +139,12 @@ async function runMigrationAndSeed() {
       { name: 'raw_meta_payload', def: 'JSON NULL' },
       { name: 'is_duplicate', def: 'BOOLEAN NOT NULL DEFAULT FALSE' },
       { name: 'duplicate_count', def: 'INT NOT NULL DEFAULT 0' },
-      { name: 'duplicate_of_id', def: 'INT NULL' }
+      { name: 'duplicate_of_id', def: 'INT NULL' },
+      { name: 'preferred_date', def: 'DATE NULL' },
+      { name: 'preferred_time', def: 'VARCHAR(50) NULL' },
+      { name: 'admin_notes', def: 'TEXT NULL' },
+      { name: 'assigned_technician_id', def: 'INT NULL' },
+      { name: 'is_archived', def: 'BOOLEAN NOT NULL DEFAULT FALSE' }
     ];
 
     for (const col of leadColumnsToAdd) {
@@ -139,6 +161,23 @@ async function runMigrationAndSeed() {
     // Widen status column to VARCHAR(50) so all phase statuses are accepted
     try {
       await conn.query(`ALTER TABLE leads MODIFY COLUMN status VARCHAR(50) NOT NULL DEFAULT 'NEW'`);
+    } catch (e) {}
+
+    try {
+      await conn.query(`ALTER TABLE leads ADD INDEX idx_leads_archived (is_archived)`);
+    } catch (e) {}
+    try {
+      await conn.query(`ALTER TABLE leads ADD INDEX idx_leads_assigned_tech (assigned_technician_id)`);
+    } catch (e) {}
+    try {
+      const [fkExists] = await conn.query(
+        `SELECT CONSTRAINT_NAME FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+         WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'leads' AND CONSTRAINT_NAME = 'fk_leads_tech'`,
+        [database]
+      );
+      if (fkExists.length === 0) {
+        await conn.query(`ALTER TABLE leads ADD CONSTRAINT fk_leads_tech FOREIGN KEY (assigned_technician_id) REFERENCES technicians(id) ON DELETE SET NULL`);
+      }
     } catch (e) {}
 
     // Safe column migrations for bookings table
@@ -318,7 +357,7 @@ async function runMigrationAndSeed() {
         \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         \`updated_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         INDEX \`idx_areas_city\` (\`city\`),
-        INDEX `idx_areas_status` (`status`)
+        INDEX \`idx_areas_status\` (\`status\`)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
 

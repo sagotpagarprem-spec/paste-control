@@ -35,7 +35,32 @@ const analyticsModel = {
   /**
    * Calculate Real Verified Marketing & CRM KPIs (Never Fake Numbers)
    */
-  async getOverviewMetrics() {
+  async getOverviewMetrics(filters = {}) {
+    const { days, startDate, endDate } = filters || {};
+    let leadWhere = '';
+    const leadParams = [];
+    let bookingWhere = "WHERE status != 'CANCELLED'";
+    const bookingParams = [];
+    let webWhere = '';
+    const webParams = [];
+
+    if (days && !isNaN(days) && Number(days) > 0) {
+      const numDays = Number(days);
+      leadWhere = ' WHERE created_at >= NOW() - INTERVAL ? DAY';
+      leadParams.push(numDays);
+      bookingWhere += ' AND created_at >= NOW() - INTERVAL ? DAY';
+      bookingParams.push(numDays);
+      webWhere = ' WHERE created_at >= NOW() - INTERVAL ? DAY';
+      webParams.push(numDays);
+    } else if (startDate && endDate) {
+      leadWhere = ' WHERE created_at >= ? AND created_at <= ?';
+      leadParams.push(startDate, endDate);
+      bookingWhere += ' AND created_at >= ? AND created_at <= ?';
+      bookingParams.push(startDate, endDate);
+      webWhere = ' WHERE created_at >= ? AND created_at <= ?';
+      webParams.push(startDate, endDate);
+    }
+
     // 1. CRM Lead counts & Funnel stages
     const [leadStats] = await query(`
       SELECT 
@@ -48,7 +73,8 @@ const analyticsModel = {
         SUM(CASE WHEN status = 'COMPLETED' THEN 1 ELSE 0 END) as completed_leads,
         SUM(CASE WHEN status = 'LOST' THEN 1 ELSE 0 END) as lost_leads
       FROM leads
-    `);
+      ${leadWhere}
+    `, leadParams);
 
     // 2. Booking Revenue
     const [revenueStats] = await query(`
@@ -57,8 +83,8 @@ const analyticsModel = {
         COALESCE(SUM(amount), 0) as total_revenue,
         COALESCE(AVG(amount), 0) as average_order_value
       FROM bookings
-      WHERE status != 'CANCELLED'
-    `);
+      ${bookingWhere}
+    `, bookingParams);
 
     // 3. Ad Spend across Meta campaigns
     const [adStats] = await query(`
@@ -76,7 +102,8 @@ const analyticsModel = {
         COUNT(*) as total_pageviews,
         COUNT(DISTINCT session_id) as unique_visitors
       FROM web_pageviews
-    `);
+      ${webWhere}
+    `, webParams);
 
     const totalLeads = Number(leadStats.total_leads || 0);
     const qualifiedLeads = Number(leadStats.qualified_leads || 0);

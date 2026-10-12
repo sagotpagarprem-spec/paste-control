@@ -63,7 +63,7 @@ function validateBookingCreate(body) {
   if (!body.phone || !validatePhone(body.phone)) {
     errors.push({ field: 'phone', message: 'Valid contact phone number is required.' });
   }
-  const service = body.service || body.service_name;
+  const service = body.service || body.service_name || body.serviceName;
   if (!service || typeof service !== 'string') {
     errors.push({ field: 'service', message: 'Service selection is required.' });
   }

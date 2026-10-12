@@ -121,6 +121,9 @@ const bookingModel = {
   },
 
   async findById(id) {
+    if (!id) return null;
+    const isNum = Number.isInteger(Number(id)) && !String(id).includes('-');
+    const whereSql = isNum ? 'b.id = ?' : 'b.booking_code = ?';
     const rows = await query(
       `SELECT b.*, 
         t.name AS technician_name, 
@@ -130,9 +133,9 @@ const bookingModel = {
         t.availability AS technician_availability
        FROM bookings b
        LEFT JOIN technicians t ON b.technician_id = t.id
-       WHERE b.id = ? OR b.booking_code = ?
+       WHERE ${whereSql}
        LIMIT 1`,
-      [id, id]
+      [id]
     );
     return formatBooking(rows[0] || null);
   },
@@ -227,8 +230,10 @@ const bookingModel = {
 
     if (fields.length === 0) return this.findById(id);
 
-    params.push(id, id);
-    await query(`UPDATE bookings SET ${fields.join(', ')} WHERE id = ? OR booking_code = ?`, params);
+    const isNum = Number.isInteger(Number(id)) && !String(id).includes('-');
+    const whereSql = isNum ? 'WHERE id = ?' : 'WHERE booking_code = ?';
+    params.push(id);
+    await query(`UPDATE bookings SET ${fields.join(', ')} ${whereSql}`, params);
     return this.findById(id);
   },
 
@@ -236,16 +241,18 @@ const bookingModel = {
     const booking = await this.findById(id);
     if (!booking) return null;
 
-    const [techRows] = await query(`SELECT * FROM technicians WHERE id = ? LIMIT 1`, [technicianId]);
-    if (techRows.length === 0) {
+    const techRows = await query(`SELECT * FROM technicians WHERE id = ? LIMIT 1`, [technicianId]);
+    if (!techRows || techRows.length === 0) {
       throw new Error(`Technician with ID ${technicianId} not found.`);
     }
 
+    const isNum = Number.isInteger(Number(id)) && !String(id).includes('-');
+    const whereSql = isNum ? 'WHERE id = ?' : 'WHERE booking_code = ?';
     await query(
       `UPDATE bookings 
        SET technician_id = ?, status = 'ASSIGNED', assigned_at = CURRENT_TIMESTAMP 
-       WHERE id = ? OR booking_code = ?`,
-      [technicianId, id, id]
+       ${whereSql}`,
+      [technicianId, id]
     );
 
     return this.findById(id);
@@ -305,21 +312,28 @@ const bookingModel = {
       }
     }
 
-    params.push(bookingId, bookingId);
-    await query(`UPDATE bookings SET ${updates.join(', ')} WHERE id = ? OR booking_code = ?`, params);
+    const isNum = Number.isInteger(Number(bookingId)) && !String(bookingId).includes('-');
+    const whereSql = isNum ? 'WHERE id = ?' : 'WHERE booking_code = ?';
+    params.push(bookingId);
+    await query(`UPDATE bookings SET ${updates.join(', ')} ${whereSql}`, params);
 
     return this.findById(bookingId);
   },
 
   async archive(id) {
+    const isNum = Number.isInteger(Number(id)) && !String(id).includes('-');
+    const whereSql = isNum ? 'WHERE id = ?' : 'WHERE booking_code = ?';
     await query(
-      `UPDATE bookings SET is_archived = TRUE, status = 'CANCELLED', cancelled_at = CURRENT_TIMESTAMP WHERE id = ? OR booking_code = ?`,
-      [id, id]
+      `UPDATE bookings SET is_archived = TRUE, status = 'CANCELLED', cancelled_at = CURRENT_TIMESTAMP ${whereSql}`,
+      [id]
     );
     return this.findById(id);
   },
 
   async getTrackingData(idOrCode) {
+    const isNum = Number.isInteger(Number(idOrCode)) && !String(idOrCode).includes('-');
+    const whereSql = isNum ? 'b.id = ?' : '(b.booking_code = ? OR b.phone = ?)';
+    const params = isNum ? [Number(idOrCode)] : [idOrCode, idOrCode];
     let rows = await query(
       `SELECT b.*, 
         t.id AS tech_id,
@@ -331,10 +345,10 @@ const bookingModel = {
         t.rating AS technician_rating
        FROM bookings b
        LEFT JOIN technicians t ON b.technician_id = t.id
-       WHERE b.id = ? OR b.booking_code = ? OR b.phone = ?
+       WHERE ${whereSql}
        ORDER BY b.id DESC
        LIMIT 1`,
-      [idOrCode, idOrCode, idOrCode]
+      params
     );
 
     if (rows.length === 0) return null;

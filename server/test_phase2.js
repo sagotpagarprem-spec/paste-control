@@ -148,6 +148,75 @@ async function runPhase2Tests() {
     details: `Total activities: ${activities.length}, types: ${activities.map(a => a.activityType).join(', ')}`
   });
 
+  // 9. PATCH /api/leads/:id/status (Specific status route)
+  const patchStatusRes = await req('PATCH', `/api/leads/${createdLead.id}/status`, { status: 'QUALIFIED' }, authHeaders);
+  results.push({
+    name: `PATCH /api/leads/${createdLead.id}/status (Status route)`,
+    passed: patchStatusRes.status === 200 && patchStatusRes.body?.data?.status === 'QUALIFIED',
+    details: `Status ${patchStatusRes.status}, lead status: ${patchStatusRes.body?.data?.status}`
+  });
+
+  // 10. PATCH /api/leads/:id/assign (Assign technician)
+  const patchAssignRes = await req('PATCH', `/api/leads/${createdLead.id}/assign`, { technicianId: 1 }, authHeaders);
+  results.push({
+    name: `PATCH /api/leads/${createdLead.id}/assign (Technician assignment)`,
+    passed: patchAssignRes.status === 200 && patchAssignRes.body?.data?.assigned_technician_id === 1,
+    details: `Status ${patchAssignRes.status}, assigned_technician_id: ${patchAssignRes.body?.data?.assigned_technician_id}, tech_name: ${patchAssignRes.body?.data?.technician_name}`
+  });
+
+  // 11. PATCH /api/leads/:id (Update preferred_date, preferred_time, admin_notes)
+  const patchFieldsRes = await req('PATCH', `/api/leads/${createdLead.id}`, {
+    preferred_date: '2026-10-15',
+    preferred_time: '14:00',
+    admin_notes: 'Urgent termite treatment required for bungalow.'
+  }, authHeaders);
+  results.push({
+    name: `PATCH /api/leads/${createdLead.id} (Preferred date, time, and admin notes)`,
+    passed: patchFieldsRes.status === 200 &&
+            patchFieldsRes.body?.data?.preferred_date === '2026-10-15' &&
+            patchFieldsRes.body?.data?.preferred_time === '14:00',
+    details: `Status ${patchFieldsRes.status}, date: ${patchFieldsRes.body?.data?.preferred_date}, time: ${patchFieldsRes.body?.data?.preferred_time}`
+  });
+
+  // 12. Public user denial for administrative operations (Unauthenticated requests must get 401)
+  const unauthListRes = await req('GET', '/api/leads');
+  const unauthDetailRes = await req('GET', `/api/leads/${createdLead.id}`);
+  const unauthStatusRes = await req('PATCH', `/api/leads/${createdLead.id}/status`, { status: 'BOOKED' });
+  const unauthAssignRes = await req('PATCH', `/api/leads/${createdLead.id}/assign`, { technicianId: 1 });
+  const allDenied = unauthListRes.status === 401 && unauthDetailRes.status === 401 && unauthStatusRes.status === 401 && unauthAssignRes.status === 401;
+  results.push({
+    name: 'Public user denial for administrative endpoints (401 Unauthorized)',
+    passed: allDenied,
+    details: `List: ${unauthListRes.status}, Detail: ${unauthDetailRes.status}, Status: ${unauthStatusRes.status}, Assign: ${unauthAssignRes.status}`
+  });
+
+  // 13. Input validation errors on POST /api/leads (Missing phone / invalid format -> 422)
+  const invalidLeadRes = await req('POST', '/api/leads', { name: 'Incomplete User' });
+  results.push({
+    name: 'POST /api/leads validation rejection (Missing phone returns 422)',
+    passed: invalidLeadRes.status === 422,
+    details: `Status ${invalidLeadRes.status}, message: ${invalidLeadRes.body?.message}`
+  });
+
+  // 14. DELETE /api/leads/:id (Soft-delete / Archive lead)
+  const deleteRes = await req('DELETE', `/api/leads/${createdLead.id}`, null, authHeaders);
+  results.push({
+    name: `DELETE /api/leads/${createdLead.id} (Archive / Soft-delete lead)`,
+    passed: deleteRes.status === 200 && Boolean(deleteRes.body?.data?.is_archived) === true,
+    details: `Status ${deleteRes.status}, is_archived: ${deleteRes.body?.data?.is_archived}`
+  });
+
+  // 15. Verify archived lead exclusion from default listing
+  const activeListRes = await req('GET', `/api/leads?search=${testPhone}`, null, authHeaders);
+  const archivedListRes = await req('GET', `/api/leads?search=${testPhone}&includeArchived=true`, null, authHeaders);
+  const isLead45Excluded = !activeListRes.body?.data?.some(l => l.id === createdLead.id);
+  const isLead45InArchived = Boolean(archivedListRes.body?.data?.some(l => l.id === createdLead.id));
+  results.push({
+    name: 'Archived lead exclusion & includeArchived filter',
+    passed: isLead45Excluded && isLead45InArchived,
+    details: `Excluded by default: ${isLead45Excluded}, Found when includeArchived=true: ${isLead45InArchived}`
+  });
+
   server.close();
 
   console.log('\n--- PHASE 2 TEST RESULTS ---');

@@ -9,7 +9,7 @@ const analyticsController = {
    */
   async getOverview(req, res, next) {
     try {
-      const data = await analyticsModel.getOverviewMetrics();
+      const data = await analyticsModel.getOverviewMetrics(req.query);
       return apiSuccess(res, data, 'Analytics overview retrieved successfully.');
     } catch (err) {
       next(err);

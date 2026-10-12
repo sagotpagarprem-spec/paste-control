@@ -28,7 +28,7 @@ app.use(
 );
 
 // 1b. Root Health Check for Cloud Load Balancers & Orchestrators
-const { isConnected, dbConfig } = require('./config/database');
+const db = require('./config/database');
 app.get('/health', (req, res) => {
   res.status(200).json({
     success: true,
@@ -36,9 +36,9 @@ app.get('/health', (req, res) => {
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),
     database: {
-      connected: isConnected,
-      host: dbConfig.host,
-      name: dbConfig.database
+      connected: db.isConnected,
+      host: db.dbConfig.host,
+      name: db.dbConfig.database
     },
     version: '1.0.0-production'
   });
@@ -54,8 +54,13 @@ app.use(
   })
 );
 
-// 3. Body & Cookie Parsing
-app.use(express.json({ limit: '2mb' }));
+// 3. Body & Cookie Parsing (Preserve rawBody for webhook HMAC signatures)
+app.use(express.json({
+  limit: '2mb',
+  verify: (req, res, buf) => {
+    req.rawBody = buf;
+  }
+}));
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 app.use(cookieParser());
 
