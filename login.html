@@ -212,15 +212,14 @@
           </button>
         </form>
 
-        <!-- Demo Credentials Helper -->
+        <!-- Administrator Setup Note -->
         <div class="demo-credentials-card">
           <div style="display:flex; justify-content:space-between; align-items:center;">
-            <strong>Dev Environment Quick-Fill:</strong>
-            <button type="button" class="fill-demo-btn" onclick="fillDemoCredentials()">Auto-fill</button>
+            <strong>Admin Login:</strong>
+            <button type="button" class="fill-demo-btn" onclick="fillDemoCredentials()">Fill Email</button>
           </div>
           <div style="margin-top:0.25rem;">Email: <code>admin@universalpestcontrol.com</code></div>
-          <div>Password: <code>Admin@1234</code></div>
-          <div style="margin-top:0.35rem; font-size:0.72rem; color:#64748B;">Production: Configure unique credentials with <code>npm run admin:create</code></div>
+          <div style="margin-top:0.35rem; font-size:0.75rem; color:#64748B;">Initial setup: Configure administrator password via <code>npm run admin:create</code></div>
         </div>
 
       </div>
@@ -238,7 +237,7 @@
 
     function fillDemoCredentials() {
       document.getElementById('loginEmail').value = 'admin@universalpestcontrol.com';
-      document.getElementById('loginPassword').value = 'Admin@1234';
+      document.getElementById('loginPassword').focus();
     }
 
     async function handleAdminLogin(event) {

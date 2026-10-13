@@ -8,8 +8,8 @@ const logger = require('../utils/logger');
 class MetaService {
   constructor() {
     this.apiVersion = process.env.META_API_VERSION || 'v20.0';
-    this.webhookVerifyToken = process.env.META_WEBHOOK_VERIFY_TOKEN || 'upc_meta_webhook_verify_token_2026';
-    this.mockMode = process.env.META_MOCK_MODE !== 'false';
+    const isProd = process.env.NODE_ENV === 'production';
+    this.mockMode = isProd ? false : process.env.META_MOCK_MODE !== 'false';
   }
 
   /**
@@ -41,11 +41,12 @@ class MetaService {
   async verifySignature(req) {
     const signature = req.headers['x-hub-signature-256'];
     const rawConfig = await metaModel.getRawConfiguration();
-    const appSecret = rawConfig.app_secret || process.env.META_APP_SECRET || '';
+    const appSecret = process.env.META_APP_SECRET || rawConfig.app_secret || '';
 
-    // If appSecret is not configured, permit in development / mock mode
+    // Reject Meta webhook POST requests when the app secret is missing
     if (!appSecret) {
-      return true;
+      logger.warn('Meta webhook rejected: META_APP_SECRET is not configured on server.');
+      return false;
     }
 
     if (!signature) {
@@ -75,9 +76,21 @@ class MetaService {
     const mode = query['hub.mode'];
     const token = query['hub.verify_token'];
     const challenge = query['hub.challenge'];
+    const isProduction = process.env.NODE_ENV === 'production';
 
     const rawConfig = await metaModel.getRawConfiguration();
-    const expectedToken = rawConfig.webhook_verify_token || this.webhookVerifyToken;
+    let expectedToken = process.env.META_WEBHOOK_VERIFY_TOKEN || rawConfig.webhook_verify_token;
+
+    if (!expectedToken) {
+      if (isProduction) {
+        logger.warn('Meta webhook verification failed: META_WEBHOOK_VERIFY_TOKEN must be configured in production.');
+        return { verified: false, challenge: null };
+      }
+      expectedToken = 'upc_meta_webhook_verify_token_2026';
+    } else if (isProduction && (expectedToken === 'upc_meta_webhook_verify_token_2026' || expectedToken.length < 16)) {
+      logger.warn('Meta webhook verification failed: Insecure default or short verify token rejected in production.');
+      return { verified: false, challenge: null };
+    }
 
     if (mode === 'subscribe' && token === expectedToken) {
       logger.info('Meta Lead Ads webhook successfully verified.');
@@ -113,6 +126,15 @@ class MetaService {
         if (!leadgenId) continue;
 
         results.eventsReceived++;
+
+        // Idempotency check: if this leadgenId was already processed, avoid duplicate lead creation
+        const existingEvent = await metaModel.getEventByLeadgenId(leadgenId);
+        if (existingEvent && (existingEvent.status === 'PROCESSED' || existingEvent.leadId)) {
+          logger.info(`[Meta Idempotency] Leadgen #${leadgenId} has already been processed into CRM (Lead #${existingEvent.leadId}). Skipping duplicate.`);
+          results.leadsProcessed++;
+          continue;
+        }
+
         const eventId = `evt_meta_${leadgenId}_${Date.now()}`;
 
         // 1. Buffer event in database to guarantee ZERO lead loss
@@ -131,6 +153,7 @@ class MetaService {
           });
         } catch (dbErr) {
           logger.error(`Failed to buffer Meta webhook event #${leadgenId}: ${this.sanitizeError(dbErr, token)}`);
+          throw new Error(`Failed to buffer Meta webhook event in database: ${dbErr.message}`);
         }
 
         // 2. Fetch and ingest the full lead details

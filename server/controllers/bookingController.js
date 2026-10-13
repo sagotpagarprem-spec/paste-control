@@ -39,7 +39,7 @@ const bookingController = {
     try {
       const ipAddress = req.ip || req.connection.remoteAddress;
       const userAgent = req.headers['user-agent'];
-      const booking = await bookingService.createBooking(req.body, ipAddress, userAgent);
+      const booking = await bookingService.createBooking(req.body, ipAddress, userAgent, req.user);
       return apiSuccess(res, booking, 'Service booking confirmed successfully.', 201);
     } catch (error) {
       next(error);
@@ -113,6 +113,9 @@ const bookingController = {
   async getTracking(req, res, next) {
     try {
       const { idOrCode } = req.params;
+      if (!idOrCode || /^\d{1,8}$/.test(String(idOrCode).trim())) {
+        return apiError(res, 'Booking not found for tracking.', 404);
+      }
       const bookingModel = require('../models/bookingModel');
       const trackingData = await bookingModel.getTrackingData(idOrCode);
       if (!trackingData) {

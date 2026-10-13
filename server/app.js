@@ -45,9 +45,33 @@ app.get('/health', (req, res) => {
 });
 
 // 2. Cross-Origin Resource Sharing
+const isProduction = process.env.NODE_ENV === 'production';
+const rawCorsOrigin = process.env.CORS_ORIGIN;
+const allowedOrigins = rawCorsOrigin && rawCorsOrigin !== '*'
+  ? rawCorsOrigin.split(',').map((o) => o.trim())
+  : null;
+
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || '*',
+    origin: (origin, callback) => {
+      // Allow requests with no origin (e.g., server-to-server, mobile native, curl, local test runners)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins) {
+        if (allowedOrigins.includes(origin)) {
+          return callback(null, true);
+        }
+        return callback(new Error('Origin blocked by CORS policy.'));
+      }
+
+      // In production, prohibit wildcard origin when credentials are enabled
+      if (isProduction) {
+        return callback(new Error('CORS_ORIGIN must be explicitly configured in production when credentials are enabled.'));
+      }
+
+      // In development / test, reflect origin to support local dev tooling
+      return callback(null, true);
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
     credentials: true

@@ -1,4 +1,4 @@
-// Universal Pest Control — WhatsApp Business Cloud API Service (Phase 6)
+const crypto = require('crypto');
 const whatsappModel = require('../models/whatsappModel');
 const customerModel = require('../models/customerModel');
 const leadModel = require('../models/leadModel');
@@ -34,8 +34,8 @@ class WhatsAppService {
     this.phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || '109283746501928';
     this.businessAccountId = process.env.WHATSAPP_BUSINESS_ACCOUNT_ID || '209384756102938';
     this.apiVersion = process.env.WHATSAPP_API_VERSION || 'v20.0';
-    this.webhookVerifyToken = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || 'upc_secure_webhook_verify_token_2026';
-    this.mockMode = process.env.WHATSAPP_MOCK_MODE !== 'false';
+    const isProd = process.env.NODE_ENV === 'production';
+    this.mockMode = isProd ? false : process.env.WHATSAPP_MOCK_MODE !== 'false';
   }
 
   getEndpoint() {
@@ -160,6 +160,9 @@ class WhatsAppService {
         const externalWamId = respData.messages?.[0]?.id || wamId;
         msgRecord = await whatsappModel.updateMessageStatus(msgRecord.id, 'SENT');
       } else {
+        if (process.env.NODE_ENV === 'production') {
+          throw new Error('Production environment cannot operate in WhatsApp mock mode or report simulated delivery.');
+        }
         // Enterprise Sandbox / Mock Mode
         // Seamlessly progress QUEUED -> SENT -> DELIVERED
         logger.info(`[WhatsApp Cloud API Simulated] Dispatched template "${templateName}" to ${displayTo}`);
@@ -246,6 +249,9 @@ class WhatsAppService {
 
         msgRecord = await whatsappModel.updateMessageStatus(msgRecord.id, 'SENT');
       } else {
+        if (process.env.NODE_ENV === 'production') {
+          throw new Error('Production environment cannot operate in WhatsApp mock mode or report simulated delivery.');
+        }
         logger.info(`[WhatsApp Cloud API Simulated] Dispatched text message to ${displayTo}`);
         msgRecord = await whatsappModel.updateMessageStatus(msgRecord.id, 'SENT');
         setTimeout(async () => {
@@ -264,19 +270,65 @@ class WhatsAppService {
   }
 
   /**
+   * Validate official WhatsApp SHA256 Webhook Signature (X-Hub-Signature-256)
+   */
+  verifySignature(req) {
+    const signature = req.headers['x-hub-signature-256'];
+    const appSecret = process.env.META_APP_SECRET || '';
+
+    // Reject WhatsApp webhook POST requests when app secret is missing
+    if (!appSecret) {
+      logger.warn('WhatsApp webhook rejected: META_APP_SECRET is not configured on server.');
+      return false;
+    }
+
+    if (!signature) {
+      logger.warn('WhatsApp webhook rejected: Missing X-Hub-Signature-256 header.');
+      return false;
+    }
+
+    try {
+      const rawBody = req.rawBody || Buffer.from(typeof req.body === 'string' ? req.body : JSON.stringify(req.body));
+      const expectedHash = 'sha256=' + crypto.createHmac('sha256', appSecret).update(rawBody).digest('hex');
+      const sigBuffer = Buffer.from(signature);
+      const expBuffer = Buffer.from(expectedHash);
+      if (sigBuffer.length !== expBuffer.length) {
+        return false;
+      }
+      return crypto.timingSafeEqual(sigBuffer, expBuffer);
+    } catch (e) {
+      logger.error(`WhatsApp signature verification error: ${e.message}`);
+      return false;
+    }
+  }
+
+  /**
    * Webhook Handshake Verification (GET /api/whatsapp/webhook)
    */
   verifyWebhook(query) {
     const mode = query['hub.mode'];
     const token = query['hub.verify_token'];
     const challenge = query['hub.challenge'];
+    const isProduction = process.env.NODE_ENV === 'production';
+    let expectedToken = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN;
 
-    if (mode === 'subscribe' && token === this.webhookVerifyToken) {
+    if (!expectedToken) {
+      if (isProduction) {
+        logger.warn('WhatsApp webhook verification failed: WHATSAPP_WEBHOOK_VERIFY_TOKEN must be configured in production.');
+        return { verified: false, challenge: null };
+      }
+      expectedToken = 'upc_secure_webhook_verify_token_2026';
+    } else if (isProduction && (expectedToken === 'upc_secure_webhook_verify_token_2026' || expectedToken.length < 16)) {
+      logger.warn('WhatsApp webhook verification failed: Insecure default or short verify token rejected in production.');
+      return { verified: false, challenge: null };
+    }
+
+    if (mode === 'subscribe' && token === expectedToken) {
       logger.info('WhatsApp webhook successfully verified by Meta Cloud API.');
       return { verified: true, challenge };
     }
 
-    logger.warn(`WhatsApp webhook verification failed: Token mismatch or invalid mode (received: ${token})`);
+    logger.warn(`WhatsApp webhook verification failed: Token mismatch or invalid mode (received: ${token ? '[TOKEN_PROVIDED]' : 'null'})`);
     return { verified: false, challenge: null };
   }
 

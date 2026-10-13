@@ -46,7 +46,7 @@ const metaController = {
       const result = await metaService.processWebhook(req.body);
       return res.status(200).json({ status: 'EVENT_RECEIVED', ...result });
     } catch (error) {
-      return res.status(200).json({ status: 'ERROR_BUFFERED', message: error.message });
+      return res.status(500).json({ status: 'SERVER_ERROR', message: error.message });
     }
   },
 

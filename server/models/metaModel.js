@@ -98,23 +98,22 @@ const metaModel = {
    */
   async getRawConfiguration() {
     const rows = await query(`SELECT * FROM meta_configurations ORDER BY id ASC LIMIT 1`);
-    if (rows.length > 0) {
-      return rows[0];
-    }
-    // Fallback to environment variables
+    const dbRow = rows.length > 0 ? rows[0] : {};
+
+    // Environment variables take precedence for credentials, with no insecure hardcoded secrets
     return {
-      account_name: 'Universal Pest Control Meta Ads',
-      business_account_id: process.env.META_AD_ACCOUNT_ID || 'act_83921049281',
-      ad_account_id: process.env.META_AD_ACCOUNT_ID || 'act_83921049281',
-      page_id: process.env.META_PAGE_ID || '109283746501928',
-      page_name: 'Universal Pest Control Official',
-      instagram_actor_id: '17841405928193821',
-      app_id: process.env.META_APP_ID || '928374650192837',
-      app_secret: process.env.META_APP_SECRET || 'upc_sec_app_secret_hash_2026',
-      access_token: process.env.META_ACCESS_TOKEN || 'EAAGMockUniversalPestControlMetaTokenSecret2026',
-      pixel_id: '987654321012345',
-      webhook_verify_token: process.env.META_WEBHOOK_VERIFY_TOKEN || 'upc_meta_webhook_verify_token_2026',
-      status: 'CONNECTED'
+      account_name: dbRow.account_name || 'Universal Pest Control Meta Ads',
+      business_account_id: process.env.META_AD_ACCOUNT_ID || dbRow.business_account_id || null,
+      ad_account_id: process.env.META_AD_ACCOUNT_ID || dbRow.ad_account_id || null,
+      page_id: process.env.META_PAGE_ID || dbRow.page_id || null,
+      page_name: dbRow.page_name || 'Universal Pest Control Official',
+      instagram_actor_id: dbRow.instagram_actor_id || null,
+      app_id: process.env.META_APP_ID || dbRow.app_id || null,
+      app_secret: process.env.META_APP_SECRET || dbRow.app_secret || '',
+      access_token: process.env.META_ACCESS_TOKEN || dbRow.access_token || '',
+      pixel_id: process.env.META_PIXEL_ID || dbRow.pixel_id || null,
+      webhook_verify_token: process.env.META_WEBHOOK_VERIFY_TOKEN || dbRow.webhook_verify_token || '',
+      status: dbRow.status || 'CONNECTED'
     };
   },
 
@@ -201,6 +200,15 @@ const metaModel = {
 
   async getEventByEventId(eventId) {
     const rows = await query(`SELECT * FROM meta_lead_events WHERE event_id = ? LIMIT 1`, [eventId]);
+    return rows.length > 0 ? formatEvent(rows[0]) : null;
+  },
+
+  async getEventByLeadgenId(leadgenId) {
+    if (!leadgenId) return null;
+    const rows = await query(
+      `SELECT * FROM meta_lead_events WHERE leadgen_id = ? ORDER BY id DESC LIMIT 1`,
+      [String(leadgenId)]
+    );
     return rows.length > 0 ? formatEvent(rows[0]) : null;
   },
 

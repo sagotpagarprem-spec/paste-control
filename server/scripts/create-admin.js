@@ -42,7 +42,7 @@ async function createOrUpdateAdmin() {
   let email = args.email || process.env.ADMIN_SETUP_EMAIL;
   let password = args.password || process.env.ADMIN_SETUP_PASSWORD;
   let name = args.name || process.env.ADMIN_SETUP_NAME || 'System Administrator';
-  let phone = args.phone || process.env.ADMIN_SETUP_PHONE || '9823044129';
+  let phone = args.phone || process.env.ADMIN_SETUP_PHONE || null;
 
   if (!email && process.stdin.isTTY) {
     email = await prompt('Enter Admin Email Address: ');

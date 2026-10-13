@@ -70,7 +70,26 @@ function validateBookingCreate(body) {
   const date = body.date || body.scheduled_date || body.scheduledDate;
   if (!date || typeof date !== 'string') {
     errors.push({ field: 'date', message: 'Scheduled date is required.' });
+  } else {
+    const parsed = new Date(date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (isNaN(parsed.getTime()) || parsed < today) {
+      errors.push({ field: 'date', message: 'Scheduled date must be a valid current or future date.' });
+    }
   }
+
+  // Reject client-supplied administrative statuses
+  const disallowedStatuses = ['ASSIGNED', 'ACCEPTED', 'ON_THE_WAY', 'ARRIVED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'];
+  if (body.status && disallowedStatuses.includes(String(body.status).toUpperCase())) {
+    errors.push({ field: 'status', message: 'Administrative status cannot be set upon booking creation.' });
+  }
+
+  // Reject client-supplied technician assignment
+  if (body.technicianId !== undefined || body.technician_id !== undefined) {
+    errors.push({ field: 'technicianId', message: 'Technician assignment cannot be set upon public booking creation.' });
+  }
+
   return errors;
 }
 

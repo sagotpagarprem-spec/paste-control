@@ -79,6 +79,20 @@ const serviceModel = {
     return formatService(rows[0]);
   },
 
+  async findByNameOrId(nameOrId) {
+    if (!nameOrId) return null;
+    const isNum = Number.isInteger(Number(nameOrId)) && !String(nameOrId).includes('-');
+    if (isNum) {
+      const byId = await this.findById(Number(nameOrId));
+      if (byId) return byId;
+    }
+    const rows = await query(
+      `SELECT * FROM services WHERE id = ? OR slug = ? OR LOWER(name) = LOWER(?) LIMIT 1`,
+      [nameOrId, nameOrId, String(nameOrId).trim()]
+    );
+    return formatService(rows[0] || null);
+  },
+
   async create(data) {
     const slug = data.slug || data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     const price = data.price !== undefined ? parseFloat(data.price) : (data.base_price ? parseFloat(data.base_price) : 0);

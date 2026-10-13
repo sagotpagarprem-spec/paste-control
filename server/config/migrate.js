@@ -13,6 +13,8 @@ async function runMigrationAndSeed() {
   const user = process.env.DB_USER || 'root';
   const password = process.env.DB_PASSWORD || '';
   const database = process.env.DB_NAME || 'universal_pest_control';
+  const isProduction = process.env.NODE_ENV === 'production';
+  const allowDemoSeed = !isProduction && process.env.SEED_DEMO_DATA === 'true';
 
   logger.info(`Starting migration connecting to MySQL at ${host}:${port} as ${user}...`);
 
@@ -370,34 +372,48 @@ async function runMigrationAndSeed() {
     } catch (e) {}
 
     // Step 5: Seed Default Admin & Sales Staff Users
-    const staffMembers = [
-      { name: 'Vikram Shinde', email: 'admin@universalpestcontrol.com', role: 'admin', phone: '+91 98230 44129' },
-      { name: 'Pooja Patil', email: 'pooja@universalpestcontrol.com', role: 'sales_agent', phone: '+91 97654 22091' },
-      { name: 'Amit Kulkarni', email: 'amit@universalpestcontrol.com', role: 'manager', phone: '+91 98901 88320' },
-      { name: 'Rahul Shinde', email: 'rahul@universalpestcontrol.com', role: 'sales_agent', phone: '+91 99220 11984' }
-    ];
+    // CRITICAL SECURITY: Never seed default passwords or create production admin accounts with hardcoded passwords!
+    // Production admin accounts must be created using the secure CLI utility: npm run admin:create
+    if (allowDemoSeed) {
+      const demoPassword = process.env.DEMO_STAFF_PASSWORD;
+      if (demoPassword) {
+        logger.info('SEED_DEMO_DATA=true: Seeding demo staff accounts with configured DEMO_STAFF_PASSWORD...');
+        const staffMembers = [
+          { name: 'Vikram Shinde', email: 'admin@universalpestcontrol.com', role: 'admin', phone: '+91 98230 44129' },
+          { name: 'Pooja Patil', email: 'pooja@universalpestcontrol.com', role: 'sales_agent', phone: '+91 97654 22091' },
+          { name: 'Amit Kulkarni', email: 'amit@universalpestcontrol.com', role: 'manager', phone: '+91 98901 88320' },
+          { name: 'Rahul Shinde', email: 'rahul@universalpestcontrol.com', role: 'sales_agent', phone: '+91 99220 11984' }
+        ];
 
-    const defaultPasswordHash = await bcrypt.hash('Admin@1234', 10);
+        const demoPasswordHash = await bcrypt.hash(demoPassword, 10);
 
-    for (const staff of staffMembers) {
-      const [existingUser] = await conn.query(`SELECT id FROM users WHERE email = ? LIMIT 1`, [staff.email]);
-      let userId;
-      if (existingUser.length === 0) {
-        const [insertRes] = await conn.query(
-          `INSERT INTO users (uuid, name, email, password_hash, phone, is_active)
-           VALUES (?, ?, ?, ?, ?, TRUE)`,
-          [crypto.randomUUID(), staff.name, staff.email, defaultPasswordHash, staff.phone]
-        );
-        userId = insertRes.insertId;
-        logger.info(`Created staff user: ${staff.name} (${staff.email})`);
+        for (const staff of staffMembers) {
+          const [existingUser] = await conn.query(`SELECT id FROM users WHERE email = ? LIMIT 1`, [staff.email]);
+          let userId;
+          if (existingUser.length === 0) {
+            const [insertRes] = await conn.query(
+              `INSERT INTO users (uuid, name, email, password_hash, phone, is_active)
+               VALUES (?, ?, ?, ?, ?, TRUE)`,
+              [crypto.randomUUID(), staff.name, staff.email, demoPasswordHash, staff.phone]
+            );
+            userId = insertRes.insertId;
+            logger.info(`Created demo staff user: ${staff.name} (${staff.email})`);
+          } else {
+            // NEVER reset existing account passwords during migrations!
+            userId = existingUser[0].id;
+          }
+
+          const [roleRow] = await conn.query(`SELECT id FROM roles WHERE name = ? LIMIT 1`, [staff.role]);
+          if (roleRow.length > 0 && userId) {
+            await conn.query(`INSERT IGNORE INTO user_roles (user_id, role_id) VALUES (?, ?)`, [userId, roleRow[0].id]);
+          }
+        }
       } else {
-        userId = existingUser[0].id;
+        logger.info('SEED_DEMO_DATA=true but DEMO_STAFF_PASSWORD not provided. Skipping demo staff creation.');
       }
-
-      const [roleRow] = await conn.query(`SELECT id FROM roles WHERE name = ? LIMIT 1`, [staff.role]);
-      if (roleRow.length > 0 && userId) {
-        await conn.query(`INSERT IGNORE INTO user_roles (user_id, role_id) VALUES (?, ?)`, [userId, roleRow[0].id]);
-      }
+    } else {
+      logger.info('Skipping user seeding. Production migrations do not create accounts with default credentials.');
+      logger.info('Use the secure CLI utility to initialize the administrator account: npm run admin:create');
     }
 
     // Step 6: Seed Rich Services (Phase 4 CMS)
@@ -624,240 +640,244 @@ async function runMigrationAndSeed() {
           s.seoTitle, s.seoDescription, s.status, s.status === 'ACTIVE'
         ]
       );
-    }
+      // Step 7 to 11: Demo Technicians, Leads, Bookings, Follow-ups, and Reviews
+    if (allowDemoSeed) {
+      logger.info('SEED_DEMO_DATA=true: Seeding sample technicians, leads, bookings, and follow-ups...');
+      // Step 7: Seed Technicians
+      const technicians = [
+        { name: 'Vikram Shinde', phone: '+91 98230 44129', spec: 'Termite & Structural Audit', status: 'Available', rating: 4.9, jobs: 420 },
+        { name: 'Amit Kulkarni', phone: '+91 98901 88320', spec: 'Commercial HACCP Audit', status: 'Available', rating: 4.8, jobs: 310 },
+        { name: 'Pooja Patil', phone: '+91 97654 22091', spec: 'Residential Herbal Gel', status: 'On Job', rating: 4.9, jobs: 285 },
+        { name: 'Rahul Shinde', phone: '+91 99220 11984', spec: 'Thermal Bed Bug Specialist', status: 'Available', rating: 4.7, jobs: 195 }
+      ];
 
-    // Step 7: Seed Technicians
-    const technicians = [
-      { name: 'Vikram Shinde', phone: '+91 98230 44129', spec: 'Termite & Structural Audit', status: 'Available', rating: 4.9, jobs: 420 },
-      { name: 'Amit Kulkarni', phone: '+91 98901 88320', spec: 'Commercial HACCP Audit', status: 'Available', rating: 4.8, jobs: 310 },
-      { name: 'Pooja Patil', phone: '+91 97654 22091', spec: 'Residential Herbal Gel', status: 'On Job', rating: 4.9, jobs: 285 },
-      { name: 'Rahul Shinde', phone: '+91 99220 11984', spec: 'Thermal Bed Bug Specialist', status: 'Available', rating: 4.7, jobs: 195 }
-    ];
-
-    for (const t of technicians) {
-      const [existingTech] = await conn.query(`SELECT id FROM technicians WHERE phone = ? LIMIT 1`, [t.phone]);
-      if (existingTech.length === 0) {
-        await conn.query(
-          `INSERT INTO technicians (name, phone, specialization, status, rating, jobs_completed)
-           VALUES (?, ?, ?, ?, ?, ?)`,
-          [t.name, t.phone, t.spec, t.status, t.rating, t.jobs]
-        );
-      }
-    }
-
-    // Step 8: Seed Initial Sample Leads
-    const sampleLeads = [
-      {
-        code: 'LD-901',
-        name: 'Dr. Rajiv Malhotra',
-        phone: '+91 98230 44129',
-        email: 'rajiv.malhotra@gmail.com',
-        service: 'Termite Control',
-        property: 'Villa (4 BHK)',
-        city: 'Pune',
-        area: 'Koregaon Park',
-        source: 'Instagram Lead Ad',
-        campaign: 'Termite Monsoon Shield 2026',
-        adName: 'Reel_Infestation_Detection_v2',
-        status: 'NEW',
-        urgency: 'Today',
-        value: 14500.00,
-        notes: 'Customer observed hollow baseboards in study room and wooden cupboards.'
-      },
-      {
-        code: 'LD-902',
-        name: 'Chef Ananya Deshmukh',
-        phone: '+91 98901 88320',
-        email: 'kitchen@bistroolive.in',
-        service: 'Commercial Pest Control',
-        property: 'Restaurant (3,200 sq.ft)',
-        city: 'Pune',
-        area: 'Baner High Street',
-        source: 'Google Ads',
-        campaign: 'Commercial Kitchen HACCP Search',
-        adName: 'Google_Search_RestaurantPest',
-        status: 'SITE VISIT',
-        urgency: 'Within 2–3 days',
-        value: 28000.00,
-        notes: 'Annual AMC contract required for FSSAI/HACCP hygiene audit clearance.'
-      },
-      {
-        code: 'LD-903',
-        name: 'Sameer Khandelwal',
-        phone: '+91 97654 22091',
-        email: 'sameer.k@tcs.com',
-        service: 'Cockroach Control',
-        property: 'Apartment (3 BHK)',
-        city: 'Pune',
-        area: 'Hinjawadi Phase 1',
-        source: 'Website',
-        campaign: 'Organic Search',
-        adName: 'Organic Direct',
-        status: 'CONTACTED',
-        urgency: 'This week',
-        value: 3200.00,
-        notes: 'German cockroach infestation around modular kitchen chimney & sink drain.'
-      },
-      {
-        code: 'LD-904',
-        name: 'Priyanka Sen',
-        phone: '+91 99220 11984',
-        email: 'priyanka.sen@outlook.com',
-        service: 'Bed Bug Control',
-        property: 'Home (2 BHK)',
-        city: 'Pune',
-        area: 'Viman Nagar',
-        source: 'Facebook Lead Ad',
-        campaign: 'Bed Bug Steaming Solution',
-        adName: 'FB_Story_SleepPeacefully',
-        status: 'QUOTATION',
-        urgency: 'Today',
-        value: 5800.00,
-        notes: 'Two master bedroom mattresses infested after international travel.'
-      }
-    ];
-
-    for (const lead of sampleLeads) {
-      const [existingLead] = await conn.query(`SELECT id FROM leads WHERE lead_code = ? LIMIT 1`, [lead.code]);
-      let leadId;
-      if (existingLead.length === 0) {
-        const [insertLead] = await conn.query(
-          `INSERT INTO leads (lead_code, name, phone, email, service_name, property_type, city, area, source, campaign, ad_name, status, urgency, estimated_value)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [lead.code, lead.name, lead.phone, lead.email, lead.service, lead.property, lead.city, lead.area, lead.source, lead.campaign, lead.adName, lead.status, lead.urgency, lead.value]
-        );
-        leadId = insertLead.insertId;
-
-        if (lead.notes) {
-          await conn.query(`INSERT INTO lead_notes (lead_id, note) VALUES (?, ?)`, [leadId, lead.notes]);
+      for (const t of technicians) {
+        const [existingTech] = await conn.query(`SELECT id FROM technicians WHERE phone = ? LIMIT 1`, [t.phone]);
+        if (existingTech.length === 0) {
+          await conn.query(
+            `INSERT INTO technicians (name, phone, specialization, status, rating, jobs_completed)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            [t.name, t.phone, t.spec, t.status, t.rating, t.jobs]
+          );
         }
-        await conn.query(
-          `INSERT INTO lead_activities (lead_id, activity_type, description) VALUES (?, 'CREATED', CONCAT('Lead received via ', ?))`,
-          [leadId, lead.source]
-        );
       }
-    }
 
-    // Step 9: Seed Initial Bookings
-    const sampleBookings = [
-      {
-        code: 'UPC-2026-8941',
-        name: 'Dr. Rajiv Malhotra',
-        phone: '+91 98230 44129',
-        service: 'Termite Radar Inspection & Barrier',
-        property: 'Villa / Independent House',
-        date: '2026-10-08',
-        slot: '11:00 AM – 01:00 PM',
-        address: 'Bungalow 14, Lane 7, Koregaon Park, Pune',
-        city: 'Pune',
-        amount: 14500.00,
-        status: 'ASSIGNED',
-        technician_id: 1,
-        instructions: 'Gate bell on left pillar. Senior inspection technician requested.'
-      },
-      {
-        code: 'UPC-2026-8942',
-        name: 'Chef Ananya Deshmukh',
-        phone: '+91 98901 88320',
-        service: 'Commercial Kitchen & Cockroach Gel AMC',
-        property: 'Commercial Office / Restaurant',
-        date: '2026-10-08',
-        slot: '03:00 PM – 05:00 PM',
-        address: 'Level 2, High Street Hub, Baner, Pune',
-        city: 'Pune',
-        amount: 28000.00,
-        status: 'CONFIRMED',
-        technician_id: 2,
-        instructions: 'Kitchen closure window between 3 PM and 5 PM.'
-      },
-      {
-        code: 'UPC-2026-8943',
-        name: 'Sanjay Deshpande',
-        phone: '+91 98811 55221',
-        service: 'Mosquito Fogging & Anti-Larval',
-        property: 'Residential Apartment',
-        date: '2026-10-09',
-        slot: '09:00 AM – 11:00 AM',
-        address: 'Flat 901, Marvel Bounty, Hadapsar, Pune',
-        city: 'Pune',
-        amount: 8500.00,
-        status: 'PENDING',
-        technician_id: null,
-        instructions: 'Garden and balcony perimeter focus.'
-      }
-    ];
-
-    for (const b of sampleBookings) {
-      await conn.query(
-        `INSERT INTO bookings (booking_code, customer_name, phone, service_name, property_type, scheduled_date, time_slot, address, city, amount, status, technician_id, instructions)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-         ON DUPLICATE KEY UPDATE status = VALUES(status), technician_id = VALUES(technician_id), instructions = VALUES(instructions)`,
-        [b.code, b.name, b.phone, b.service, b.property, b.date, b.slot, b.address, b.city, b.amount, b.status, b.technician_id, b.instructions]
-      );
-    }
-
-    // Step 10: Seed Follow-ups (Overdue, Today, Upcoming)
-    const [leadRows] = await conn.query(`SELECT id, lead_code FROM leads ORDER BY id ASC LIMIT 5`);
-    if (leadRows.length > 0) {
-      const todayDate = new Date().toISOString().split('T')[0];
-      const yesterdayDate = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-      const tomorrowDate = new Date(Date.now() + 86400000).toISOString().split('T')[0];
-
-      const sampleFollowups = [
+      // Step 8: Seed Initial Sample Leads
+      const sampleLeads = [
         {
-          lead_id: leadRows[2]?.id || leadRows[0].id,
-          assigned_to: 1,
-          date: yesterdayDate,
-          time: '11:00 AM',
-          notes: 'German Cockroach Gel Quote clearance - check approval with building admin.',
-          status: 'PENDING'
+          code: 'LD-901',
+          name: 'Dr. Rajiv Malhotra',
+          phone: '+91 98230 44129',
+          email: 'rajiv.malhotra@gmail.com',
+          service: 'Termite Control',
+          property: 'Villa (4 BHK)',
+          city: 'Pune',
+          area: 'Koregaon Park',
+          source: 'Instagram Lead Ad',
+          campaign: 'Termite Monsoon Shield 2026',
+          adName: 'Reel_Infestation_Detection_v2',
+          status: 'NEW',
+          urgency: 'Today',
+          value: 14500.00,
+          notes: 'Customer observed hollow baseboards in study room and wooden cupboards.'
         },
         {
-          lead_id: leadRows[0]?.id || leadRows[0].id,
-          assigned_to: 1,
-          date: todayDate,
-          time: '11:30 AM',
-          notes: 'Termite Radar Inspection Slot confirmation call.',
-          status: 'PENDING'
+          code: 'LD-902',
+          name: 'Chef Ananya Deshmukh',
+          phone: '+91 98901 88320',
+          email: 'kitchen@bistroolive.in',
+          service: 'Commercial Pest Control',
+          property: 'Restaurant (3,200 sq.ft)',
+          city: 'Pune',
+          area: 'Baner High Street',
+          source: 'Google Ads',
+          campaign: 'Commercial Kitchen HACCP Search',
+          adName: 'Google_Search_RestaurantPest',
+          status: 'SITE VISIT',
+          urgency: 'Within 2–3 days',
+          value: 28000.00,
+          notes: 'Annual AMC contract required for FSSAI/HACCP hygiene audit clearance.'
         },
         {
-          lead_id: leadRows[3]?.id || leadRows[0].id,
-          assigned_to: 2,
-          date: tomorrowDate,
-          time: '02:00 PM',
-          notes: 'Warehouse Bedbug Steaming contract renewal and quotation review.',
-          status: 'PENDING'
+          code: 'LD-903',
+          name: 'Sameer Khandelwal',
+          phone: '+91 97654 22091',
+          email: 'sameer.k@tcs.com',
+          service: 'Cockroach Control',
+          property: 'Apartment (3 BHK)',
+          city: 'Pune',
+          area: 'Hinjawadi Phase 1',
+          source: 'Website',
+          campaign: 'Organic Search',
+          adName: 'Organic Direct',
+          status: 'CONTACTED',
+          urgency: 'This week',
+          value: 3200.00,
+          notes: 'German cockroach infestation around modular kitchen chimney & sink drain.'
+        },
+        {
+          code: 'LD-904',
+          name: 'Priyanka Sen',
+          phone: '+91 99220 11984',
+          email: 'priyanka.sen@outlook.com',
+          service: 'Bed Bug Control',
+          property: 'Home (2 BHK)',
+          city: 'Pune',
+          area: 'Viman Nagar',
+          source: 'Facebook Lead Ad',
+          campaign: 'Bed Bug Steaming Solution',
+          adName: 'FB_Story_SleepPeacefully',
+          status: 'QUOTATION',
+          urgency: 'Today',
+          value: 5800.00,
+          notes: 'Two master bedroom mattresses infested after international travel.'
         }
       ];
 
-      for (const fu of sampleFollowups) {
-        const [existingFu] = await conn.query(
-          `SELECT id FROM followups WHERE lead_id = ? AND scheduled_date = ? LIMIT 1`,
-          [fu.lead_id, fu.date]
-        );
-        if (existingFu.length === 0) {
-          await conn.query(
-            `INSERT INTO followups (lead_id, assigned_to, scheduled_date, scheduled_time, notes, status)
-             VALUES (?, ?, ?, ?, ?, ?)`,
-            [fu.lead_id, fu.assigned_to, fu.date, fu.time, fu.notes, fu.status]
+      for (const lead of sampleLeads) {
+        const [existingLead] = await conn.query(`SELECT id FROM leads WHERE lead_code = ? LIMIT 1`, [lead.code]);
+        let leadId;
+        if (existingLead.length === 0) {
+          const [insertLead] = await conn.query(
+            `INSERT INTO leads (lead_code, name, phone, email, service_name, property_type, city, area, source, campaign, ad_name, status, urgency, estimated_value)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [lead.code, lead.name, lead.phone, lead.email, lead.service, lead.property, lead.city, lead.area, lead.source, lead.campaign, lead.adName, lead.status, lead.urgency, lead.value]
           );
-        }
-      }
-    }
+          leadId = insertLead.insertId;
 
-    // Step 11: Seed Initial Customer Reviews
-    const [custRows] = await conn.query(`SELECT id FROM customers LIMIT 2`);
-    if (custRows.length > 0) {
-      for (const c of custRows) {
-        const [existingRev] = await conn.query(`SELECT id FROM customer_reviews WHERE customer_id = ? LIMIT 1`, [c.id]);
-        if (existingRev.length === 0) {
+          if (lead.notes) {
+            await conn.query(`INSERT INTO lead_notes (lead_id, note) VALUES (?, ?)`, [leadId, lead.notes]);
+          }
           await conn.query(
-            `INSERT INTO customer_reviews (customer_id, rating, review_text, source)
-             VALUES (?, 5.0, 'Exceptional termite treatment. Professional technicians and zero chemical odor.', 'Google Reviews')`,
-            [c.id]
+            `INSERT INTO lead_activities (lead_id, activity_type, description) VALUES (?, 'CREATED', CONCAT('Lead received via ', ?))`,
+            [leadId, lead.source]
           );
         }
       }
+
+      // Step 9: Seed Initial Bookings (Preserve existing bookings!)
+      const sampleBookings = [
+        {
+          code: 'UPC-2026-8941',
+          name: 'Dr. Rajiv Malhotra',
+          phone: '+91 98230 44129',
+          service: 'Termite Radar Inspection & Barrier',
+          property: 'Villa / Independent House',
+          date: '2026-10-08',
+          slot: '11:00 AM – 01:00 PM',
+          address: 'Bungalow 14, Lane 7, Koregaon Park, Pune',
+          city: 'Pune',
+          amount: 14500.00,
+          status: 'ASSIGNED',
+          technician_id: 1,
+          instructions: 'Gate bell on left pillar. Senior inspection technician requested.'
+        },
+        {
+          code: 'UPC-2026-8942',
+          name: 'Chef Ananya Deshmukh',
+          phone: '+91 98901 88320',
+          service: 'Commercial Kitchen & Cockroach Gel AMC',
+          property: 'Commercial Office / Restaurant',
+          date: '2026-10-08',
+          slot: '03:00 PM – 05:00 PM',
+          address: 'Level 2, High Street Hub, Baner, Pune',
+          city: 'Pune',
+          amount: 28000.00,
+          status: 'CONFIRMED',
+          technician_id: 2,
+          instructions: 'Kitchen closure window between 3 PM and 5 PM.'
+        },
+        {
+          code: 'UPC-2026-8943',
+          name: 'Sanjay Deshpande',
+          phone: '+91 98811 55221',
+          service: 'Mosquito Fogging & Anti-Larval',
+          property: 'Residential Apartment',
+          date: '2026-10-09',
+          slot: '09:00 AM – 11:00 AM',
+          address: 'Flat 901, Marvel Bounty, Hadapsar, Pune',
+          city: 'Pune',
+          amount: 8500.00,
+          status: 'PENDING',
+          technician_id: null,
+          instructions: 'Garden and balcony perimeter focus.'
+        }
+      ];
+
+      for (const b of sampleBookings) {
+        await conn.query(
+          `INSERT IGNORE INTO bookings (booking_code, customer_name, phone, service_name, property_type, scheduled_date, time_slot, address, city, amount, status, technician_id, instructions)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [b.code, b.name, b.phone, b.service, b.property, b.date, b.slot, b.address, b.city, b.amount, b.status, b.technician_id, b.instructions]
+        );
+      }
+
+      // Step 10: Seed Follow-ups (Overdue, Today, Upcoming)
+      const [leadRows] = await conn.query(`SELECT id, lead_code FROM leads ORDER BY id ASC LIMIT 5`);
+      if (leadRows.length > 0) {
+        const todayDate = new Date().toISOString().split('T')[0];
+        const yesterdayDate = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+        const tomorrowDate = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+
+        const sampleFollowups = [
+          {
+            lead_id: leadRows[2]?.id || leadRows[0].id,
+            assigned_to: 1,
+            date: yesterdayDate,
+            time: '11:00 AM',
+            notes: 'German Cockroach Gel Quote clearance - check approval with building admin.',
+            status: 'PENDING'
+          },
+          {
+            lead_id: leadRows[0]?.id || leadRows[0].id,
+            assigned_to: 1,
+            date: todayDate,
+            time: '11:30 AM',
+            notes: 'Termite Radar Inspection Slot confirmation call.',
+            status: 'PENDING'
+          },
+          {
+            lead_id: leadRows[3]?.id || leadRows[0].id,
+            assigned_to: 2,
+            date: tomorrowDate,
+            time: '02:00 PM',
+            notes: 'Warehouse Bedbug Steaming contract renewal and quotation review.',
+            status: 'PENDING'
+          }
+        ];
+
+        for (const fu of sampleFollowups) {
+          const [existingFu] = await conn.query(
+            `SELECT id FROM followups WHERE lead_id = ? AND scheduled_date = ? LIMIT 1`,
+            [fu.lead_id, fu.date]
+          );
+          if (existingFu.length === 0) {
+            await conn.query(
+              `INSERT INTO followups (lead_id, assigned_to, scheduled_date, scheduled_time, notes, status)
+               VALUES (?, ?, ?, ?, ?, ?)`,
+              [fu.lead_id, fu.assigned_to, fu.date, fu.time, fu.notes, fu.status]
+            );
+          }
+        }
+      }
+
+      // Step 11: Seed Initial Customer Reviews
+      const [custRows] = await conn.query(`SELECT id FROM customers LIMIT 2`);
+      if (custRows.length > 0) {
+        for (const c of custRows) {
+          const [existingRev] = await conn.query(`SELECT id FROM customer_reviews WHERE customer_id = ? LIMIT 1`, [c.id]);
+          if (existingRev.length === 0) {
+            await conn.query(
+              `INSERT INTO customer_reviews (customer_id, rating, review_text, source)
+               VALUES (?, 5.0, 'Exceptional termite treatment. Professional technicians and zero chemical odor.', 'Google Reviews')`,
+              [c.id]
+            );
+          }
+        }
+      }
+    } else {
+      logger.info('Skipping demo technicians, leads, bookings, and follow-ups. Production migrations do not insert demo records.');
+    }      }
     }
 
     // Step 12: Seed Initial Notifications with Required Types
@@ -1238,91 +1258,80 @@ Draft article detailing preventive measures for residential housing societies du
     }
 
     // 17c. Seed / Enrich Technicians
-    const sampleTechnicians = [
-      {
-        name: 'Vikram Shinde',
-        phone: '+91 98230 44129',
-        email: 'vikram.shinde@universalpest.in',
-        skills: JSON.stringify(['Termite Radar Inspection', 'Pre-Construction Barrier', 'Wood Borer Drill-Fill']),
-        serviceAreas: JSON.stringify(['Kothrud', 'Baner & Balewadi', 'Aundh & Pashan', 'Bavdhan']),
-        availability: 'AVAILABLE',
-        status: 'ACTIVE',
-        profileImage: 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&w=400&q=80',
-        rating: 4.9,
-        jobsCompleted: 420
-      },
-      {
-        name: 'Amit Kulkarni',
-        phone: '+91 98901 88320',
-        email: 'amit.kulkarni@universalpest.in',
-        skills: JSON.stringify(['Commercial HACCP Audit', 'Restaurant & Cafe IPM', 'German Cockroach Herbal Gel']),
-        serviceAreas: JSON.stringify(['Koregaon Park & Kalyani Nagar', 'Kharadi EON', 'Viman Nagar', 'Magarpatta']),
-        availability: 'AVAILABLE',
-        status: 'ACTIVE',
-        profileImage: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
-        rating: 4.8,
-        jobsCompleted: 310
-      },
-      {
-        name: 'Pooja Patil',
-        phone: '+91 97654 22091',
-        email: 'pooja.patil@universalpest.in',
-        skills: JSON.stringify(['Residential Herbal Gel', 'Pet & Child Safe Disinfection', 'Ant Nest Elimination']),
-        serviceAreas: JSON.stringify(['Wakad & Pimple Saudagar', 'Hinjawadi Infotech Park', 'Ravet', 'Baner']),
-        availability: 'ON_JOB',
-        status: 'ACTIVE',
-        profileImage: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80',
-        rating: 4.9,
-        jobsCompleted: 285
-      },
-      {
-        name: 'Rahul Shinde',
-        phone: '+91 99220 11984',
-        email: 'rahul.shinde@universalpest.in',
-        skills: JSON.stringify(['Thermal Bedbug Eradication', 'Cryo Heat Treatment', 'Steam Sanitization']),
-        serviceAreas: JSON.stringify(['Shivajinagar', 'Deccan Gymkhana', 'Swargate', 'Kothrud']),
-        availability: 'AVAILABLE',
-        status: 'ACTIVE',
-        profileImage: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80',
-        rating: 4.7,
-        jobsCompleted: 195
-      },
-      {
-        name: 'Sachin Deshmukh',
-        phone: '+91 98811 77203',
-        email: 'sachin.deshmukh@universalpest.in',
-        skills: JSON.stringify(['Rodent Bait Stations & Ultrasonic', 'Bird Netting & Spikes', 'Mosquito Fogging']),
-        serviceAreas: JSON.stringify(['Hinjawadi Infotech Park', 'Wakad', 'Tathawade', 'Pimpri']),
-        availability: 'OFF_DUTY',
-        status: 'ON_LEAVE',
-        profileImage: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=400&q=80',
-        rating: 4.8,
-        jobsCompleted: 240
-      }
-    ];
+    if (allowDemoSeed) {
+      logger.info('SEED_DEMO_DATA=true: Seeding and enriching sample technicians...');
+      const sampleTechnicians = [
+        {
+          name: 'Vikram Shinde',
+          phone: '+91 98230 44129',
+          email: 'vikram.shinde@universalpest.in',
+          skills: JSON.stringify(['Termite Radar Inspection', 'Pre-Construction Barrier', 'Wood Borer Drill-Fill']),
+          serviceAreas: JSON.stringify(['Kothrud', 'Baner & Balewadi', 'Aundh & Pashan', 'Bavdhan']),
+          availability: 'AVAILABLE',
+          status: 'ACTIVE',
+          profileImage: 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&w=400&q=80',
+          rating: 4.9,
+          jobsCompleted: 420
+        },
+        {
+          name: 'Amit Kulkarni',
+          phone: '+91 98901 88320',
+          email: 'amit.kulkarni@universalpest.in',
+          skills: JSON.stringify(['Commercial HACCP Audit', 'Restaurant & Cafe IPM', 'German Cockroach Herbal Gel']),
+          serviceAreas: JSON.stringify(['Koregaon Park & Kalyani Nagar', 'Kharadi EON', 'Viman Nagar', 'Magarpatta']),
+          availability: 'AVAILABLE',
+          status: 'ACTIVE',
+          profileImage: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
+          rating: 4.8,
+          jobsCompleted: 310
+        },
+        {
+          name: 'Pooja Patil',
+          phone: '+91 97654 22091',
+          email: 'pooja.patil@universalpest.in',
+          skills: JSON.stringify(['Residential Herbal Gel', 'Pet & Child Safe Disinfection', 'Ant Nest Elimination']),
+          serviceAreas: JSON.stringify(['Wakad & Pimple Saudagar', 'Hinjawadi Infotech Park', 'Ravet', 'Baner']),
+          availability: 'ON_JOB',
+          status: 'ACTIVE',
+          profileImage: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80',
+          rating: 4.9,
+          jobsCompleted: 285
+        },
+        {
+          name: 'Rahul Shinde',
+          phone: '+91 99220 11984',
+          email: 'rahul.shinde@universalpest.in',
+          skills: JSON.stringify(['Thermal Bedbug Eradication', 'Cryo Heat Treatment', 'Steam Sanitization']),
+          serviceAreas: JSON.stringify(['Shivajinagar', 'Deccan Gymkhana', 'Swargate', 'Kothrud']),
+          availability: 'AVAILABLE',
+          status: 'ACTIVE',
+          profileImage: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80',
+          rating: 4.7,
+          jobsCompleted: 195
+        },
+        {
+          name: 'Sachin Deshmukh',
+          phone: '+91 98811 77203',
+          email: 'sachin.deshmukh@universalpest.in',
+          skills: JSON.stringify(['Rodent Bait Stations & Ultrasonic', 'Bird Netting & Spikes', 'Mosquito Fogging']),
+          serviceAreas: JSON.stringify(['Hinjawadi Infotech Park', 'Wakad', 'Tathawade', 'Pimpri']),
+          availability: 'OFF_DUTY',
+          status: 'ON_LEAVE',
+          profileImage: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=400&q=80',
+          rating: 4.8,
+          jobsCompleted: 240
+        }
+      ];
 
-    for (const t of sampleTechnicians) {
-      const [existingTech] = await conn.query(`SELECT id FROM technicians WHERE phone = ? LIMIT 1`, [t.phone]);
-      if (existingTech.length > 0) {
-        await conn.query(
-          `UPDATE technicians SET 
-            email = COALESCE(email, ?),
-            skills = COALESCE(skills, ?),
-            service_areas = COALESCE(service_areas, ?),
-            availability = ?,
-            status = ?,
-            profile_image = COALESCE(profile_image, ?),
-            rating = ?,
-            jobs_completed = ?
-           WHERE id = ?`,
-          [t.email, t.skills, t.serviceAreas, t.availability, t.status, t.profileImage, t.rating, t.jobsCompleted, existingTech[0].id]
-        );
-      } else {
-        await conn.query(
-          `INSERT INTO technicians (name, phone, email, skills, service_areas, availability, status, profile_image, rating, jobs_completed)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [t.name, t.phone, t.email, t.skills, t.serviceAreas, t.availability, t.status, t.profileImage, t.rating, t.jobsCompleted]
-        );
+      for (const t of sampleTechnicians) {
+        const [existingTech] = await conn.query(`SELECT id FROM technicians WHERE phone = ? LIMIT 1`, [t.phone]);
+        if (existingTech.length === 0) {
+          await conn.query(
+            `INSERT INTO technicians (name, phone, email, skills, service_areas, availability, status, profile_image, rating, jobs_completed)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [t.name, t.phone, t.email, t.skills, t.serviceAreas, t.availability, t.status, t.profileImage, t.rating, t.jobsCompleted]
+          );
+        }
       }
     }
 
@@ -1494,51 +1503,53 @@ Draft article detailing preventive measures for residential housing societies du
     }
 
     // 18e. Seed Sample Initial Conversations
-    const sampleChatThreads = [
-      {
-        wamId: 'wamid.HBgMOTE5ODIzMDQ0MTI5FQIAERgSMzE4MjU3OTk4NDgzOTc3OTA5AA==',
-        direction: 'OUTBOUND',
-        toPhone: '+91 98230 44129',
-        fromPhone: '+91 98230 01122',
-        templateName: 'booking_confirmed_v1',
-        body: 'Hello Dr. Rajiv Malhotra, your service booking #UPC-2026-1001 for Termite Control is confirmed for Today (Slot: 11:00 AM - 01:00 PM) at Koregaon Park. Our technician will arrive with sanitized equipment and digital audit kit.',
-        status: 'READ',
-        deliveredAt: new Date(Date.now() - 3600000),
-        readAt: new Date(Date.now() - 3000000)
-      },
-      {
-        wamId: 'wamid.HBgMOTE5ODIzMDQ0MTI5FQIAEhgUM0VBMDJEMkZGNTUxNzQ1OUFCMTMA',
-        direction: 'INBOUND',
-        toPhone: '+91 98230 01122',
-        fromPhone: '+91 98230 44129',
-        templateName: null,
-        messageType: 'TEXT',
-        body: 'Thank you! Please inform technician Vikram to ring the main doorbell twice, as our pet dog will be in the backyard.',
-        status: 'DELIVERED',
-        deliveredAt: new Date(Date.now() - 2800000),
-        readAt: new Date(Date.now() - 2800000)
-      },
-      {
-        wamId: 'wamid.HBgMOTE5ODkwMTg4MzIwFQIAERgSNTAzMjQ1NTE4OTAyMzQ1NjYwAA==',
-        direction: 'OUTBOUND',
-        toPhone: '+91 98901 88320',
-        fromPhone: '+91 98230 01122',
-        templateName: 'lead_welcome_inspection',
-        body: 'Hi Chef Ananya, thank you for contacting Universal Pest Control. We have received your inquiry for Commercial Kitchen AMC in Baner High Street. A certified senior specialist will call you shortly to confirm your free inspection slot. Reference: #LEAD-204.',
-        status: 'DELIVERED',
-        deliveredAt: new Date(Date.now() - 7200000),
-        readAt: null
-      }
-    ];
+    if (allowDemoSeed) {
+      const sampleChatThreads = [
+        {
+          wamId: 'wamid.HBgMOTE5ODIzMDQ0MTI5FQIAERgSMzE4MjU3OTk4NDgzOTc3OTA5AA==',
+          direction: 'OUTBOUND',
+          toPhone: '+91 98230 44129',
+          fromPhone: '+91 98230 01122',
+          templateName: 'booking_confirmed_v1',
+          body: 'Hello Dr. Rajiv Malhotra, your service booking #UPC-2026-1001 for Termite Control is confirmed for Today (Slot: 11:00 AM - 01:00 PM) at Koregaon Park. Our technician will arrive with sanitized equipment and digital audit kit.',
+          status: 'READ',
+          deliveredAt: new Date(Date.now() - 3600000),
+          readAt: new Date(Date.now() - 3000000)
+        },
+        {
+          wamId: 'wamid.HBgMOTE5ODIzMDQ0MTI5FQIAEhgUM0VBMDJEMkZGNTUxNzQ1OUFCMTMA',
+          direction: 'INBOUND',
+          toPhone: '+91 98230 01122',
+          fromPhone: '+91 98230 44129',
+          templateName: null,
+          messageType: 'TEXT',
+          body: 'Thank you! Please inform technician Vikram to ring the main doorbell twice, as our pet dog will be in the backyard.',
+          status: 'DELIVERED',
+          deliveredAt: new Date(Date.now() - 2800000),
+          readAt: new Date(Date.now() - 2800000)
+        },
+        {
+          wamId: 'wamid.HBgMOTE5ODkwMTg4MzIwFQIAERgSNTAzMjQ1NTE4OTAyMzQ1NjYwAA==',
+          direction: 'OUTBOUND',
+          toPhone: '+91 98901 88320',
+          fromPhone: '+91 98230 01122',
+          templateName: 'lead_welcome_inspection',
+          body: 'Hi Chef Ananya, thank you for contacting Universal Pest Control. We have received your inquiry for Commercial Kitchen AMC in Baner High Street. A certified senior specialist will call you shortly to confirm your free inspection slot. Reference: #LEAD-204.',
+          status: 'DELIVERED',
+          deliveredAt: new Date(Date.now() - 7200000),
+          readAt: null
+        }
+      ];
 
-    for (const msg of sampleChatThreads) {
-      const [existingMsg] = await conn.query(`SELECT id FROM whatsapp_messages WHERE wam_id = ? LIMIT 1`, [msg.wamId]);
-      if (existingMsg.length === 0) {
-        await conn.query(
-          `INSERT INTO whatsapp_messages (wam_id, direction, to_phone, from_phone, template_name, message_type, body, status, delivered_at, read_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [msg.wamId, msg.direction, msg.toPhone, msg.fromPhone, msg.templateName, msg.messageType || 'TEMPLATE', msg.body, msg.status, msg.deliveredAt, msg.readAt]
-        );
+      for (const msg of sampleChatThreads) {
+        const [existingMsg] = await conn.query(`SELECT id FROM whatsapp_messages WHERE wam_id = ? LIMIT 1`, [msg.wamId]);
+        if (existingMsg.length === 0) {
+          await conn.query(
+            `INSERT INTO whatsapp_messages (wam_id, direction, to_phone, from_phone, template_name, message_type, body, status, delivered_at, read_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [msg.wamId, msg.direction, msg.toPhone, msg.fromPhone, msg.templateName, msg.messageType || 'TEMPLATE', msg.body, msg.status, msg.deliveredAt, msg.readAt]
+          );
+        }
       }
     }
 
@@ -1839,40 +1850,42 @@ Draft article detailing preventive measures for residential housing societies du
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
 
-    // 20h. Seed initial Meta campaigns & creatives if table is empty
-    const [existingCmp] = await conn.query(`SELECT id FROM meta_campaigns LIMIT 1`);
-    if (existingCmp.length === 0) {
-      const [resCmp1] = await conn.query(`
-        INSERT INTO meta_campaigns (campaign_id, name, objective, status, daily_budget, location, spend, impressions, clicks, leads, cpl, conversions)
-        VALUES ('2384758921031', 'Termite Monsoon Shield 2026', 'OUTCOME_LEADS', 'ACTIVE', 1500.00, 'Pune, Pimpri-Chinchwad', 18420.00, 48200, 1940, 68, 270.88, 19)
-      `);
-      const [resCmp2] = await conn.query(`
-        INSERT INTO meta_campaigns (campaign_id, name, objective, status, daily_budget, location, spend, impressions, clicks, leads, cpl, conversions)
-        VALUES ('2384758921032', 'Cockroach Odorless Gel Promo', 'OUTCOME_LEADS', 'ACTIVE', 850.00, 'Pune Central, Baner, Kothrud', 12150.00, 39100, 2180, 74, 164.18, 28)
-      `);
-      const [resCmp3] = await conn.query(`
-        INSERT INTO meta_campaigns (campaign_id, name, objective, status, daily_budget, location, spend, impressions, clicks, leads, cpl, conversions)
-        VALUES ('2384758921033', 'Commercial Kitchen HACCP FSSAI', 'OUTCOME_LEADS', 'ACTIVE', 1200.00, 'Pune & Hinjawadi IT Parks', 14900.00, 18200, 890, 22, 677.27, 8)
-      `);
+    // 20h. Seed initial Meta campaigns & creatives if table is empty (Demo seed only)
+    if (allowDemoSeed) {
+      const [existingCmp] = await conn.query(`SELECT id FROM meta_campaigns LIMIT 1`);
+      if (existingCmp.length === 0) {
+        const [resCmp1] = await conn.query(`
+          INSERT INTO meta_campaigns (campaign_id, name, objective, status, daily_budget, location, spend, impressions, clicks, leads, cpl, conversions)
+          VALUES ('2384758921031', 'Termite Monsoon Shield 2026', 'OUTCOME_LEADS', 'ACTIVE', 1500.00, 'Pune, Pimpri-Chinchwad', 18420.00, 48200, 1940, 68, 270.88, 19)
+        `);
+        const [resCmp2] = await conn.query(`
+          INSERT INTO meta_campaigns (campaign_id, name, objective, status, daily_budget, location, spend, impressions, clicks, leads, cpl, conversions)
+          VALUES ('2384758921032', 'Cockroach Odorless Gel Promo', 'OUTCOME_LEADS', 'ACTIVE', 850.00, 'Pune Central, Baner, Kothrud', 12150.00, 39100, 2180, 74, 164.18, 28)
+        `);
+        const [resCmp3] = await conn.query(`
+          INSERT INTO meta_campaigns (campaign_id, name, objective, status, daily_budget, location, spend, impressions, clicks, leads, cpl, conversions)
+          VALUES ('2384758921033', 'Commercial Kitchen HACCP FSSAI', 'OUTCOME_LEADS', 'ACTIVE', 1200.00, 'Pune & Hinjawadi IT Parks', 14900.00, 18200, 890, 22, 677.27, 8)
+        `);
 
-      // Seed creatives
-      await conn.query(`
-        INSERT INTO meta_creatives (creative_id, name, headline, primary_text, description, cta, image_url, ai_generated, status)
-        VALUES (
-          'cr_901', 'Termite Monsoon Shield Visual', '🛡️ Termite Radar Scan ₹0 + 1-Year Warranty',
-          'Detect hidden wood termites before structural damage occurs. Eco-friendly, government approved radar inspection across Pune.',
-          'Hassle-free 100% odorless treatment certified by ISO 9001.', 'GET_QUOTE',
-          'assets/hero-banner.jpg', TRUE, 'APPROVED'
-        ),
-        (
-          'cr_902', 'Herbal Cockroach Gel Reel', '🪳 Stop Cockroaches In 24 Hours — No Odor, No Emptying Kitchen',
-          'Advanced German gel baiting technology safe for children, seniors, and domestic pets. 1-Year service guarantee.',
-          '100% money back satisfaction warranty.', 'BOOK_NOW',
-          'assets/service-cockroach.jpg', TRUE, 'APPROVED'
-        )
-      `);
+        // Seed creatives
+        await conn.query(`
+          INSERT INTO meta_creatives (creative_id, name, headline, primary_text, description, cta, image_url, ai_generated, status)
+          VALUES (
+            'cr_901', 'Termite Monsoon Shield Visual', '🛡️ Termite Radar Scan ₹0 + 1-Year Warranty',
+            'Detect hidden wood termites before structural damage occurs. Eco-friendly, government approved radar inspection across Pune.',
+            'Hassle-free 100% odorless treatment certified by ISO 9001.', 'GET_QUOTE',
+            'assets/hero-banner.jpg', TRUE, 'APPROVED'
+          ),
+          (
+            'cr_902', 'Herbal Cockroach Gel Reel', '🪳 Stop Cockroaches In 24 Hours — No Odor, No Emptying Kitchen',
+            'Advanced German gel baiting technology safe for children, seniors, and domestic pets. 1-Year service guarantee.',
+            '100% money back satisfaction warranty.', 'BOOK_NOW',
+            'assets/service-cockroach.jpg', TRUE, 'APPROVED'
+          )
+        `);
 
-      logger.info('Seeded default Meta campaigns and studio creatives.');
+        logger.info('Seeded default Meta campaigns and studio creatives.');
+      }
     }
 
     logger.info('Database migration and seeding completed successfully!');

@@ -1397,6 +1397,16 @@ function closeTrackBookingModal() {
   if (modal) modal.style.display = 'none';
 }
 
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 async function searchCustomerBookingTracking() {
   const input = document.getElementById('trackBookingInput');
   const resultArea = document.getElementById('trackingResultArea');
@@ -1404,7 +1414,7 @@ async function searchCustomerBookingTracking() {
 
   const query = input.value.trim();
   if (!query) {
-    showToast('Please enter your Booking Code or Phone Number', 'error');
+    showToast('Please enter your Booking Code', 'error');
     return;
   }
 
@@ -1449,7 +1459,7 @@ async function searchCustomerBookingTracking() {
         <div style="font-size:0.88rem; color:#334155; line-height:1.5;">
           <div><strong>Service:</strong> ${escapeHtml(data.serviceName)} (${escapeHtml(data.propertyType || 'Residential')})</div>
           <div><strong>Appointment:</strong> 📅 ${data.scheduledDate} • ⏰ ${escapeHtml(data.timeSlot)}</div>
-          <div><strong>Address:</strong> 📍 ${escapeHtml(data.address || 'Address on file')}, ${escapeHtml(data.city || 'Pune')}</div>
+          <div><strong>Location:</strong> 📍 ${escapeHtml(data.address || 'Address on file')}, ${escapeHtml(data.city || 'Pune')}</div>
         </div>
       </div>
 
@@ -1461,11 +1471,15 @@ async function searchCustomerBookingTracking() {
           <div style="flex-grow:1;">
             <div style="font-size:0.72rem; color:#065F46; font-weight:700; text-transform:uppercase;">Assigned Certified Technician</div>
             <div style="font-size:1.05rem; font-weight:800; color:#064E3B;">${escapeHtml(tech.name)}</div>
-            <div style="font-size:0.8rem; color:#047857;">⭐ ${tech.rating || 4.9} Verified Specialist • <a href="tel:${escapeHtml(tech.phone)}" style="color:#065F46; font-weight:700; text-decoration:underline;">${escapeHtml(tech.phone)}</a></div>
+            <div style="font-size:0.8rem; color:#047857;">⭐ ${tech.rating || 4.9} Verified Specialist${tech.phone ? ` • <a href="tel:${escapeHtml(tech.phone)}" style="color:#065F46; font-weight:700; text-decoration:underline;">${escapeHtml(tech.phone)}</a>` : ''}</div>
           </div>
+          ${tech.phone ? `
           <a href="tel:${escapeHtml(tech.phone)}" class="btn btn-sm btn-primary" style="padding:0.4rem 0.8rem; border-radius:8px; text-decoration:none;">
             📞 Call
-          </a>
+          </a>` : `
+          <a href="tel:+919823044129" class="btn btn-sm btn-primary" style="padding:0.4rem 0.8rem; border-radius:8px; text-decoration:none;">
+            📞 Dispatch
+          </a>`}
         </div>
       ` : `
         <div style="background:#FFFBEB; border:1px solid #FDE68A; border-radius:10px; padding:0.85rem; margin-bottom:1.5rem; font-size:0.85rem; color:#92400E;">

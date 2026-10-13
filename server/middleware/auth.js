@@ -35,6 +35,8 @@ async function authenticateToken(req, res, next) {
       return apiError(res, 'Invalid authentication token.', 401);
     }
 
+    const isProduction = process.env.NODE_ENV === 'production';
+
     // 1. If token includes a session ID, validate MySQL server-side session
     if (decoded.sessionId) {
       try {
@@ -47,18 +49,21 @@ async function authenticateToken(req, res, next) {
           return apiError(res, 'User account is inactive or not found.', 401);
         }
 
-        // Fetch user permissions
-        const roles = session.user.roles || ['admin'];
-        const permRows = await query(
-          `SELECT DISTINCT p.name
-           FROM permissions p
-           JOIN role_permissions rp ON p.id = rp.permission_id
-           JOIN roles r ON rp.role_id = r.id
-           WHERE r.name IN (${roles.map(() => '?').join(',') || 'NULL'})`,
-          roles.length > 0 ? roles : ['admin']
-        );
+        // Fetch user permissions strictly from database
+        const roles = Array.isArray(session.user.roles) ? session.user.roles : [];
+        let permissions = [];
 
-        const permissions = permRows.map(r => r.name);
+        if (roles.length > 0) {
+          const permRows = await query(
+            `SELECT DISTINCT p.name
+             FROM permissions p
+             JOIN role_permissions rp ON p.id = rp.permission_id
+             JOIN roles r ON rp.role_id = r.id
+             WHERE r.name IN (${roles.map(() => '?').join(',')})`,
+            roles
+          );
+          permissions = permRows.map(r => r.name);
+        }
 
         req.session = {
           sessionId: session.sessionId,
@@ -82,7 +87,11 @@ async function authenticateToken(req, res, next) {
 
         return next();
       } catch (dbErr) {
-        logger.warn(`Session database lookup failed (${dbErr.message}), falling back to token claims.`);
+        if (isProduction) {
+          logger.error(`Session database lookup failed in production: ${dbErr.message}`);
+          return apiError(res, 'Authorization service unavailable. Session could not be verified.', 401);
+        }
+        logger.warn(`Session database lookup failed (${dbErr.message}), falling back to token validation in development.`);
       }
     }
 
@@ -104,19 +113,20 @@ async function authenticateToken(req, res, next) {
       }
 
       const user = userRows[0];
-      const roles = user.role_names ? user.role_names.split(',') : ['admin'];
+      const roles = user.role_names ? user.role_names.split(',').map(r => r.trim()).filter(Boolean) : [];
+      let permissions = [];
 
-      // Fetch user permissions
-      const permRows = await query(
-        `SELECT DISTINCT p.name
-         FROM permissions p
-         JOIN role_permissions rp ON p.id = rp.permission_id
-         JOIN roles r ON rp.role_id = r.id
-         WHERE r.name IN (${roles.map(() => '?').join(',') || 'NULL'})`,
-        roles.length > 0 ? roles : ['admin']
-      );
-
-      const permissions = permRows.map(r => r.name);
+      if (roles.length > 0) {
+        const permRows = await query(
+          `SELECT DISTINCT p.name
+           FROM permissions p
+           JOIN role_permissions rp ON p.id = rp.permission_id
+           JOIN roles r ON rp.role_id = r.id
+           WHERE r.name IN (${roles.map(() => '?').join(',')})`,
+          roles
+        );
+        permissions = permRows.map(r => r.name);
+      }
 
       req.user = {
         id: user.id,
@@ -130,15 +140,29 @@ async function authenticateToken(req, res, next) {
         sessionId: decoded.sessionId || null
       };
     } catch (dbErr) {
-      // If DB is temporarily unavailable but token is validly signed, use token claims
-      logger.warn(`Auth database lookup failed (${dbErr.message}), falling back to token claims.`);
+      if (isProduction) {
+        // In production, NEVER grant unverified access on DB failure
+        logger.error(`Auth database lookup failed in production: ${dbErr.message}`);
+        return apiError(res, 'Authorization service unavailable. Unable to verify user account.', 401);
+      }
+
+      // In non-production tests/development, preserve explicitly signed token claims ONLY.
+      // NEVER inject admin roles or wildcard permissions!
+      logger.warn(`Auth database lookup failed (${dbErr.message}), falling back to explicit token claims.`);
+      const fallbackRoles = Array.isArray(decoded.roles)
+        ? decoded.roles
+        : (decoded.role ? [decoded.role] : []);
+      const fallbackPermissions = Array.isArray(decoded.permissions)
+        ? decoded.permissions
+        : [];
+
       req.user = {
         id: decoded.id,
         uuid: decoded.uuid || 'temp-uuid',
-        name: decoded.name || 'Admin User',
+        name: decoded.name || 'User',
         email: decoded.email,
-        roles: decoded.roles || ['admin'],
-        permissions: decoded.permissions || ['*'],
+        roles: fallbackRoles,
+        permissions: fallbackPermissions,
         sessionId: decoded.sessionId || null
       };
     }

@@ -20,33 +20,107 @@ class BookingService {
     return booking;
   }
 
-  async createBooking(data, ipAddress = null, userAgent = null) {
+  async createBooking(data, ipAddress = null, userAgent = null, user = null) {
+    const isStaff = Boolean(user && user.id);
+
+    // Whitelist approved customer, service, and appointment fields
+    const customerName = data.name || data.customerName || data.customer_name || 'Customer';
+    const phone = data.phone;
+    const email = data.email || null;
+    const address = data.address || null;
+    const city = data.city || 'Pune';
+    const propertyType = data.propertyType || data.property_type || data.property || 'Residential';
+
+    const serviceNameInput = data.service || data.serviceName || data.service_name || 'General Pest Control';
+    const serviceIdInput = data.serviceId || data.service_id || null;
+
+    const scheduledDateInput = data.date || data.scheduledDate || data.scheduled_date || new Date().toISOString().split('T')[0];
+    const timeSlot = data.timeSlot || data.time_slot || data.slot || '10:00 AM - 12:00 PM';
+    const instructions = data.instructions || data.notes || null;
+    const leadId = data.leadId || data.lead_id || null;
+
+    // Validate appointment availability server-side: date must not be in the past
+    const appointmentDate = new Date(scheduledDateInput);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (isNaN(appointmentDate.getTime()) || appointmentDate < today) {
+      throw new Error('Scheduled date must be a valid current or future date.');
+    }
+
+    // Server-side service catalog lookup and price validation
+    const serviceModel = require('../models/serviceModel');
+    let serviceRecord = null;
+    if (serviceIdInput) {
+      serviceRecord = await serviceModel.findById(serviceIdInput);
+    }
+    if (!serviceRecord && serviceNameInput) {
+      serviceRecord = await serviceModel.findByNameOrId(serviceNameInput);
+    }
+
+    const finalServiceId = serviceRecord ? serviceRecord.id : serviceIdInput;
+    const finalServiceName = serviceRecord ? serviceRecord.name : serviceNameInput;
+
+    // Determine authoritative price: catalog takes precedence over client-supplied value
+    let finalAmount = 0.00;
+    if (serviceRecord) {
+      finalAmount = Number(serviceRecord.price || serviceRecord.basePrice || 0);
+    } else if (isStaff && data.amount !== undefined) {
+      finalAmount = Math.max(0, Number(data.amount));
+    } else if (data.amount !== undefined) {
+      finalAmount = Math.max(0, Number(data.amount));
+    }
+
+    // Set initial status on server; reject/ignore administrative statuses
+    let initialStatus = 'CONFIRMED';
+    if (data.status) {
+      const s = String(data.status).toUpperCase();
+      if (s === 'PENDING' || s === 'CONFIRMED') {
+        initialStatus = s;
+      }
+    }
+
+    // Do not trust client-supplied technician assignment for public creation
+    let technicianId = null;
+    if (isStaff && (data.technicianId || data.technician_id)) {
+      technicianId = data.technicianId || data.technician_id;
+    }
+
     // 1. Auto-create or update customer profile
     let customerId = data.customerId || data.customer_id;
-    const phone = data.phone;
     if (phone) {
       const customer = await customerModel.upsertFromLeadOrBooking({
-        name: data.customerName || data.customer_name || data.name,
+        name: customerName,
         phone,
-        email: data.email,
-        address: data.address,
-        city: data.city,
-        property_type: data.propertyType || data.property_type
+        email,
+        address,
+        city,
+        property_type: propertyType
       });
       if (customer) customerId = customer.id;
     }
 
-    // 2. Prepare booking payload
+    // 2. Prepare strictly whitelisted booking payload
     const bookingPayload = {
-      ...data,
       customer_id: customerId,
-      status: (data.status ? String(data.status).toUpperCase() : 'CONFIRMED')
+      customer_name: customerName,
+      phone,
+      service_id: finalServiceId,
+      service_name: finalServiceName,
+      technician_id: technicianId,
+      property_type: propertyType,
+      scheduled_date: scheduledDateInput,
+      time_slot: timeSlot,
+      address,
+      city,
+      instructions,
+      amount: finalAmount,
+      status: initialStatus,
+      lead_id: leadId
     };
 
     const booking = await bookingModel.create(bookingPayload);
 
     // 3. If connected to a lead, update lead status to BOOKED and record activity
-    const leadId = data.leadId || data.lead_id;
     if (leadId) {
       await query(`UPDATE leads SET status = 'BOOKED', customer_id = ? WHERE id = ?`, [customerId, leadId]);
       await query(

@@ -20,18 +20,20 @@ Ensure the following variables are configured for production:
 | `DB_HOST` | MySQL hostname / RDS endpoint | Production MySQL 8.0+ host |
 | `DB_PORT` | MySQL connection port | `3306` |
 | `DB_NAME` | MySQL database name | `universal_pest_control` |
-| `DB_USER` | MySQL authenticated user | Least-privilege user with `SELECT, INSERT, UPDATE, DELETE` |
+| `DB_USER` | MySQL user account | Schema migration requires DDL (`CREATE, ALTER, INDEX, REFERENCES`) + DML. Runtime service requires least-privilege DML: `SELECT, INSERT, UPDATE, DELETE` |
 | `DB_PASSWORD` | MySQL user password | High-entropy random password |
-| `JWT_SECRET` | Session & token encryption key | Generate with `openssl rand -hex 64` |
+| `JWT_SECRET` | Session & token signing key | Must be high-entropy, >= 32 characters long. Production startup fails if missing, weak, or default |
 | `JWT_EXPIRES_IN` | Session cookie validity | `24h` or `7d` |
-| `CORS_ORIGIN` | Allowed cross-origin domains | Set strictly to `https://universalpestcontrol.com` |
+| `CORS_ORIGIN` | Allowed cross-origin domains | Set strictly to `https://universalpestcontrol.com` (comma-separated if multiple). Wildcard `*` with credentials is rejected in production |
 | `META_PIXEL_ID` | Meta (Facebook) Pixel ID | Obtained from Meta Events Manager |
-| `META_APP_SECRET` | Meta App Secret for webhooks | Kept secret on server for SHA256 HMAC signature validation |
+| `META_APP_SECRET` | Meta App Secret for webhooks | Kept secret on server for SHA256 HMAC signature validation; required for webhook event processing |
+| `META_WEBHOOK_VERIFY_TOKEN` | Meta Webhook Verify Token | High-entropy secret token; must be configured for webhook subscription verification |
 | `META_ACCESS_TOKEN` | Meta System User Graph API Token | Long-lived token with `leads_retrieval` permission |
-| `META_MOCK_MODE` | Sandbox mock mode toggle | Set to `false` in production |
+| `META_MOCK_MODE` | Sandbox mock mode toggle | Must be set to `false` in production; server enforces real provider delivery in production |
 | `WHATSAPP_API_TOKEN` | Meta WhatsApp Cloud API Token | Permanent System User Token from Meta Business Suite |
 | `WHATSAPP_PHONE_NUMBER_ID` | WhatsApp Business Phone ID | ID from WhatsApp API Setup in Meta Developer Console |
-| `WHATSAPP_MOCK_MODE` | Sandbox mock mode toggle | Set to `false` in production |
+| `WHATSAPP_WEBHOOK_VERIFY_TOKEN` | WhatsApp Webhook Verify Token | High-entropy secret token; must be configured for webhook subscription verification |
+| `WHATSAPP_MOCK_MODE` | Sandbox mock mode toggle | Must be set to `false` in production; mock mode is strictly disabled in production |
 
 ---
 
@@ -40,13 +42,14 @@ Ensure the following variables are configured for production:
 The application includes automated, idempotent schema migrations that preserve all existing records:
 
 ```bash
-# Execute database migration and seed default services, templates & roles
+# Execute database migration (requires DDL privileges: CREATE, ALTER, INDEX, REFERENCES)
 npm run db:migrate
 ```
 
 **Migration Safety Notes:**
 - Migrations use `CREATE TABLE IF NOT EXISTS` and `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` semantics.
-- Tables are never dropped or truncated.
+- Tables are never dropped or truncated, and existing passwords/records are never overwritten.
+- Demo seed records (demo users, demo leads, sample technicians) are separated from production migrations and are only populated when `SEED_DEMO_DATA=true` in non-production environments.
 - Production schema backups should always be taken prior to schema updates:
   ```bash
   mysqldump -u <user> -p universal_pest_control > backup_$(date +%F_%T).sql
@@ -59,11 +62,14 @@ npm run db:migrate
 Do not hardcode or commit administrator credentials. Generate the initial root admin using the CLI utility:
 
 ```bash
-# Non-interactive creation via environment variables
-ADMIN_EMAIL="admin@universalpestcontrol.com" ADMIN_PASSWORD="<SuperSecurePassword2026!>" ADMIN_NAME="Managing Director" npm run admin:create
+# Method A: Using supported ADMIN_SETUP_* environment variables
+ADMIN_SETUP_EMAIL="admin@universalpestcontrol.com" ADMIN_SETUP_PASSWORD="<SuperSecurePassword2026!>" ADMIN_SETUP_NAME="Managing Director" npm run admin:create
+
+# Method B: Using supported CLI flags
+npm run admin:create -- --email="admin@universalpestcontrol.com" --password="<SuperSecurePassword2026!>" --name="Managing Director"
 ```
 
-If the admin account already exists, the utility updates password credentials safely using `bcryptjs` with salt rounds = 12.
+If the admin account already exists, the utility updates password credentials safely using `bcryptjs` with salt rounds = 10 without resetting other users.
 
 ---
 

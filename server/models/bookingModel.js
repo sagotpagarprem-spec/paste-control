@@ -1,4 +1,5 @@
 // Universal Pest Control — Booking Model (Phase 5)
+const crypto = require('crypto');
 const { query } = require('../config/database');
 
 function formatBooking(b) {
@@ -140,8 +141,44 @@ const bookingModel = {
     return formatBooking(rows[0] || null);
   },
 
+  async findByCode(code) {
+    if (!code) return null;
+    const rows = await query(
+      `SELECT b.*, 
+        t.name AS technician_name, 
+        t.phone AS technician_phone,
+        t.email AS technician_email,
+        t.profile_image AS technician_profile_image,
+        t.availability AS technician_availability
+       FROM bookings b
+       LEFT JOIN technicians t ON b.technician_id = t.id
+       WHERE b.booking_code = ?
+       LIMIT 1`,
+      [code]
+    );
+    return formatBooking(rows[0] || null);
+  },
+
   async create(data) {
-    const bookingCode = data.booking_code || data.bookingCode || `UPC-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+    let bookingCode = data.booking_code || data.bookingCode;
+    const year = new Date().getFullYear();
+
+    // Generate cryptographically random, collision-safe reference if not explicitly supplied
+    if (!bookingCode) {
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const randHex = crypto.randomBytes(4).toString('hex').toUpperCase(); // 8 hex chars: e.g. 7F3A2B1C
+        const candidate = `UPC-${year}-${randHex}`;
+        const existing = await query('SELECT id FROM bookings WHERE booking_code = ? LIMIT 1', [candidate]);
+        if (!existing || existing.length === 0) {
+          bookingCode = candidate;
+          break;
+        }
+      }
+      if (!bookingCode) {
+        bookingCode = `UPC-${year}-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
+      }
+    }
+
     const sql = `
       INSERT INTO bookings (
         booking_code, lead_id, customer_id, service_id, technician_id,
@@ -171,7 +208,18 @@ const bookingModel = {
       data.notes || data.instructions || null
     ];
 
-    const result = await query(sql, params);
+    let result;
+    try {
+      result = await query(sql, params);
+    } catch (err) {
+      if (err.code === 'ER_DUP_ENTRY' && !data.booking_code && !data.bookingCode) {
+        // Retry with a fresh cryptographically random booking reference on collision
+        params[0] = `UPC-${year}-${crypto.randomBytes(5).toString('hex').toUpperCase()}`;
+        result = await query(sql, params);
+      } else {
+        throw err;
+      }
+    }
     return this.findById(result.insertId);
   },
 
@@ -331,24 +379,27 @@ const bookingModel = {
   },
 
   async getTrackingData(idOrCode) {
-    const isNum = Number.isInteger(Number(idOrCode)) && !String(idOrCode).includes('-');
-    const whereSql = isNum ? 'b.id = ?' : '(b.booking_code = ? OR b.phone = ?)';
-    const params = isNum ? [Number(idOrCode)] : [idOrCode, idOrCode];
+    if (!idOrCode) return null;
+    const cleanQuery = String(idOrCode).trim();
+
+    // Strictly disallow internal numeric IDs (e.g. 1, 2, 45) to prevent enumeration of internal records
+    if (/^\d{1,8}$/.test(cleanQuery)) {
+      return null;
+    }
+
+    // Query strictly by booking_code
     let rows = await query(
       `SELECT b.*, 
         t.id AS tech_id,
         t.name AS technician_name, 
-        t.phone AS technician_phone,
-        t.email AS technician_email,
         t.profile_image AS technician_profile_image,
         t.skills AS technician_skills,
         t.rating AS technician_rating
        FROM bookings b
        LEFT JOIN technicians t ON b.technician_id = t.id
-       WHERE ${whereSql}
-       ORDER BY b.id DESC
+       WHERE b.booking_code = ?
        LIMIT 1`,
-      params
+      [cleanQuery]
     );
 
     if (rows.length === 0) return null;
@@ -367,11 +418,10 @@ const bookingModel = {
       technicianObj = {
         id: b.tech_id,
         name: b.technician_name,
-        phone: b.technician_phone,
-        email: b.technician_email,
         profileImage: b.technician_profile_image || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&w=400&q=80',
         skills: Array.isArray(skillsArr) ? skillsArr : [],
         rating: Number(b.technician_rating || 4.9)
+        // NOTE: technician phone and email strictly omitted to protect technician privacy
       };
     }
 
@@ -431,19 +481,17 @@ const bookingModel = {
 
     return {
       bookingCode: b.booking_code,
-      customerName: b.customer_name,
-      phone: b.phone,
       serviceName: b.service_name,
       propertyType: b.property_type,
       scheduledDate: b.scheduled_date,
       timeSlot: b.time_slot,
-      address: b.address,
       city: b.city,
       currentStatus,
       technician: technicianObj,
       stages,
       amount: Number(b.amount || 0),
       isCancelled: currentStatus === 'CANCELLED'
+      // NOTE: Customer phone and full street address strictly omitted to prevent unauthenticated PII leakage
     };
   }
 };

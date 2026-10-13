@@ -23,12 +23,16 @@ const whatsappController = {
    */
   async postWebhook(req, res, next) {
     try {
+      const isValid = whatsappService.verifySignature(req);
+      if (!isValid) {
+        return res.status(401).json({ status: 'INVALID_SIGNATURE', message: 'Signature verification failed.' });
+      }
       const result = await whatsappService.processWebhook(req.body);
-      // Respond 200 immediately to acknowledge receipt to Meta
+      // Respond 200 to acknowledge receipt to Meta
       return res.status(200).json({ status: 'EVENT_RECEIVED', ...result });
     } catch (error) {
-      // Still acknowledge with 200 to avoid webhook deregistration while logging error
-      return res.status(200).json({ status: 'ERROR_RECORDED', message: error.message });
+      // Return 500 retryable error so Meta will retry delivery
+      return res.status(500).json({ status: 'SERVER_ERROR', message: error.message });
     }
   },
 
