@@ -640,7 +640,9 @@ async function runMigrationAndSeed() {
           s.seoTitle, s.seoDescription, s.status, s.status === 'ACTIVE'
         ]
       );
-      // Step 7 to 11: Demo Technicians, Leads, Bookings, Follow-ups, and Reviews
+    }
+
+    // Step 7 to 11: Demo Technicians, Leads, Bookings, Follow-ups, and Reviews
     if (allowDemoSeed) {
       logger.info('SEED_DEMO_DATA=true: Seeding sample technicians, leads, bookings, and follow-ups...');
       // Step 7: Seed Technicians
@@ -877,7 +879,6 @@ async function runMigrationAndSeed() {
       }
     } else {
       logger.info('Skipping demo technicians, leads, bookings, and follow-ups. Production migrations do not insert demo records.');
-    }      }
     }
 
     // Step 12: Seed Initial Notifications with Required Types
