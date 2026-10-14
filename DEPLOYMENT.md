@@ -142,6 +142,18 @@ server {
 
 ---
 
+### 5b. CONTAINER HEALTH CHECKS & ORCHESTRATION PROBES
+
+The application exposes standard endpoints for Kubernetes, AWS ECS, Docker Swarm, and Cloud Load Balancers:
+
+| Endpoint | Probe Type | Behavior & Status |
+| :--- | :--- | :--- |
+| `/health` | General Health | Returns HTTP `200` with uptime, timestamp, and database connection state |
+| `/health/live` | Liveness Probe | Returns HTTP `200` as long as Node.js process is event-loop responsive |
+| `/health/ready` | Readiness Probe | Returns HTTP `200` when MySQL database pool is connected; returns HTTP `503` if database is unreachable |
+
+---
+
 ### 6. SESSION COOKIE & SECURITY POLICIES
 
 - In `production` (`NODE_ENV=production`), session cookies are set with `Secure: true`, `HttpOnly: true`, and `SameSite: Lax`.

@@ -1,4 +1,4 @@
-﻿// Universal Pest Control — Critical Security Sprint Regression Test Suite
+// Universal Pest Control — Critical Security Sprint Regression Test Suite
 // ============================================================================
 // UNIT TESTS (Areas 1, 3): No live MySQL DB required.
 // INTEGRATION TESTS (Areas 2, 4-8): Require configured DB. If DB is absent,
@@ -312,6 +312,26 @@ async function runSecuritySprintTests() {
   record('Admin bookings management operational',
     bookingsRes.status === 200 && Array.isArray(bookingsRes.body?.data),
     `Status: ${bookingsRes.status}, count: ${bookingsRes.body?.data?.length}`);
+
+  // ---------------------------------------------------------------------------
+  // AREA 9: CONTAINER HEALTH & ORCHESTRATION PROBES
+  // ---------------------------------------------------------------------------
+  console.log('\n--- AREA 9: Container Health & Orchestration Probes ---');
+  const liveRes = await req('GET', '/health/live');
+  record('Liveness probe responds with 200 ALIVE',
+    liveRes.status === 200 && liveRes.body?.status === 'ALIVE',
+    `Status: ${liveRes.status}, state: ${liveRes.body?.status}`);
+
+  const readyRes = await req('GET', '/health/ready');
+  const expectedReadyStatus = readyRes.status === 200 || readyRes.status === 503;
+  record('Readiness probe responds with appropriate readiness code (200/503)',
+    expectedReadyStatus,
+    `Status: ${readyRes.status}, state: ${readyRes.body?.status}`);
+
+  const apiLiveRes = await req('GET', '/api/health/live');
+  record('API Liveness probe responds with 200 ALIVE',
+    apiLiveRes.status === 200 && apiLiveRes.body?.data?.status === 'ALIVE',
+    `Status: ${apiLiveRes.status}, state: ${apiLiveRes.body?.data?.status}`);
 
   await new Promise((resolve) => server.close(resolve));
 

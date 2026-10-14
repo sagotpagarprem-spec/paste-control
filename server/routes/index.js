@@ -25,6 +25,7 @@ const db = require('../config/database');
 router.get('/health', (req, res) => {
   return apiSuccess(res, {
     status: 'ONLINE',
+    ready: Boolean(db.isConnected),
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),
     database: {
@@ -34,6 +35,36 @@ router.get('/health', (req, res) => {
     },
     version: '1.0.0-production'
   }, 'Universal Pest Control API service is healthy.');
+});
+
+// Liveness probe under /api/health/live
+router.get(['/health/live', '/health/liveness'], (req, res) => {
+  return apiSuccess(res, {
+    status: 'ALIVE',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString()
+  }, 'Process is live.');
+});
+
+// Readiness probe under /api/health/ready
+router.get(['/health/ready', '/health/readiness'], (req, res) => {
+  const isReady = Boolean(db.isConnected);
+  if (!isReady) {
+    return res.status(503).json({
+      success: false,
+      status: 'NOT_READY',
+      message: 'Database connection unavailable.',
+      database: { connected: false }
+    });
+  }
+  return apiSuccess(res, {
+    status: 'READY',
+    database: {
+      connected: true,
+      host: db.dbConfig.host,
+      name: db.dbConfig.database
+    }
+  }, 'All essential services ready.');
 });
 
 // Mount Core API Routes

@@ -33,6 +33,7 @@ app.get('/health', (req, res) => {
   res.status(200).json({
     success: true,
     status: 'ONLINE',
+    ready: Boolean(db.isConnected),
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),
     database: {
@@ -41,6 +42,32 @@ app.get('/health', (req, res) => {
       name: db.dbConfig.database
     },
     version: '1.0.0-production'
+  });
+});
+
+// Liveness probe: verifies server process is responsive
+app.get(['/health/live', '/health/liveness'], (req, res) => {
+  res.status(200).json({
+    success: true,
+    status: 'ALIVE',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Readiness probe: verifies essential dependencies (database pool) are connected
+app.get(['/health/ready', '/health/readiness'], (req, res) => {
+  const isReady = Boolean(db.isConnected);
+  res.status(isReady ? 200 : 503).json({
+    success: isReady,
+    status: isReady ? 'READY' : 'NOT_READY',
+    database: {
+      connected: isReady,
+      host: db.dbConfig.host,
+      name: db.dbConfig.database
+    },
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString()
   });
 });
 
