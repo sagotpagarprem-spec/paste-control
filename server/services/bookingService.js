@@ -31,13 +31,16 @@ class BookingService {
     const city = data.city || 'Pune';
     const propertyType = data.propertyType || data.property_type || data.property || 'Residential';
 
-    const serviceNameInput = data.service || data.serviceName || data.service_name || 'General Pest Control';
+    const serviceNameInput = data.service || data.serviceName || data.service_name || null;
     const serviceIdInput = data.serviceId || data.service_id || null;
 
     const scheduledDateInput = data.date || data.scheduledDate || data.scheduled_date || new Date().toISOString().split('T')[0];
     const timeSlot = data.timeSlot || data.time_slot || data.slot || '10:00 AM - 12:00 PM';
     const instructions = data.instructions || data.notes || null;
-    const leadId = data.leadId || data.lead_id || null;
+
+    // FIX 2: Public requests MUST NOT attach a lead via client-supplied leadId.
+    // Only staff (authenticated users) may associate a lead — server-side only.
+    const leadId = isStaff ? (data.leadId || data.lead_id || null) : null;
 
     // Validate appointment availability server-side: date must not be in the past
     const appointmentDate = new Date(scheduledDateInput);
@@ -47,7 +50,8 @@ class BookingService {
       throw new Error('Scheduled date must be a valid current or future date.');
     }
 
-    // Server-side service catalog lookup and price validation
+    // FIX 1: Server-side service catalog lookup — ACTIVE services only.
+    // Public bookings must reference a known, active catalog entry.
     const serviceModel = require('../models/serviceModel');
     let serviceRecord = null;
     if (serviceIdInput) {
@@ -57,18 +61,37 @@ class BookingService {
       serviceRecord = await serviceModel.findByNameOrId(serviceNameInput);
     }
 
-    const finalServiceId = serviceRecord ? serviceRecord.id : serviceIdInput;
-    const finalServiceName = serviceRecord ? serviceRecord.name : serviceNameInput;
+    // FIX 1: Reject public bookings for unknown or inactive services.
+    // Staff may book with an explicit manual amount even for non-catalog services.
+    if (!serviceRecord) {
+      if (!isStaff) {
+        throw new Error(`Unknown service: "${serviceNameInput || serviceIdInput}". Please select a valid service.`);
+      }
+      // Staff booking a non-catalog service — warn and continue without catalog record
+      logger.warn(`[Booking] Staff booking with non-catalog service: "${serviceNameInput || serviceIdInput}"`);
+    } else if (!serviceRecord.isActive) {
+      if (!isStaff) {
+        throw new Error(`Service "${serviceRecord.name}" is not currently available for booking.`);
+      }
+      logger.warn(`[Booking] Staff booking with inactive service: "${serviceRecord.name}"`);
+    }
 
-    // Determine authoritative price: catalog takes precedence over client-supplied value
+    const finalServiceId = serviceRecord ? serviceRecord.id : serviceIdInput;
+    const finalServiceName = serviceRecord ? serviceRecord.name : (serviceNameInput || 'General Pest Control');
+
+    // FIX 1: Determine authoritative price — catalog ALWAYS wins for public requests.
+    // Staff may provide a manual amount only when no catalog record is available.
     let finalAmount = 0.00;
     if (serviceRecord) {
+      // Always use catalog price; ignore any client-supplied amount entirely
       finalAmount = Number(serviceRecord.price || serviceRecord.basePrice || 0);
+      if (!isFinite(finalAmount) || finalAmount < 0) finalAmount = 0.00;
     } else if (isStaff && data.amount !== undefined) {
-      finalAmount = Math.max(0, Number(data.amount));
-    } else if (data.amount !== undefined) {
-      finalAmount = Math.max(0, Number(data.amount));
+      // Staff-only: manual override for non-catalog services
+      const manualAmount = Number(data.amount);
+      finalAmount = (isFinite(manualAmount) && manualAmount >= 0) ? manualAmount : 0.00;
     }
+    // Public requests: if no catalog record and not staff, already thrown above.
 
     // Set initial status on server; reject/ignore administrative statuses
     let initialStatus = 'CONFIRMED';
@@ -115,7 +138,7 @@ class BookingService {
       instructions,
       amount: finalAmount,
       status: initialStatus,
-      lead_id: leadId
+      lead_id: leadId  // null for all public requests (stripped above)
     };
 
     const booking = await bookingModel.create(bookingPayload);

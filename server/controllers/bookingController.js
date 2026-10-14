@@ -42,6 +42,13 @@ const bookingController = {
       const booking = await bookingService.createBooking(req.body, ipAddress, userAgent, req.user);
       return apiSuccess(res, booking, 'Service booking confirmed successfully.', 201);
     } catch (error) {
+      // Fix 1: unknown/inactive service errors are client errors (400), not server errors (500)
+      if (
+        error.message.startsWith('Unknown service:') ||
+        error.message.includes('not currently available for booking')
+      ) {
+        return apiError(res, error.message, 400);
+      }
       next(error);
     }
   },

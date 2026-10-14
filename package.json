@@ -10,6 +10,7 @@
     "db:seed": "node server/config/migrate.js",
     "admin:create": "node server/scripts/create-admin.js",
     "test": "node server/test_master.js",
+    "test:security": "node server/test_security_sprint.js",
     "test:phase1": "node server/test_phase1.js",
     "test:phase2": "node server/test_phase2.js",
     "test:phase3": "node server/test_phase3.js",
