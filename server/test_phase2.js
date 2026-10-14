@@ -1,8 +1,8 @@
 // Smoke Test for Phase 2 Lead CRM and Attribution
 const http = require('http');
-const app = require('c:/paste control/server/app');
-const { generateToken } = require('c:/paste control/server/utils/jwt');
-const { pool } = require('c:/paste control/server/config/database');
+const app = require('./app');
+const { generateToken } = require('./utils/jwt');
+const { pool } = require('./config/database');
 
 async function runPhase2Tests() {
   const server = http.createServer(app);

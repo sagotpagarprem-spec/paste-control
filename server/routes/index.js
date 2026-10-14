@@ -29,9 +29,7 @@ router.get('/health', (req, res) => {
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),
     database: {
-      connected: db.isConnected,
-      host: db.dbConfig.host,
-      name: db.dbConfig.database
+      connected: Boolean(db.isConnected)
     },
     version: '1.0.0-production'
   }, 'Universal Pest Control API service is healthy.');
@@ -60,9 +58,7 @@ router.get(['/health/ready', '/health/readiness'], (req, res) => {
   return apiSuccess(res, {
     status: 'READY',
     database: {
-      connected: true,
-      host: db.dbConfig.host,
-      name: db.dbConfig.database
+      connected: true
     }
   }, 'All essential services ready.');
 });

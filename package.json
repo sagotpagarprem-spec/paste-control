@@ -17,7 +17,8 @@
     "test:phase4": "node server/test_phase4.js",
     "test:phase5": "node server/test_phase5.js",
     "test:master": "node server/test_master.js",
-    "test:all": "node server/test_master.js"
+    "test:all": "node server/test_master.js",
+    "test:ci": "node server/test_runner_all.js"
   },
   "keywords": [
     "pest-control",

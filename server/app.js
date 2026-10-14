@@ -37,9 +37,7 @@ app.get('/health', (req, res) => {
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),
     database: {
-      connected: db.isConnected,
-      host: db.dbConfig.host,
-      name: db.dbConfig.database
+      connected: Boolean(db.isConnected)
     },
     version: '1.0.0-production'
   });
@@ -62,9 +60,7 @@ app.get(['/health/ready', '/health/readiness'], (req, res) => {
     success: isReady,
     status: isReady ? 'READY' : 'NOT_READY',
     database: {
-      connected: isReady,
-      host: db.dbConfig.host,
-      name: db.dbConfig.database
+      connected: isReady
     },
     uptime: process.uptime(),
     timestamp: new Date().toISOString()

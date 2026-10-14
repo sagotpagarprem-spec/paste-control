@@ -333,6 +333,19 @@ async function runSecuritySprintTests() {
     apiLiveRes.status === 200 && apiLiveRes.body?.data?.status === 'ALIVE',
     `Status: ${apiLiveRes.status}, state: ${apiLiveRes.body?.data?.status}`);
 
+  // Security verification: health endpoints MUST NOT disclose internal database host/name
+  const rootHealthRes = await req('GET', '/health');
+  const dbHostExposed = Boolean(rootHealthRes.body?.database?.host || rootHealthRes.body?.database?.name);
+  record('Public /health endpoint omits internal DB host and name infrastructure details',
+    !dbHostExposed,
+    `Host/name present: ${dbHostExposed}`);
+
+  const apiHealthRes = await req('GET', '/api/health');
+  const apiDbHostExposed = Boolean(apiHealthRes.body?.data?.database?.host || apiHealthRes.body?.data?.database?.name);
+  record('Public /api/health endpoint omits internal DB host and name infrastructure details',
+    !apiDbHostExposed,
+    `Host/name present: ${apiDbHostExposed}`);
+
   await new Promise((resolve) => server.close(resolve));
 
   // Summary — non-zero exit code on any failure
