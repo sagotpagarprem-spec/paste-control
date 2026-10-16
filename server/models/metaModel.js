@@ -16,6 +16,7 @@ function parseJson(val, fallback = null) {
  * CRITICAL: NEVER expose access_token or app_secret to client!
  */
 function formatSafeConfig(row) {
+  const isProduction = process.env.NODE_ENV === 'production';
   if (!row) {
     return {
       connected: false,
@@ -29,14 +30,18 @@ function formatSafeConfig(row) {
       appId: null,
       pixelId: null,
       hasToken: false,
+      hasWebhookVerifyToken: false,
       lastSyncedAt: null
     };
   }
 
+  const hasRealToken = Boolean(row.access_token && row.access_token.length > 5 && !row.access_token.startsWith('EAAGMock'));
+  const isConnected = row.status === 'CONNECTED' && (!isProduction || hasRealToken);
+
   return {
     id: row.id,
-    connected: row.status === 'CONNECTED',
-    status: row.status || 'CONNECTED',
+    connected: isConnected,
+    status: isConnected ? 'CONNECTED' : (row.status === 'CONNECTED' && isProduction ? 'DISCONNECTED' : (row.status || 'DISCONNECTED')),
     accountName: row.account_name,
     businessAccountId: row.business_account_id,
     adAccountId: row.ad_account_id,
@@ -45,7 +50,7 @@ function formatSafeConfig(row) {
     instagramActorId: row.instagram_actor_id,
     appId: row.app_id,
     pixelId: row.pixel_id,
-    webhookVerifyToken: row.webhook_verify_token,
+    hasWebhookVerifyToken: Boolean(row.webhook_verify_token && row.webhook_verify_token.length > 5),
     hasToken: Boolean(row.access_token && row.access_token.length > 5),
     lastSyncedAt: row.last_synced_at,
     createdAt: row.created_at,

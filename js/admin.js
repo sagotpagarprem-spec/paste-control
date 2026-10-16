@@ -107,7 +107,7 @@ async function handleAdminCreateLeadSubmit(event) {
       area,
       notes: notes || null,
       source: 'ADMIN_PORTAL',
-      status: 'NEW_LEAD'
+      status: 'NEW'
     };
 
     // 1. Try Backend API first if authenticated
@@ -1725,7 +1725,7 @@ async function openSendTemplateModal() {
   const modal = document.getElementById('modalSendWaTemplate');
   if (!modal) return;
 
-  const phoneInput = document.getElementById('waTemplateRecipientPhone');
+  const phoneInput = document.getElementById('waTemplateToPhone') || document.getElementById('waTemplateRecipientPhone');
   if (phoneInput && activeWaPhone) {
     phoneInput.value = activeWaPhone;
   }
@@ -1735,27 +1735,43 @@ async function openSendTemplateModal() {
     try {
       const res = await window.upcApi.whatsapp.getTemplates();
       waTemplatesCache = (res && res.data) || [];
-      select.innerHTML = '<option value="">Choose an approved template...</option>' + waTemplatesCache.map(t => `
-        <option value="${t.template_name}">${escapeHtml(t.template_name)} (${t.category})</option>
-      `).join('');
+      select.innerHTML = '<option value="">Choose an approved template...</option>' + waTemplatesCache.map(t => {
+        const tName = t.name || t.template_name;
+        const tCat = t.category || 'UTILITY';
+        return `<option value="${escapeHtml(tName)}">${escapeHtml(tName)} (${escapeHtml(tCat)})</option>`;
+      }).join('');
     } catch (e) {}
 
-    select.onchange = () => {
-      const chosen = waTemplatesCache.find(t => t.template_name === select.value);
+    const onTemplateChange = () => {
+      const chosen = waTemplatesCache.find(t => (t.name || t.template_name) === select.value);
       const previewBox = document.getElementById('waTemplatePreviewBox');
       const varsContainer = document.getElementById('waTemplateVariablesContainer');
-      if (chosen && previewBox) {
-        previewBox.textContent = chosen.body_text || chosen.preview_text || '';
-        if (varsContainer && chosen.variables) {
-          varsContainer.innerHTML = chosen.variables.map(v => `
-            <div class="form-group">
-              <label class="form-label" style="font-size:0.75rem;">Variable: {{${v}}}</label>
-              <input type="text" class="form-control wa-tpl-var" data-var="${v}" placeholder="Value for ${v}" style="font-size:0.8rem; padding:0.4rem;">
-            </div>
-          `).join('');
+      const catBadge = document.getElementById('waTemplateCategoryBadge');
+      if (chosen) {
+        if (catBadge) {
+          catBadge.textContent = `Category: ${chosen.category || 'UTILITY'} • Status: ${chosen.status || 'APPROVED'}`;
+        }
+        if (previewBox) {
+          previewBox.textContent = chosen.bodyText || chosen.body_text || chosen.preview_text || '';
+        }
+        if (varsContainer) {
+          const sampleVars = chosen.variablesSample || chosen.variables || [];
+          if (Array.isArray(sampleVars) && sampleVars.length > 0) {
+            varsContainer.innerHTML = sampleVars.map((v, idx) => `
+              <div class="form-group">
+                <label class="form-label" style="font-size:0.75rem;">Variable {{${idx + 1}}}: ${escapeHtml(String(v))}</label>
+                <input type="text" class="form-control wa-tpl-var" data-var="${idx + 1}" placeholder="Value for {{${idx + 1}}}" style="font-size:0.8rem; padding:0.4rem;">
+              </div>
+            `).join('');
+          } else {
+            varsContainer.innerHTML = '';
+          }
         }
       }
     };
+
+    select.onchange = onTemplateChange;
+    window.onWaTemplateSelected = onTemplateChange;
   }
 
   modal.style.display = 'flex';
@@ -1768,7 +1784,11 @@ function closeSendTemplateModal() {
 
 async function handleSendTemplateSubmit(e) {
   if (e) e.preventDefault();
-  const phone = document.getElementById('waTemplateRecipientPhone')?.value.trim();
+  const phone = (
+    document.getElementById('waTemplateToPhone')?.value ||
+    document.getElementById('waTemplateRecipientPhone')?.value ||
+    ''
+  ).trim();
   const templateName = document.getElementById('waTemplateSelect')?.value;
 
   if (!phone || !templateName) {
@@ -1798,6 +1818,7 @@ async function handleSendTemplateSubmit(e) {
     showToast(err.message || 'Failed to dispatch template.', 'error');
   }
 }
+window.handleSendWaTemplateSubmit = handleSendTemplateSubmit;
 
 /* 8. TECHNICIAN MANAGEMENT & DISPATCH (PHASE 5) */
 let adminTechniciansCache = [];
@@ -4818,6 +4839,13 @@ async function loadMarketingAnalytics() {
 }
 
 // Global Window Exports (Phases 6, 7, 8, 9, 10)
+function generateAiCreativeLive() {
+  const btn = document.getElementById('btnAiGenerateCreative');
+  if (btn) {
+    btn.click();
+  }
+}
+window.generateAiCreativeLive = generateAiCreativeLive;
 window.saveAiCreativeDraft = saveAiCreativeDraft;
 window.approveAiCreativeLive = approveAiCreativeLive;
 
@@ -4826,6 +4854,7 @@ window.openWhatsAppThread = openWhatsAppThread;
 window.openSendTemplateModal = openSendTemplateModal;
 window.closeSendTemplateModal = closeSendTemplateModal;
 window.handleSendTemplateSubmit = handleSendTemplateSubmit;
+window.handleSendWaTemplateSubmit = handleSendTemplateSubmit;
 
 window.loadMetaConnection = loadMetaConnection;
 window.testMetaConnection = testMetaConnection;

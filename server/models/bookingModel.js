@@ -387,9 +387,12 @@ const bookingModel = {
       return null;
     }
 
-    // Query strictly by booking_code
-    let rows = await query(
-      `SELECT b.*, 
+    // Check if query is a phone number (10+ digits) or a booking code
+    const isPhoneQuery = /^\+?[0-9\s\-]{10,15}$/.test(cleanQuery);
+    const normalizedPhone = cleanQuery.replace(/[\s\-\(\)]/g, '');
+
+    let sql = `
+      SELECT b.*,
         t.id AS tech_id,
         t.name AS technician_name, 
         t.profile_image AS technician_profile_image,
@@ -398,9 +401,17 @@ const bookingModel = {
        FROM bookings b
        LEFT JOIN technicians t ON b.technician_id = t.id
        WHERE b.booking_code = ?
-       LIMIT 1`,
-      [cleanQuery]
-    );
+    `;
+    const params = [cleanQuery];
+
+    if (isPhoneQuery) {
+      sql += ` OR (b.phone = ? OR REPLACE(b.phone, ' ', '') = ? OR b.phone LIKE ?)`;
+      params.push(cleanQuery, normalizedPhone, `%${normalizedPhone.slice(-10)}`);
+    }
+
+    sql += ` ORDER BY b.created_at DESC LIMIT 1`;
+
+    let rows = await query(sql, params);
 
     if (rows.length === 0) return null;
     const b = rows[0];

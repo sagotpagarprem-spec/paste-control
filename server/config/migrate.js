@@ -63,6 +63,7 @@ async function runMigrationAndSeed() {
       { name: 'leads:create', module: 'leads', description: 'Create new inbound leads' },
       { name: 'leads:update', module: 'leads', description: 'Update lead status and notes' },
       { name: 'leads:delete', module: 'leads', description: 'Archive or delete leads' },
+      { name: 'leads:manage', module: 'leads', description: 'Manage lead assignments and follow-ups' },
       { name: 'bookings:read', module: 'bookings', description: 'View service bookings' },
       { name: 'bookings:manage', module: 'bookings', description: 'Create and update bookings' },
       { name: 'customers:read', module: 'customers', description: 'View customer directory' },
@@ -73,6 +74,10 @@ async function runMigrationAndSeed() {
       { name: 'cms:manage', module: 'cms', description: 'Create and update CMS content' },
       { name: 'meta:read', module: 'meta', description: 'View Meta connections and lead ads' },
       { name: 'meta:manage', module: 'meta', description: 'Manage Meta connection and ads' },
+      { name: 'campaigns:read', module: 'campaigns', description: 'View Meta ad campaigns, ad sets, ads, and performance' },
+      { name: 'campaigns:manage', module: 'campaigns', description: 'Create, edit, review, and publish campaigns and ad sets' },
+      { name: 'creatives:generate', module: 'creatives', description: 'Generate AI creative copy, concepts, and scripts' },
+      { name: 'analytics:read', module: 'analytics', description: 'View website traffic, conversion funnels, and attribution reports' },
       { name: 'whatsapp:read', module: 'whatsapp', description: 'View WhatsApp chats and templates' },
       { name: 'whatsapp:manage', module: 'whatsapp', description: 'Send templates and manage WhatsApp' },
       { name: 'users:manage', module: 'users', description: 'Manage admin and staff users' },
@@ -1624,7 +1629,7 @@ Draft article detailing preventive measures for residential housing societies du
         \`access_token\` TEXT NULL,
         \`pixel_id\` VARCHAR(100) NULL,
         \`webhook_verify_token\` VARCHAR(150) NULL,
-        \`status\` ENUM('CONNECTED', 'DISCONNECTED', 'PENDING', 'ERROR') DEFAULT 'CONNECTED',
+        \`status\` ENUM('CONNECTED', 'DISCONNECTED', 'PENDING', 'ERROR') DEFAULT 'DISCONNECTED',
         \`last_synced_at\` TIMESTAMP NULL DEFAULT NULL,
         \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         \`updated_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -1659,28 +1664,38 @@ Draft article detailing preventive measures for residential housing societies du
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
 
-    // 19e. Seed default active Meta configuration
+    // 19e. Initialize Meta configuration in DISCONNECTED state
     const [existingMetaConfig] = await conn.query(`SELECT id FROM meta_configurations LIMIT 1`);
     if (existingMetaConfig.length === 0) {
-      await conn.query(`
-        INSERT INTO meta_configurations (
-          account_name, business_account_id, ad_account_id, page_id, page_name,
-          instagram_actor_id, app_id, app_secret, access_token, pixel_id, webhook_verify_token, status, last_synced_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'CONNECTED', CURRENT_TIMESTAMP)
-      `, [
-        'Universal Pest Control — Meta Ads Portfolio',
-        'act_83921049281',
-        'act_83921049281',
-        '109283746501928',
-        'Universal Pest Control Official',
-        '17841405928193821',
-        '928374650192837',
-        'upc_sec_app_secret_hash_2026',
-        'EAAGMockUniversalPestControlMetaTokenSecret2026',
-        '987654321012345',
-        'upc_meta_webhook_verify_token_2026'
-      ]);
-      logger.info('Seeded default Meta ad account configuration.');
+      if (allowDemoSeed) {
+        await conn.query(`
+          INSERT INTO meta_configurations (
+            account_name, business_account_id, ad_account_id, page_id, page_name,
+            instagram_actor_id, app_id, app_secret, access_token, pixel_id, webhook_verify_token, status, last_synced_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'DISCONNECTED', NULL)
+        `, [
+          'Universal Pest Control — Meta Ads Portfolio',
+          process.env.META_AD_ACCOUNT_ID || 'act_83921049281',
+          process.env.META_AD_ACCOUNT_ID || 'act_83921049281',
+          process.env.META_PAGE_ID || '109283746501928',
+          'Universal Pest Control Official',
+          '17841405928193821',
+          process.env.META_APP_ID || '928374650192837',
+          process.env.META_APP_SECRET || null,
+          process.env.META_ACCESS_TOKEN || null,
+          process.env.META_PIXEL_ID || null,
+          process.env.META_WEBHOOK_VERIFY_TOKEN || null
+        ]);
+        logger.info('Initialized development Meta ad account configuration in DISCONNECTED state.');
+      } else {
+        await conn.query(`
+          INSERT INTO meta_configurations (
+            account_name, business_account_id, ad_account_id, page_id, page_name,
+            instagram_actor_id, app_id, app_secret, access_token, pixel_id, webhook_verify_token, status, last_synced_at
+          ) VALUES (?, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'DISCONNECTED', NULL)
+        `, ['Universal Pest Control — Meta Ads Portfolio']);
+        logger.info('Initialized production Meta configuration in DISCONNECTED state (no fake credentials).');
+      }
     }
 
     // Step 20: Phase 8, 9, 10 Meta Campaigns, AI Creative Studio & Analytics Migrations

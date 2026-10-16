@@ -410,7 +410,16 @@ class MetaService {
       };
     }
 
+    const isProduction = process.env.NODE_ENV === 'production';
     if (this.mockMode || token.startsWith('EAAGMock')) {
+      if (isProduction) {
+        return {
+          connected: false,
+          status: 'DISCONNECTED',
+          blocked: true,
+          message: 'Production Meta connection requires genuine Meta Graph API credentials. Sandbox mode and mock credentials cannot be verified in production.'
+        };
+      }
       return {
         connected: true,
         status: 'CONNECTED',

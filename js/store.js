@@ -345,7 +345,7 @@ class UPCStore {
       name: b.name,
       phone: b.phone,
       email: b.email || '',
-      service: b.service_name,
+      service: b.service_name || b.service || 'General Pest Control',
       property: b.property_type || 'Residential',
       city: b.city || 'Pune',
       area: b.area || '',
@@ -357,7 +357,7 @@ class UPCStore {
       value: Number(b.estimated_value) || 0,
       createdAt: b.created_at,
       followUpDate: b.follow_up_date || '',
-      assignedTo: b.assigned_to_name || 'Vikram Shinde',
+      assignedTo: b.assigned_to_name || b.assignedToName || 'Unassigned',
       notes: b.notes ? (Array.isArray(b.notes) ? b.notes.map(n => n.note).join('\n') : b.notes) : '',
       timeline: b.timeline && Array.isArray(b.timeline) 
         ? b.timeline.map(t => ({ time: t.created_at || 'Recently', text: t.description }))
@@ -451,7 +451,7 @@ class UPCStore {
     const bookings = this.data.bookings;
     const totalLeads = leads.length;
     const newLeads = leads.filter(l => l.status === 'NEW').length;
-    const qualified = leads.filter(l => ['QUALIFIED', 'SITE VISIT', 'QUOTATION', 'BOOKED', 'COMPLETED'].includes(l.status)).length;
+    const qualified = leads.filter(l => ['QUALIFIED', 'SITE VISIT', 'SITE_VISIT', 'QUOTATION', 'BOOKED', 'COMPLETED'].includes(l.status)).length;
     const bookedCount = leads.filter(l => ['BOOKED', 'COMPLETED'].includes(l.status)).length;
     const totalRevenue = bookings.reduce((sum, b) => sum + (Number(b.amount) || 0), 0) + 
                          leads.filter(l => l.status === 'COMPLETED').reduce((s, l) => s + (l.value || 0), 0);

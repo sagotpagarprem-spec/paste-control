@@ -65,9 +65,9 @@ const analyticsModel = {
     const [leadStats] = await query(`
       SELECT 
         COUNT(*) as total_leads,
-        SUM(CASE WHEN status = 'NEW' THEN 1 ELSE 0 END) as new_leads,
-        SUM(CASE WHEN status IN ('QUALIFIED', 'SITE_VISIT', 'QUOTATION', 'BOOKED', 'COMPLETED') THEN 1 ELSE 0 END) as qualified_leads,
-        SUM(CASE WHEN status = 'SITE_VISIT' THEN 1 ELSE 0 END) as site_visits,
+        SUM(CASE WHEN status = 'NEW' OR status = 'NEW_LEAD' THEN 1 ELSE 0 END) as new_leads,
+        SUM(CASE WHEN status IN ('QUALIFIED', 'SITE VISIT', 'SITE_VISIT', 'QUOTATION', 'BOOKED', 'COMPLETED') THEN 1 ELSE 0 END) as qualified_leads,
+        SUM(CASE WHEN status = 'SITE_VISIT' OR status = 'SITE VISIT' THEN 1 ELSE 0 END) as site_visits,
         SUM(CASE WHEN status = 'QUOTATION' THEN 1 ELSE 0 END) as quotations,
         SUM(CASE WHEN status = 'BOOKED' OR status = 'COMPLETED' THEN 1 ELSE 0 END) as booked_leads,
         SUM(CASE WHEN status = 'COMPLETED' THEN 1 ELSE 0 END) as completed_leads,

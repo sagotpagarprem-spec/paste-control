@@ -15,12 +15,12 @@ router.get('/', requirePermission('leads:read'), followupController.getFollowups
 router.get('/:id', requirePermission('leads:read'), followupController.getFollowupById);
 
 // POST /api/followups
-router.post('/', requirePermission('leads:manage'), followupController.createFollowup);
+router.post('/', requirePermission('leads:update'), followupController.createFollowup);
 
 // PUT /api/followups/:id
-router.put('/:id', requirePermission('leads:manage'), followupController.updateFollowup);
+router.put('/:id', requirePermission('leads:update'), followupController.updateFollowup);
 
 // DELETE /api/followups/:id
-router.delete('/:id', requirePermission('leads:manage'), followupController.deleteFollowup);
+router.delete('/:id', requirePermission('leads:update'), followupController.deleteFollowup);
 
 module.exports = router;

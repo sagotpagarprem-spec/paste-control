@@ -121,6 +121,7 @@ class LeadService {
       utm_campaign: data.utm_campaign || data.utmCampaign || null,
       utm_content: data.utm_content || data.utmContent || null,
       utm_term: data.utm_term || data.utmTerm || null,
+      status: (data.status === 'NEW_LEAD' ? 'NEW' : data.status) || 'NEW',
       is_duplicate: isDuplicate,
       duplicate_of_id: duplicateOfId
     };
