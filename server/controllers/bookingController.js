@@ -121,6 +121,7 @@ const bookingController = {
     try {
       const { idOrCode } = req.params;
       const verifyFactor = req.query.phone || req.query.verify || null;
+      const token = req.query.token || req.headers['x-tracking-token'] || null;
       const cleanCode = String(idOrCode || '').trim();
 
       // Reject empty queries, numeric integer IDs, or phone-only lookups
@@ -129,11 +130,116 @@ const bookingController = {
       }
 
       const bookingModel = require('../models/bookingModel');
-      const trackingData = await bookingModel.getTrackingData(cleanCode, verifyFactor);
-      if (!trackingData) {
+      const result = await bookingModel.getTrackingData(cleanCode, {
+        verify: verifyFactor,
+        token
+      });
+
+      if (!result) {
         return apiError(res, 'Booking not found for tracking. Please verify your Booking Reference Code.', 404);
       }
-      return apiSuccess(res, trackingData, 'Booking tracking status retrieved.');
+
+      if (
+        result.status === 'NOT_FOUND' ||
+        result.status === 'REJECTED_NUMERIC_ID' ||
+        result.status === 'REJECTED_PHONE_QUERY' ||
+        result.status === 'INVALID_FORMAT'
+      ) {
+        return apiError(res, result.error || 'Booking not found for tracking.', 404);
+      }
+
+      if (result.status === 'FACTOR_REQUIRED' || result.status === 'FACTOR_MISMATCH') {
+        return apiError(res, result.error, 403);
+      }
+
+      // Successful sanitized retrieval
+      const responseData = { ...result };
+      delete responseData.status; // Remove internal status wrapper
+      return apiSuccess(res, responseData, 'Booking tracking status retrieved.');
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async requestTrackingOtp(req, res, next) {
+    try {
+      const idOrCode = req.params.idOrCode || req.body.bookingCode;
+      const cleanCode = String(idOrCode || '').trim();
+
+      if (!cleanCode || /^\d{1,8}$/.test(cleanCode) || /^\+?[0-9\s\-]{10,15}$/.test(cleanCode)) {
+        return apiError(res, 'Invalid booking reference code.', 404);
+      }
+
+      const bookingModel = require('../models/bookingModel');
+      const booking = await bookingModel.findByCode(cleanCode);
+      if (!booking) {
+        return apiError(res, 'Booking not found.', 404);
+      }
+
+      const crypto = require('crypto');
+      const otp = crypto.randomInt(100000, 999999).toString();
+      const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+      if (!global.trackingOtpStore) {
+        global.trackingOtpStore = new Map();
+      }
+
+      const otpHash = crypto.createHash('sha256').update(`${cleanCode.toUpperCase()}:${otp}`).digest('hex');
+      global.trackingOtpStore.set(cleanCode.toUpperCase(), { otpHash, expiresAt, attempts: 0 });
+
+      // In production, dispatch via WhatsApp/SMS service; log sanitized dispatch notice
+      const lastFour = String(booking.phone || '').slice(-4);
+      return apiSuccess(res, {
+        bookingCode: cleanCode,
+        maskedPhone: `******${lastFour}`,
+        expiresInSeconds: 600
+      }, 'Verification OTP dispatched to registered customer mobile.');
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async verifyTrackingOtp(req, res, next) {
+    try {
+      const idOrCode = req.params.idOrCode || req.body.bookingCode;
+      const { otp } = req.body;
+      const cleanCode = String(idOrCode || '').trim();
+
+      if (!cleanCode || !otp) {
+        return apiError(res, 'Booking reference code and 6-digit OTP are required.', 400);
+      }
+
+      const store = global.trackingOtpStore;
+      const record = store ? store.get(cleanCode.toUpperCase()) : null;
+
+      if (!record || Date.now() > record.expiresAt) {
+        return apiError(res, 'OTP has expired or was not requested. Please request a new OTP.', 400);
+      }
+
+      if (record.attempts >= 5) {
+        store.delete(cleanCode.toUpperCase());
+        return apiError(res, 'Too many invalid attempts. Please request a new OTP.', 429);
+      }
+
+      record.attempts += 1;
+      const crypto = require('crypto');
+      const submittedHash = crypto.createHash('sha256').update(`${cleanCode.toUpperCase()}:${String(otp).trim()}`).digest('hex');
+
+      if (submittedHash !== record.otpHash) {
+        return apiError(res, 'Invalid verification code. Please check and try again.', 403);
+      }
+
+      // Valid OTP: clear store entry and issue signed tracking verification token
+      store.delete(cleanCode.toUpperCase());
+      const bookingModel = require('../models/bookingModel');
+      const booking = await bookingModel.findByCode(cleanCode);
+      const trackingToken = bookingModel.generateTrackingToken(cleanCode, booking ? booking.phone : '');
+
+      return apiSuccess(res, {
+        bookingCode: cleanCode,
+        trackingToken,
+        verified: true
+      }, 'OTP verified successfully. Tracking access granted.');
     } catch (error) {
       next(error);
     }

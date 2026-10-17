@@ -3,7 +3,7 @@ require('dotenv').config();
 
 const http = require('http');
 const app = require('./server/app');
-const { checkConnection, dbConfig } = require('./server/config/database');
+const { checkConnection, validateDatabaseConfig, dbConfig } = require('./server/config/database');
 const logger = require('./server/utils/logger');
 
 const { validateJwtSecret } = require('./server/utils/jwt');
@@ -11,8 +11,9 @@ const { validateJwtSecret } = require('./server/utils/jwt');
 const PORT = parseInt(process.env.PORT || '3000', 10);
 
 async function startServer() {
-  // Validate Security Credentials (fails startup in production if JWT_SECRET is missing or insecure)
+  // Validate Security Credentials (fails startup in production if JWT_SECRET or DB config is missing or insecure)
   validateJwtSecret(process.env.NODE_ENV, process.env.JWT_SECRET);
+  validateDatabaseConfig(process.env.NODE_ENV);
 
   // Test Database Connection (non-blocking so server can start while waiting for DB credentials)
   checkConnection().catch((err) => {

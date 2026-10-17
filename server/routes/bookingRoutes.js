@@ -15,6 +15,13 @@ router.post('/', publicLeadLimiter, validate(validateBookingCreate), bookingCont
 // GET /api/bookings/:idOrCode/tracking
 router.get('/:idOrCode/tracking', trackingLimiter, bookingController.getTracking);
 
+// Public Customer Tracking OTP & Verification Endpoints
+// POST /api/bookings/:idOrCode/tracking-otp (Request OTP)
+router.post('/:idOrCode/tracking-otp', trackingLimiter, bookingController.requestTrackingOtp);
+
+// POST /api/bookings/:idOrCode/verify-otp (Verify OTP & receive tracking token)
+router.post('/:idOrCode/verify-otp', trackingLimiter, bookingController.verifyTrackingOtp);
+
 // Protected Admin/Staff Endpoints
 // GET /api/bookings
 router.get('/', authenticateToken, requirePermission('bookings:read'), bookingController.getBookings);

@@ -45,8 +45,48 @@ function formatBooking(b) {
   };
 }
 
+// Entropy classification: 4-digit codes are LOW entropy (~10,000 combinations).
+// Strong cryptographic tokens have >= 8 hex chars (>= 32 bits, ideally 64 bits).
+function isHighEntropyBookingCode(code) {
+  if (!code || typeof code !== 'string') return false;
+  const match = code.trim().match(/^UPC-\d{4}-([0-9A-Fa-f_-]+)$/);
+  if (!match) return false;
+  return match[1].length >= 8;
+}
+
+function generateTrackingToken(bookingCode, phone) {
+  const secret = process.env.TRACKING_TOKEN_SECRET || process.env.JWT_SECRET || 'upc_tracking_verification_secret_2026';
+  const timestamp = Date.now();
+  const payload = `${bookingCode}:${phone}:${timestamp}`;
+  const hmac = crypto.createHmac('sha256', secret).update(payload).digest('hex');
+  return Buffer.from(`${payload}:${hmac}`).toString('base64url');
+}
+
+function verifyTrackingToken(token, bookingCode, phone) {
+  if (!token) return false;
+  try {
+    const decoded = Buffer.from(token, 'base64url').toString('utf8');
+    const parts = decoded.split(':');
+    if (parts.length !== 4) return false;
+    const [tokenCode, tokenPhone, tsStr, sig] = parts;
+    const ts = parseInt(tsStr, 10);
+    // Token valid for 24 hours
+    if (Date.now() - ts > 24 * 60 * 60 * 1000) return false;
+    if (tokenCode.toUpperCase() !== String(bookingCode).trim().toUpperCase()) return false;
+    const secret = process.env.TRACKING_TOKEN_SECRET || process.env.JWT_SECRET || 'upc_tracking_verification_secret_2026';
+    const payload = `${tokenCode}:${tokenPhone}:${tsStr}`;
+    const expectedSig = crypto.createHmac('sha256', secret).update(payload).digest('hex');
+    return crypto.timingSafeEqual(Buffer.from(sig, 'hex'), Buffer.from(expectedSig, 'hex'));
+  } catch (_) {
+    return false;
+  }
+}
+
 const bookingModel = {
   formatBooking,
+  isHighEntropyBookingCode,
+  generateTrackingToken,
+  verifyTrackingToken,
 
   async findAll({ search = '', status = '', technicianId = '', date = '', includeArchived = false, page = 1, limit = 50, offset = 0 } = {}) {
     let baseSql = `
@@ -163,10 +203,10 @@ const bookingModel = {
     let bookingCode = data.booking_code || data.bookingCode;
     const year = new Date().getFullYear();
 
-    // Generate cryptographically random, collision-safe reference if not explicitly supplied
+    // Generate cryptographically random, collision-safe reference (64-bit entropy: 16 hex chars)
     if (!bookingCode) {
       for (let attempt = 0; attempt < 5; attempt++) {
-        const randHex = crypto.randomBytes(4).toString('hex').toUpperCase(); // 8 hex chars: e.g. 7F3A2B1C
+        const randHex = crypto.randomBytes(8).toString('hex').toUpperCase(); // 16 hex chars (64-bit cryptographic entropy)
         const candidate = `UPC-${year}-${randHex}`;
         const existing = await query('SELECT id FROM bookings WHERE booking_code = ? LIMIT 1', [candidate]);
         if (!existing || existing.length === 0) {
@@ -175,7 +215,7 @@ const bookingModel = {
         }
       }
       if (!bookingCode) {
-        bookingCode = `UPC-${year}-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
+        bookingCode = `UPC-${year}-${crypto.randomBytes(8).toString('hex').toUpperCase()}`;
       }
     }
 
@@ -378,23 +418,37 @@ const bookingModel = {
     return this.findById(id);
   },
 
-  async getTrackingData(idOrCode, verificationFactor = null) {
+  async migrateLowEntropyBookings() {
+    // Find all bookings with legacy 4-digit low-entropy references
+    const rows = await query("SELECT id, booking_code FROM bookings WHERE booking_code REGEXP '^UPC-[0-9]{4}-[0-9]{4}$'");
+    const migrated = [];
+    for (const row of rows) {
+      const year = new Date().getFullYear();
+      const randHex = crypto.randomBytes(8).toString('hex').toUpperCase();
+      const newCode = `UPC-${year}-${randHex}`;
+      await query('UPDATE bookings SET booking_code = ? WHERE id = ?', [newCode, row.id]);
+      migrated.push({ id: row.id, oldCode: row.booking_code, newCode });
+    }
+    return migrated;
+  },
+
+  async getTrackingData(idOrCode, options = null) {
     if (!idOrCode) return null;
     const cleanCode = String(idOrCode).trim();
 
     // 1. Strictly disallow internal numeric database IDs (e.g. 1, 2, 45) to prevent enumeration
     if (/^\d{1,8}$/.test(cleanCode)) {
-      return null;
+      return { status: 'REJECTED_NUMERIC_ID', error: 'Numeric ID lookups are strictly prohibited. Please provide a canonical Booking Reference Code.' };
     }
 
     // 2. Reject phone numbers alone as lookup query to protect customer privacy
     if (/^\+?[0-9\s\-]{10,15}$/.test(cleanCode)) {
-      return null;
+      return { status: 'REJECTED_PHONE_QUERY', error: 'Lookups by phone number alone are disabled for customer privacy.' };
     }
 
     // 3. Must be a valid booking reference code format (e.g. UPC-2026-XXXX)
-    if (!/^[A-Za-z0-9_-]{5,32}$/.test(cleanCode)) {
-      return null;
+    if (!/^UPC-\d{4}-[A-Za-z0-9_-]{4,32}$/i.test(cleanCode)) {
+      return { status: 'INVALID_FORMAT', error: 'Invalid booking reference format.' };
     }
 
     // 4. Parameterized query matching strictly by booking_code
@@ -418,7 +472,18 @@ const bookingModel = {
     if (rows.length === 0) return null;
     const b = rows[0];
 
-    // 5. Verification factor check (if provided): registered phone or email must match
+    const isHighEntropy = isHighEntropyBookingCode(b.booking_code);
+    const verificationFactor = typeof options === 'string' ? options : (options?.verify || options?.phone || options?.verificationFactor || null);
+    const trackingToken = typeof options === 'object' && options !== null ? (options.token || options.trackingToken) : null;
+
+    let isFactorVerified = false;
+
+    // Check signed tracking token if provided
+    if (trackingToken && verifyTrackingToken(trackingToken, b.booking_code, b.phone)) {
+      isFactorVerified = true;
+    }
+
+    // Check verification factor if provided
     if (verificationFactor) {
       const cleanFactor = String(verificationFactor).trim().toLowerCase().replace(/[\s\-()]/g, '');
       const bPhoneClean = String(b.phone || '').trim().replace(/[\s\-()]/g, '');
@@ -428,8 +493,20 @@ const bookingModel = {
       const matchesEmail = bEmailClean && bEmailClean === cleanFactor;
 
       if (!matchesPhone && !matchesEmail) {
-        return null; // Verification factor mismatch - treat as not found for privacy
+        return {
+          status: 'FACTOR_MISMATCH',
+          error: 'Verification factor mismatch. Please verify your registered contact details.'
+        };
       }
+      isFactorVerified = true;
+    }
+
+    // 5. For legacy low-entropy codes (e.g. 4 digits like UPC-2026-8941), a second factor is REQUIRED
+    if (!isHighEntropy && !isFactorVerified) {
+      return {
+        status: 'FACTOR_REQUIRED',
+        error: 'Second verification factor required for legacy reference code. Please provide your registered phone number or verified tracking token.'
+      };
     }
 
     const currentStatus = (b.status || 'PENDING').toUpperCase();
@@ -505,7 +582,9 @@ const bookingModel = {
       }
     ];
 
+    // Minimal sanitized response: excludes customer PII, street address, notes, billing details, and internal IDs
     return {
+      status: 'SUCCESS',
       bookingCode: b.booking_code,
       serviceName: b.service_name,
       propertyType: b.property_type,
@@ -515,8 +594,8 @@ const bookingModel = {
       currentStatus,
       technician: technicianObj,
       stages,
-      isCancelled: currentStatus === 'CANCELLED'
-      // Omit full street address, customer phone, customer notes, internal IDs, and billing amounts from public tracking
+      isCancelled: currentStatus === 'CANCELLED',
+      isVerified: isFactorVerified
     };
   }
 };
