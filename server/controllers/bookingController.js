@@ -120,13 +120,18 @@ const bookingController = {
   async getTracking(req, res, next) {
     try {
       const { idOrCode } = req.params;
-      if (!idOrCode || /^\d{1,8}$/.test(String(idOrCode).trim())) {
-        return apiError(res, 'Booking not found for tracking.', 404);
+      const verifyFactor = req.query.phone || req.query.verify || null;
+      const cleanCode = String(idOrCode || '').trim();
+
+      // Reject empty queries, numeric integer IDs, or phone-only lookups
+      if (!cleanCode || /^\d{1,8}$/.test(cleanCode) || /^\+?[0-9\s\-]{10,15}$/.test(cleanCode)) {
+        return apiError(res, 'Booking not found for tracking. Please provide a valid Booking Reference Code (e.g. UPC-2026-XXXX).', 404);
       }
+
       const bookingModel = require('../models/bookingModel');
-      const trackingData = await bookingModel.getTrackingData(idOrCode);
+      const trackingData = await bookingModel.getTrackingData(cleanCode, verifyFactor);
       if (!trackingData) {
-        return apiError(res, 'Booking not found for tracking.', 404);
+        return apiError(res, 'Booking not found for tracking. Please verify your Booking Reference Code.', 404);
       }
       return apiSuccess(res, trackingData, 'Booking tracking status retrieved.');
     } catch (error) {

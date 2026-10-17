@@ -770,23 +770,27 @@ function initBookingEngine() {
       };
 
       try {
-        let realBookingCode = null;
-        if (window.upcApi && window.upcApi.bookings) {
-          const res = await window.upcApi.bookings.create(payload);
-          if (res && res.data) {
-            realBookingCode = res.data.bookingCode || res.data.booking_code || res.data.id;
-          }
+        if (!window.upcApi || !window.upcApi.bookings) {
+          throw new Error('Booking service is currently unavailable. Please call dispatch directly at +91 98230 44129.');
         }
 
+        const res = await window.upcApi.bookings.create(payload);
+        if (!res || !res.data) {
+          throw new Error((res && res.message) || 'Server was unable to confirm your booking. Please try again or contact support.');
+        }
+
+        const createdBooking = res.data;
+        const realBookingCode = createdBooking.bookingCode || createdBooking.booking_code;
+
         if (!realBookingCode) {
-          realBookingCode = `UPC-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+          throw new Error('Service dispatch did not return a valid booking confirmation code.');
         }
 
         if (window.upcStore) {
-          window.upcStore.createBooking({ ...payload, id: realBookingCode });
+          window.upcStore.addBookingRecord(createdBooking);
         }
 
-        // Show step 8: Confirmation with real booking code
+        // Show step 8: Confirmation with real canonical booking code
         const bCode = document.getElementById('confirmedBookingId');
         if (bCode) bCode.textContent = realBookingCode;
 
@@ -1414,7 +1418,20 @@ async function searchCustomerBookingTracking() {
 
   const query = input.value.trim();
   if (!query) {
-    showToast('Please enter your Booking Code', 'error');
+    showToast('Please enter your Booking Reference Code', 'error');
+    return;
+  }
+
+  // Check if query is a phone number (10+ digits)
+  if (/^\+?[0-9\s\-]{10,15}$/.test(query) || /^\d{10}$/.test(query.replace(/[\s\-]/g, ''))) {
+    resultArea.style.display = 'block';
+    resultArea.innerHTML = `
+      <div style="background:#FFFBEB; border:1px solid #FDE68A; color:#92400E; padding:1.25rem; border-radius:12px; text-align:center; line-height:1.5;">
+        🔒 <strong>Customer Privacy Protection Active</strong><br>
+        For customer privacy and security, tracking by phone number alone is disabled without verified OTP.<br>
+        Please enter your unique <strong>Booking Reference Code</strong> (e.g. <code>UPC-2026-XXXX</code>) sent in your confirmation SMS/email, or contact dispatch at <strong>+91 98230 44129</strong>.
+      </div>
+    `;
     return;
   }
 
@@ -1459,7 +1476,7 @@ async function searchCustomerBookingTracking() {
         <div style="font-size:0.88rem; color:#334155; line-height:1.5;">
           <div><strong>Service:</strong> ${escapeHtml(data.serviceName)} (${escapeHtml(data.propertyType || 'Residential')})</div>
           <div><strong>Appointment:</strong> 📅 ${data.scheduledDate} • ⏰ ${escapeHtml(data.timeSlot)}</div>
-          <div><strong>Location:</strong> 📍 ${escapeHtml(data.address || 'Address on file')}, ${escapeHtml(data.city || 'Pune')}</div>
+          <div><strong>Service Location:</strong> 📍 ${escapeHtml(data.city || 'Pune')} (Confirmed on file)</div>
         </div>
       </div>
 

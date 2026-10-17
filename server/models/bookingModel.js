@@ -378,43 +378,59 @@ const bookingModel = {
     return this.findById(id);
   },
 
-  async getTrackingData(idOrCode) {
+  async getTrackingData(idOrCode, verificationFactor = null) {
     if (!idOrCode) return null;
-    const cleanQuery = String(idOrCode).trim();
+    const cleanCode = String(idOrCode).trim();
 
-    // Strictly disallow internal numeric IDs (e.g. 1, 2, 45) to prevent enumeration of internal records
-    if (/^\d{1,8}$/.test(cleanQuery)) {
+    // 1. Strictly disallow internal numeric database IDs (e.g. 1, 2, 45) to prevent enumeration
+    if (/^\d{1,8}$/.test(cleanCode)) {
       return null;
     }
 
-    // Check if query is a phone number (10+ digits) or a booking code
-    const isPhoneQuery = /^\+?[0-9\s\-]{10,15}$/.test(cleanQuery);
-    const normalizedPhone = cleanQuery.replace(/[\s\-\(\)]/g, '');
-
-    let sql = `
-      SELECT b.*,
-        t.id AS tech_id,
-        t.name AS technician_name, 
-        t.profile_image AS technician_profile_image,
-        t.skills AS technician_skills,
-        t.rating AS technician_rating
-       FROM bookings b
-       LEFT JOIN technicians t ON b.technician_id = t.id
-       WHERE b.booking_code = ?
-    `;
-    const params = [cleanQuery];
-
-    if (isPhoneQuery) {
-      sql += ` OR (b.phone = ? OR REPLACE(b.phone, ' ', '') = ? OR b.phone LIKE ?)`;
-      params.push(cleanQuery, normalizedPhone, `%${normalizedPhone.slice(-10)}`);
+    // 2. Reject phone numbers alone as lookup query to protect customer privacy
+    if (/^\+?[0-9\s\-]{10,15}$/.test(cleanCode)) {
+      return null;
     }
 
-    sql += ` ORDER BY b.created_at DESC LIMIT 1`;
+    // 3. Must be a valid booking reference code format (e.g. UPC-2026-XXXX)
+    if (!/^[A-Za-z0-9_-]{5,32}$/.test(cleanCode)) {
+      return null;
+    }
 
-    let rows = await query(sql, params);
+    // 4. Parameterized query matching strictly by booking_code
+    const sql = `
+      SELECT b.id, b.booking_code, b.service_name, b.property_type, b.scheduled_date,
+             b.time_slot, b.city, b.status, b.created_at, b.assigned_at, b.on_the_way_at,
+             b.arrived_at, b.started_at, b.completed_at, b.phone,
+             c.email AS customer_email,
+             t.name AS technician_name, 
+             t.profile_image AS technician_profile_image,
+             t.skills AS technician_skills,
+             t.rating AS technician_rating
+       FROM bookings b
+       LEFT JOIN customers c ON b.customer_id = c.id
+       LEFT JOIN technicians t ON b.technician_id = t.id
+       WHERE b.booking_code = ?
+       LIMIT 1
+    `;
+    const rows = await query(sql, [cleanCode]);
 
     if (rows.length === 0) return null;
     const b = rows[0];
+
+    // 5. Verification factor check (if provided): registered phone or email must match
+    if (verificationFactor) {
+      const cleanFactor = String(verificationFactor).trim().toLowerCase().replace(/[\s\-()]/g, '');
+      const bPhoneClean = String(b.phone || '').trim().replace(/[\s\-()]/g, '');
+      const bEmailClean = String(b.customer_email || '').trim().toLowerCase();
+
+      const matchesPhone = bPhoneClean && (bPhoneClean === cleanFactor || bPhoneClean.endsWith(cleanFactor) || cleanFactor.endsWith(bPhoneClean));
+      const matchesEmail = bEmailClean && bEmailClean === cleanFactor;
+
+      if (!matchesPhone && !matchesEmail) {
+        return null; // Verification factor mismatch - treat as not found for privacy
+      }
+    }
 
     const currentStatus = (b.status || 'PENDING').toUpperCase();
 
@@ -427,12 +443,11 @@ const bookingModel = {
         skillsArr = [];
       }
       technicianObj = {
-        id: b.tech_id,
         name: b.technician_name,
         profileImage: b.technician_profile_image || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&w=400&q=80',
         skills: Array.isArray(skillsArr) ? skillsArr : [],
         rating: Number(b.technician_rating || 4.9)
-        // NOTE: technician phone and email strictly omitted to protect technician privacy
+        // Strictly omit internal tech_id, technician phone, and email to protect privacy
       };
     }
 
@@ -451,7 +466,7 @@ const bookingModel = {
         key: 'ASSIGNED',
         label: 'Technician Assigned',
         description: technicianObj ? `${technicianObj.name} assigned to your service.` : 'Dispatching certified pest technician.',
-        completed: Boolean(b.assigned_at || b.technician_id),
+        completed: Boolean(b.assigned_at || b.technician_name),
         active: currentStatus === 'ASSIGNED' || currentStatus === 'ACCEPTED',
         timestamp: b.assigned_at,
         technician: technicianObj
@@ -500,9 +515,8 @@ const bookingModel = {
       currentStatus,
       technician: technicianObj,
       stages,
-      amount: Number(b.amount || 0),
       isCancelled: currentStatus === 'CANCELLED'
-      // NOTE: Customer phone and full street address strictly omitted to prevent unauthenticated PII leakage
+      // Omit full street address, customer phone, customer notes, internal IDs, and billing amounts from public tracking
     };
   }
 };

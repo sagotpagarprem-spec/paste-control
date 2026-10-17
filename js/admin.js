@@ -91,11 +91,8 @@ async function handleAdminCreateLeadSubmit(event) {
   if (btn) {
     if (btn.disabled) return;
     btn.disabled = true;
-    btn.textContent = 'Creating Lead...';
+    btn.textContent = 'Creating Lead... ⏳';
   }
-
-  let created = false;
-  let newLeadRecord = null;
 
   try {
     const payload = {
@@ -110,43 +107,31 @@ async function handleAdminCreateLeadSubmit(event) {
       status: 'NEW'
     };
 
-    // 1. Try Backend API first if authenticated
-    if (window.upcApi && window.upcApi.auth && window.upcApi.auth.isAuthenticated() && window.upcApi.leads && window.upcApi.leads.create) {
-      try {
-        const apiRes = await window.upcApi.leads.create(payload);
-        if (apiRes && (apiRes.success || apiRes.data || apiRes.id)) {
-          created = true;
-          newLeadRecord = apiRes.data || apiRes.lead || payload;
-        } else {
-          throw new Error(apiRes?.message || 'Server rejected lead creation');
-        }
-      } catch (apiErr) {
-        console.warn('Backend lead creation notice:', apiErr);
-        if (!window.upcStore) {
-          throw apiErr;
-        }
+    let canonicalLead = null;
+
+    // In production or authenticated session: strictly require backend database persistence
+    if (window.upcApi && window.upcApi.auth && window.upcApi.auth.isAuthenticated()) {
+      const apiRes = await window.upcApi.leads.create(payload);
+      if (apiRes && apiRes.data) {
+        canonicalLead = apiRes.data;
+      } else {
+        throw new Error((apiRes && apiRes.message) || 'Database persistence rejected by backend server.');
       }
-    }
 
-    // 2. Persist in local reactive store (either fallback or sync)
-    if (window.upcStore) {
-      const persisted = window.upcStore.addLead({
-        id: (newLeadRecord && (newLeadRecord.lead_code || newLeadRecord.id)) || `UPC-LEAD-${Date.now().toString().slice(-4)}`,
-        ...payload,
-        ...(newLeadRecord || {}),
-        createdAt: (newLeadRecord && newLeadRecord.created_at) || new Date().toISOString()
-      });
-      if (persisted) {
-        created = true;
+      // Sync verified record into reactive store
+      if (window.upcStore && window.upcStore.addLeadRecord) {
+        window.upcStore.addLeadRecord(canonicalLead);
       }
+    } else if (window.upcStore && window.upcStore.isDemoMode) {
+      // Demo-only mode: allow mock local storage persistence
+      canonicalLead = window.upcStore.addLead(payload);
+      showToast('[Demo Mode] Simulated lead created locally in browser store.', 'info');
+    } else {
+      throw new Error('Authentication required. Please sign in to create records in the production database.');
     }
 
-    // 3. Strict verification: ensure persistence actually succeeded
-    if (!created) {
-      throw new Error('Lead creation failed: Neither API service nor local store was able to persist the record.');
-    }
-
-    showToast('Lead created successfully in CRM!', 'success');
+    const leadCode = canonicalLead.lead_code || canonicalLead.id || 'NEW';
+    showToast(`Lead ${leadCode} created successfully in CRM! 🚀`, 'success');
     closeAdminCreateLeadModal();
     document.getElementById('formAdminCreateLead')?.reset();
 
@@ -154,7 +139,8 @@ async function handleAdminCreateLeadSubmit(event) {
     if (typeof window.renderCrmTable === 'function') window.renderCrmTable();
     if (typeof window.renderAdminOverview === 'function') window.renderAdminOverview();
   } catch (err) {
-    showToast(err.message || 'Failed to create lead', 'error');
+    console.error('Lead creation error:', err);
+    showToast(err.message || 'Failed to create lead in database.', 'error');
   } finally {
     if (btn) {
       btn.disabled = false;
@@ -232,12 +218,23 @@ function initAdminAuth() {
           avatarEl.textContent = initials || 'AD';
         }
 
-        // Sync leads from backend API if available
+        // Sync leads from backend database
         window.upcApi.leads.getAll().then(leadRes => {
-          if (leadRes && leadRes.data && leadRes.data.length > 0 && window.upcStore) {
+          if (leadRes && Array.isArray(leadRes.data) && window.upcStore) {
             window.upcStore.syncFromBackend(leadRes.data);
           }
-        }).catch(() => {});
+        }).catch(err => {
+          console.warn('Failed to sync leads from database:', err);
+        });
+
+        // Sync bookings from backend database
+        window.upcApi.bookings.getAll().then(bRes => {
+          if (bRes && Array.isArray(bRes.data) && window.upcStore) {
+            window.upcStore.syncBookingsFromBackend(bRes.data);
+          }
+        }).catch(err => {
+          console.warn('Failed to sync bookings from database:', err);
+        });
       }
     }).catch(err => {
       if (err.status === 401) {
@@ -412,7 +409,40 @@ function renderLeadsOverTimeChart() {
   const container = document.getElementById('chartLeadsOverTime');
   if (!container) return;
 
-  // Render crisp high-tech SVG Area & Line Chart
+  const leads = (window.upcStore && window.upcStore.data && window.upcStore.data.leads) || [];
+  if (leads.length === 0) {
+    container.innerHTML = `
+      <div style="display:flex; align-items:center; justify-content:center; height:100%; min-height:160px; color:#94A3B8; font-size:0.85rem; text-align:center; padding:1.5rem;">
+        No lead intake records yet. Telemetry will graph live inbound trends once leads are logged.
+      </div>
+    `;
+    return;
+  }
+
+  // Group leads by weekday
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const dayCounts = { 'Mon': 0, 'Tue': 0, 'Wed': 0, 'Thu': 0, 'Fri': 0, 'Sat': 0, 'Sun': 0 };
+  leads.forEach(l => {
+    if (l.createdAt) {
+      const d = new Date(l.createdAt);
+      const dayName = days[d.getDay()];
+      if (dayCounts[dayName] !== undefined) dayCounts[dayName]++;
+    }
+  });
+
+  const orderedDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const counts = orderedDays.map(d => dayCounts[d]);
+  const maxVal = Math.max(...counts, 5);
+
+  const coords = counts.map((cnt, idx) => {
+    const x = 60 + idx * 80;
+    const y = 160 - Math.round((cnt / maxVal) * 110);
+    return { x, y, cnt, day: orderedDays[idx] };
+  });
+
+  const pathD = coords.map((c, i) => (i === 0 ? `M ${c.x} ${c.y}` : `L ${c.x} ${c.y}`)).join(' ');
+  const areaD = `${pathD} L ${coords[coords.length - 1].x} 165 L ${coords[0].x} 165 Z`;
+
   container.innerHTML = `
     <svg viewBox="0 0 600 200" width="100%" height="100%" preserveAspectRatio="none">
       <defs>
@@ -427,24 +457,17 @@ function renderLeadsOverTimeChart() {
       <line x1="40" y1="120" x2="580" y2="120" stroke="#F1F5F9" stroke-width="1" />
       <line x1="40" y1="165" x2="580" y2="165" stroke="#E2E8F0" stroke-width="1.5" />
 
-      <!-- Area fill -->
-      <path d="M 60 150 Q 140 120, 220 90 T 380 60 T 540 35 L 540 165 L 60 165 Z" fill="url(#areaGradient)" />
+      <!-- Dynamic Area fill -->
+      <path d="${areaD}" fill="url(#areaGradient)" />
 
-      <!-- Stroke curve -->
-      <path d="M 60 150 Q 140 120, 220 90 T 380 60 T 540 35" fill="none" stroke="#10B981" stroke-width="3.5" stroke-linecap="round" />
+      <!-- Dynamic Stroke curve -->
+      <path d="${pathD}" fill="none" stroke="#10B981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
 
-      <!-- Data Dots with Pulse Glow -->
-      <circle cx="60" cy="150" r="5" fill="#064E3B" stroke="#FFFFFF" stroke-width="2" />
-      <circle cx="220" cy="90" r="5" fill="#064E3B" stroke="#FFFFFF" stroke-width="2" />
-      <circle cx="380" cy="60" r="5" fill="#064E3B" stroke="#FFFFFF" stroke-width="2" />
-      <circle cx="540" cy="35" r="6" fill="#10B981" stroke="#FFFFFF" stroke-width="2.5" />
-
-      <!-- Labels -->
-      <text x="60" y="185" fill="#94A3B8" font-size="11" text-anchor="middle">Mon</text>
-      <text x="180" y="185" fill="#94A3B8" font-size="11" text-anchor="middle">Tue</text>
-      <text x="300" y="185" fill="#94A3B8" font-size="11" text-anchor="middle">Wed</text>
-      <text x="420" y="185" fill="#94A3B8" font-size="11" text-anchor="middle">Thu</text>
-      <text x="540" y="185" fill="#10B981" font-size="11" font-weight="700" text-anchor="middle">Today</text>
+      <!-- Data Dots -->
+      ${coords.map(c => `
+        <circle cx="${c.x}" cy="${c.y}" r="4.5" fill="#064E3B" stroke="#FFFFFF" stroke-width="2" />
+        <text x="${c.x}" y="185" fill="#94A3B8" font-size="11" text-anchor="middle">${c.day}</text>
+      `).join('')}
     </svg>
   `;
 }
@@ -453,47 +476,49 @@ function renderServiceBreakdownChart() {
   const container = document.getElementById('chartServiceBreakdown');
   if (!container) return;
 
+  const leads = (window.upcStore && window.upcStore.data && window.upcStore.data.leads) || [];
+  if (leads.length === 0) {
+    container.innerHTML = `
+      <div style="display:flex; align-items:center; justify-content:center; height:100%; min-height:160px; color:#94A3B8; font-size:0.85rem; text-align:center; padding:1.5rem;">
+        No service pipeline records yet. Breakdown will display once service inquiries are recorded.
+      </div>
+    `;
+    return;
+  }
+
+  const serviceMap = {};
+  leads.forEach(l => {
+    const sName = l.service || 'General Pest Control';
+    const val = Number(l.value) || 0;
+    if (!serviceMap[sName]) serviceMap[sName] = { count: 0, val: 0 };
+    serviceMap[sName].count++;
+    serviceMap[sName].val += val;
+  });
+
+  const sortedServices = Object.entries(serviceMap)
+    .sort((a, b) => b[1].count - a[1].count)
+    .slice(0, 4);
+
+  const colors = ['#064E3B', '#10B981', '#F59E0B', '#64748B'];
+
   container.innerHTML = `
     <div style="display:flex; flex-direction:column; gap:0.95rem; justify-content:center; height:100%;">
-      <div>
-        <div style="display:flex; justify-content:space-between; font-size:0.8rem; font-weight:600; margin-bottom:0.25rem;">
-          <span>Termite Radar Control</span>
-          <span style="color:#064E3B; font-weight:700;">42% (₹1.8L)</span>
-        </div>
-        <div style="height:8px; background:#F1F5F9; border-radius:4px; overflow:hidden;">
-          <div style="width:42%; height:100%; background:#064E3B;"></div>
-        </div>
-      </div>
-
-      <div>
-        <div style="display:flex; justify-content:space-between; font-size:0.8rem; font-weight:600; margin-bottom:0.25rem;">
-          <span>Commercial Kitchen AMC</span>
-          <span style="color:#10B981; font-weight:700;">28% (₹1.2L)</span>
-        </div>
-        <div style="height:8px; background:#F1F5F9; border-radius:4px; overflow:hidden;">
-          <div style="width:28%; height:100%; background:#10B981;"></div>
-        </div>
-      </div>
-
-      <div>
-        <div style="display:flex; justify-content:space-between; font-size:0.8rem; font-weight:600; margin-bottom:0.25rem;">
-          <span>Cockroach Odorless Gel</span>
-          <span style="color:#F59E0B; font-weight:700;">18% (₹48K)</span>
-        </div>
-        <div style="height:8px; background:#F1F5F9; border-radius:4px; overflow:hidden;">
-          <div style="width:18%; height:100%; background:#F59E0B;"></div>
-        </div>
-      </div>
-
-      <div>
-        <div style="display:flex; justify-content:space-between; font-size:0.8rem; font-weight:600; margin-bottom:0.25rem;">
-          <span>Bed Bug Thermal & Others</span>
-          <span style="color:#64748B; font-weight:700;">12% (₹32K)</span>
-        </div>
-        <div style="height:8px; background:#F1F5F9; border-radius:4px; overflow:hidden;">
-          <div style="width:12%; height:100%; background:#64748B;"></div>
-        </div>
-      </div>
+      ${sortedServices.map(([sName, data], idx) => {
+        const pct = Math.round((data.count / leads.length) * 100);
+        const col = colors[idx % colors.length];
+        const valFormatted = data.val >= 100000 ? `₹${(data.val / 100000).toFixed(1)}L` : (data.val >= 1000 ? `₹${(data.val / 1000).toFixed(0)}K` : `₹${data.val}`);
+        return `
+          <div>
+            <div style="display:flex; justify-content:space-between; font-size:0.8rem; font-weight:600; margin-bottom:0.25rem;">
+              <span>${escapeHtml(sName)} (${data.count})</span>
+              <span style="color:${col}; font-weight:700;">${pct}% (${valFormatted})</span>
+            </div>
+            <div style="height:8px; background:#F1F5F9; border-radius:4px; overflow:hidden;">
+              <div style="width:${pct}%; height:100%; background:${col};"></div>
+            </div>
+          </div>
+        `;
+      }).join('')}
     </div>
   `;
 }

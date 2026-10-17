@@ -107,6 +107,9 @@ async function runMasterTestSuite() {
   // =====================================================================
   // PHASE C: BOOKINGS & CUSTOMER MANAGEMENT
   // =====================================================================
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+  const dayAfterTomorrow = new Date(Date.now() + 172800000).toISOString().split('T')[0];
+
   const bookingPayload = {
     leadId,
     customerName: 'Vikramaditya Roy',
@@ -116,7 +119,7 @@ async function runMasterTestSuite() {
     propertyType: 'Villa',
     city: 'Pune',
     address: 'Bungalow 12, Dahanukar Colony, Kothrud',
-    scheduledDate: '2026-10-16',
+    scheduledDate: tomorrow,
     timeSlot: '11:00 AM - 01:00 PM',
     amount: 3999,
     status: 'CONFIRMED'
@@ -128,8 +131,8 @@ async function runMasterTestSuite() {
   record('Phase C', 'Create Booking with Customer Profile Sync', createBookingRes.status === 201 && bookingId, `Booking Code: ${bookingCode}`);
 
   // Booking Reschedule Notification
-  const rescheduleRes = await req('PUT', `/api/bookings/${bookingId}`, { scheduledDate: '2026-10-18', timeSlot: '02:00 PM - 04:00 PM' }, authHeaders);
-  record('Phase C', 'Reschedule Booking with Notification Log', rescheduleRes.status === 200 && String(rescheduleRes.body?.data?.scheduledDate).startsWith('2026-10-18'), `Rescheduled to: ${rescheduleRes.body?.data?.scheduledDate}`);
+  const rescheduleRes = await req('PUT', `/api/bookings/${bookingId}`, { scheduledDate: dayAfterTomorrow, timeSlot: '02:00 PM - 04:00 PM' }, authHeaders);
+  record('Phase C', 'Reschedule Booking with Notification Log', rescheduleRes.status === 200 && String(rescheduleRes.body?.data?.scheduledDate).startsWith(dayAfterTomorrow), `Rescheduled to: ${rescheduleRes.body?.data?.scheduledDate}`);
 
   // Customer Management
   const customersRes = await req('GET', `/api/customers?search=${testPhone}`, null, authHeaders);

@@ -37,8 +37,21 @@ const publicLeadLimiter = rateLimit({
   }
 });
 
+// Public Booking Tracking Telemetry Rate Limiter
+const trackingLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 60, // 60 lookups per 15 mins per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: 'Too many tracking requests from this IP. Please wait 15 minutes before checking status again.'
+  }
+});
+
 module.exports = {
   apiLimiter,
   authLimiter,
-  publicLeadLimiter
+  publicLeadLimiter,
+  trackingLimiter
 };

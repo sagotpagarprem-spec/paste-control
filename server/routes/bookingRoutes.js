@@ -4,16 +4,16 @@ const router = express.Router();
 const bookingController = require('../controllers/bookingController');
 const { authenticateToken } = require('../middleware/auth');
 const { requirePermission } = require('../middleware/rbac');
-const { publicLeadLimiter } = require('../middleware/rateLimiter');
+const { publicLeadLimiter, trackingLimiter } = require('../middleware/rateLimiter');
 const { validate, validateBookingCreate } = require('../validators/validate');
 
 // Public or Authenticated Booking Creation
 // POST /api/bookings
 router.post('/', publicLeadLimiter, validate(validateBookingCreate), bookingController.createBooking);
 
-// Public Customer Tracking Endpoint
+// Public Customer Tracking Endpoint (Protected against abuse and PII leakage)
 // GET /api/bookings/:idOrCode/tracking
-router.get('/:idOrCode/tracking', bookingController.getTracking);
+router.get('/:idOrCode/tracking', trackingLimiter, bookingController.getTracking);
 
 // Protected Admin/Staff Endpoints
 // GET /api/bookings

@@ -219,6 +219,10 @@ const INITIAL_STATE = {
 
 class UPCStore {
   constructor() {
+    this.isDemoMode = (typeof window !== 'undefined' && (
+      window.location.search.includes('demo=true') ||
+      localStorage.getItem('UPC_DEMO_MODE') === 'true'
+    ));
     this.data = this.loadState();
     this.listeners = [];
   }
@@ -227,13 +231,25 @@ class UPCStore {
     try {
       const stored = localStorage.getItem(UPC_STORAGE_KEY);
       if (stored) {
-        return JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        // If not in demo mode and stored contains mock fixture leads, purge them for production
+        if (!this.isDemoMode && Array.isArray(parsed.leads) && parsed.leads.some(l => l.id === 'LD-901' || l.id === 'LD-902')) {
+          parsed.leads = [];
+          parsed.bookings = [];
+          this.saveState(parsed);
+        }
+        return parsed;
       }
     } catch (e) {
       console.warn('Failed to load local storage state:', e);
     }
-    this.saveState(INITIAL_STATE);
-    return JSON.parse(JSON.stringify(INITIAL_STATE));
+
+    const state = this.isDemoMode
+      ? JSON.parse(JSON.stringify(INITIAL_STATE))
+      : { leads: [], bookings: [], campaigns: [], notifications: [] };
+
+    this.saveState(state);
+    return state;
   }
 
   saveState(state) {
@@ -256,14 +272,83 @@ class UPCStore {
     this.listeners.forEach(fn => fn(this.data));
   }
 
-  // Lead actions
+  // Add verified canonical lead returned by backend
+  addLeadRecord(backendLead) {
+    if (!backendLead) return null;
+    const formatted = {
+      id: backendLead.lead_code || (backendLead.id ? `LD-${backendLead.id}` : `LD-${Date.now().toString().slice(-4)}`),
+      dbId: backendLead.id,
+      name: backendLead.name,
+      phone: backendLead.phone,
+      email: backendLead.email || '',
+      service: backendLead.service_name || backendLead.service || 'General Pest Control',
+      property: backendLead.property_type || backendLead.property || 'Residential',
+      city: backendLead.city || 'Pune',
+      area: backendLead.area || '',
+      source: backendLead.source || 'ADMIN_PORTAL',
+      campaign: backendLead.campaign || '',
+      adName: backendLead.ad_name || '',
+      status: backendLead.status || 'NEW',
+      urgency: backendLead.urgency || 'Today',
+      value: Number(backendLead.estimated_value || backendLead.value) || 0,
+      createdAt: backendLead.created_at || new Date().toISOString(),
+      followUpDate: backendLead.follow_up_date || '',
+      assignedTo: backendLead.assigned_to_name || backendLead.assignedToName || backendLead.assignedTo || 'Unassigned',
+      notes: backendLead.notes ? (Array.isArray(backendLead.notes) ? backendLead.notes.map(n => n.note).join('\n') : backendLead.notes) : '',
+      timeline: backendLead.timeline && Array.isArray(backendLead.timeline)
+        ? backendLead.timeline.map(t => ({ time: t.created_at || 'Recently', text: t.description }))
+        : [{ time: 'Just now', text: `Lead ${backendLead.lead_code || ''} confirmed in database.` }]
+    };
+
+    const existingIdx = this.data.leads.findIndex(l => (l.dbId && l.dbId === formatted.dbId) || l.id === formatted.id);
+    if (existingIdx >= 0) {
+      this.data.leads[existingIdx] = formatted;
+    } else {
+      this.data.leads.unshift(formatted);
+    }
+    this.notify();
+    return formatted;
+  }
+
+  // Add verified canonical booking returned by backend
+  addBookingRecord(backendBooking) {
+    if (!backendBooking) return null;
+    const formatted = {
+      id: backendBooking.booking_code || backendBooking.bookingCode || `UPC-${backendBooking.id}`,
+      dbId: backendBooking.id,
+      customerName: backendBooking.name || backendBooking.customerName,
+      phone: backendBooking.phone,
+      service: backendBooking.service_name || backendBooking.service || 'Pest Control',
+      propertyType: backendBooking.property_type || backendBooking.propertyType || 'Residential',
+      address: backendBooking.address || '',
+      city: backendBooking.city || 'Pune',
+      date: backendBooking.scheduled_date || backendBooking.date,
+      timeSlot: backendBooking.time_slot || backendBooking.timeSlot,
+      technician: backendBooking.technician_name || backendBooking.technician || 'Unassigned',
+      status: backendBooking.status || 'Confirmed',
+      amount: Number(backendBooking.amount || 0),
+      paymentStatus: backendBooking.payment_status || 'Pending',
+      createdAt: backendBooking.created_at || new Date().toISOString()
+    };
+
+    const existingIdx = this.data.bookings.findIndex(b => (b.dbId && b.dbId === formatted.dbId) || b.id === formatted.id);
+    if (existingIdx >= 0) {
+      this.data.bookings[existingIdx] = formatted;
+    } else {
+      this.data.bookings.unshift(formatted);
+    }
+    this.notify();
+    return formatted;
+  }
+
+  // Lead actions (Demo Mode / Local Fallback)
   addLead(leadData) {
     const newLead = {
       id: `LD-${Math.floor(100 + Math.random() * 900)}`,
       status: 'NEW',
       createdAt: new Date().toISOString(),
       followUpDate: new Date(Date.now() + 2 * 3600 * 1000).toISOString(),
-      assignedTo: 'Vikram Shinde',
+      assignedTo: 'Unassigned',
       timeline: [
         { time: 'Just now', text: `Lead registered via ${leadData.source || 'Website'}.` }
       ],
@@ -271,7 +356,6 @@ class UPCStore {
     };
     this.data.leads.unshift(newLead);
 
-    // Add alert notification
     this.addNotification({
       title: 'New Lead Generated!',
       text: `${newLead.name} requested ${newLead.service} (${newLead.property || 'Home'}).`,
@@ -280,25 +364,6 @@ class UPCStore {
     });
 
     this.notify();
-
-    // Async sync with Production API if available
-    if (window.upcApi) {
-      window.upcApi.leads.create({
-        name: newLead.name,
-        phone: newLead.phone,
-        email: newLead.email,
-        service: newLead.service,
-        property: newLead.property,
-        city: newLead.city,
-        area: newLead.area,
-        source: newLead.source,
-        campaign: newLead.campaign,
-        urgency: newLead.urgency,
-        value: newLead.value,
-        notes: newLead.notes
-      }).catch(() => {});
-    }
-
     return newLead;
   }
 
@@ -335,8 +400,18 @@ class UPCStore {
   }
 
   // Synchronize state from live MySQL API
-  syncFromBackend(backendLeads = []) {
-    if (!Array.isArray(backendLeads) || backendLeads.length === 0) return;
+  syncFromBackend(backendLeads) {
+    // If request failed (null/undefined or non-array), do NOT wipe out existing records
+    if (backendLeads === null || backendLeads === undefined || !Array.isArray(backendLeads)) {
+      return;
+    }
+
+    // A successful empty array means 0 leads in database; clear collection truthfully
+    if (backendLeads.length === 0) {
+      this.data.leads = [];
+      this.notify();
+      return;
+    }
     
     // Normalize backend leads to store schema
     const formatted = backendLeads.map(b => ({
@@ -368,28 +443,51 @@ class UPCStore {
     this.notify();
   }
 
-  // Booking actions
+  // Synchronize bookings from live MySQL API
+  syncBookingsFromBackend(backendBookings) {
+    if (backendBookings === null || backendBookings === undefined || !Array.isArray(backendBookings)) {
+      return;
+    }
+
+    if (backendBookings.length === 0) {
+      this.data.bookings = [];
+      this.notify();
+      return;
+    }
+
+    this.data.bookings = backendBookings.map(b => ({
+      id: b.booking_code || b.bookingCode || `UPC-${b.id}`,
+      dbId: b.id,
+      customerName: b.name || b.customerName,
+      phone: b.phone,
+      service: b.service_name || b.service || 'Pest Control',
+      propertyType: b.property_type || b.propertyType || 'Residential',
+      address: b.address || '',
+      city: b.city || 'Pune',
+      date: b.scheduled_date || b.date,
+      timeSlot: b.time_slot || b.timeSlot,
+      technician: b.technician_name || b.technician || 'Unassigned',
+      status: b.status || 'Confirmed',
+      amount: Number(b.amount || 0),
+      paymentStatus: b.payment_status || 'Pending',
+      createdAt: b.created_at || new Date().toISOString()
+    }));
+    this.notify();
+  }
+
+  // Booking actions (Demo Mode)
   createBooking(bookingData) {
+    if (!this.isDemoMode) {
+      console.warn('Direct store createBooking is reserved for explicit demo mode. In production, use upcApi.bookings.create.');
+    }
     const newBooking = {
       id: `UPC-2026-${Math.floor(1000 + Math.random() * 9000)}`,
       status: 'Confirmed',
       createdAt: new Date().toISOString(),
-      technician: 'Vikram Shinde (Assigned)',
+      technician: 'Unassigned',
       ...bookingData
     };
     this.data.bookings.unshift(newBooking);
-
-    // Also auto-create or update lead
-    this.addLead({
-      name: newBooking.customerName,
-      phone: newBooking.phone,
-      service: newBooking.service,
-      property: newBooking.propertyType || 'Residential',
-      city: 'Pune',
-      source: 'Direct Booking Engine',
-      status: 'BOOKED',
-      value: newBooking.amount || 4500
-    });
 
     this.addNotification({
       title: 'New Service Booking Confirmed!',
@@ -399,23 +497,6 @@ class UPCStore {
     });
 
     this.notify();
-
-    // Async sync with Production API if available
-    if (window.upcApi) {
-      window.upcApi.bookings.create({
-        booking_code: newBooking.id,
-        name: newBooking.customerName,
-        phone: newBooking.phone,
-        service: newBooking.service,
-        property: newBooking.propertyType,
-        date: newBooking.date,
-        slot: newBooking.timeSlot,
-        address: newBooking.address,
-        amount: newBooking.amount,
-        notes: newBooking.notes
-      }).catch(() => {});
-    }
-
     return newBooking;
   }
 
