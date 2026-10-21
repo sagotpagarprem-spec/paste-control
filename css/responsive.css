@@ -241,6 +241,11 @@ input, select, textarea, button {
     height: var(--header-height-mobile, 68px);
   }
 
+  .brand-logo-img {
+    height: 44px;
+    max-width: 210px;
+  }
+
   .brand-title {
     font-size: 1.2rem;
   }
@@ -889,6 +894,11 @@ input, select, textarea, button {
     font-size: 1.1rem;
   }
 
+  .brand-logo-img {
+    height: 38px;
+    max-width: 180px;
+  }
+
   .brand-icon-shield {
     width: 38px;
     height: 38px;
@@ -922,6 +932,11 @@ input, select, textarea, button {
 
   .brand-title {
     font-size: 1.02rem;
+  }
+
+  .brand-logo-img {
+    height: 32px;
+    max-width: 150px;
   }
 
   .brand-icon-shield {
