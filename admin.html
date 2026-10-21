@@ -4,6 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Universal Pest Control | Enterprise Admin CRM & Ads Platform</title>
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <link rel="manifest" href="site.webmanifest">
+  <meta name="theme-color" content="#064E3B">
   <link rel="stylesheet" href="css/tokens.css">
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/layout.css">
@@ -25,12 +32,7 @@
     <!-- 1. ADMIN SIDEBAR -->
     <aside class="admin-sidebar" id="adminSidebar">
       <div class="admin-sidebar-header">
-        <div class="brand-icon-shield" style="width:36px; height:36px;">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-            <path d="m9 12 2 2 4-4"/>
-          </svg>
-        </div>
+        <img src="assets/images/logo-shield.png" alt="Universal Pest Control official logo" width="36" height="36" style="object-fit:contain; border-radius:8px; flex-shrink:0;">
         <div class="brand-text">
           <span class="brand-title" style="color:#FFFFFF; font-size:1.1rem;">UPC <span>ENTERPRISE</span></span>
           <span class="brand-tagline" style="color:#94A3B8; font-size:0.6rem;">CRM & Ads Command</span>
@@ -1654,11 +1656,11 @@
               <div style="display:flex; flex-direction:column; gap:0.85rem; font-size:0.875rem;">
                 <div style="display:flex; justify-content:space-between; border-bottom:1px solid #F1F5F9; padding-bottom:0.5rem;">
                   <span style="color:#64748B;">Company Entity:</span>
-                  <strong>Universal Pest Control Solutions Pvt Ltd</strong>
+                  <strong>Universal Pest Control</strong>
                 </div>
                 <div style="display:flex; justify-content:space-between; border-bottom:1px solid #F1F5F9; padding-bottom:0.5rem;">
                   <span style="color:#64748B;">Headquarters Hub:</span>
-                  <span>Baner High Street, Pune 411045</span>
+                  <span>Office No. 908, 9th Floor, Gera Imperium, Nashik Phata Metro Station, Kasarwadi, Pune 411034</span>
                 </div>
                 <div style="display:flex; justify-content:space-between; border-bottom:1px solid #F1F5F9; padding-bottom:0.5rem;">
                   <span style="color:#64748B;">Operating Hours:</span>
@@ -2352,7 +2354,7 @@
           </div>
           <div class="form-group">
             <label class="form-label">Mobile Phone *</label>
-            <input type="text" id="techFormPhone" class="form-control" placeholder="+91 98230 44129" required>
+            <input type="text" id="techFormPhone" class="form-control" placeholder="e.g. 9270973272" required>
           </div>
         </div>
         <div class="form-grid">
@@ -2416,7 +2418,7 @@
         <form id="formSendWaTemplate" onsubmit="handleSendWaTemplateSubmit(event)">
           <div class="form-group" style="margin-bottom:1rem;">
             <label class="form-label">Recipient Phone (WhatsApp Number) *</label>
-            <input type="text" id="waTemplateToPhone" class="form-control" placeholder="+91 98230 00000" required>
+            <input type="text" id="waTemplateToPhone" class="form-control" placeholder="e.g. 9270973272" required>
             <small style="color:#64748B; font-size:0.75rem;">Include country code or 10-digit mobile number</small>
           </div>
           <div class="form-group" style="margin-bottom:1rem;">
@@ -2904,7 +2906,7 @@
           <div class="form-grid" style="margin-bottom:0.75rem; display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
             <div class="form-group">
               <label class="form-label" style="font-size:0.8rem; font-weight:700;">Mobile Number *</label>
-              <input type="tel" id="adminLeadPhone" class="form-control" placeholder="98230 XXXXX" required>
+              <input type="tel" id="adminLeadPhone" class="form-control" placeholder="e.g. 9270973272" required>
             </div>
             <div class="form-group">
               <label class="form-label" style="font-size:0.8rem; font-weight:700;">Email Address</label>

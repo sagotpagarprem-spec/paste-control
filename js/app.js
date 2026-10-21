@@ -772,7 +772,7 @@ function initBookingEngine() {
 
       try {
         if (!window.upcApi || !window.upcApi.bookings) {
-          throw new Error('Booking service is currently unavailable. Please call dispatch directly at +91 98230 44129.');
+          throw new Error('Booking service is currently unavailable. Please call dispatch directly at 9270973272.');
         }
 
         const res = await window.upcApi.bookings.create(payload);
@@ -1452,7 +1452,7 @@ async function searchCustomerBookingTracking() {
       <div style="background:#FFFBEB; border:1px solid #FDE68A; color:#92400E; padding:1.25rem; border-radius:12px; text-align:center; line-height:1.5;">
         🔒 <strong>Customer Privacy Protection Active</strong><br>
         For customer privacy and security, tracking by phone number alone is disabled without verified OTP.<br>
-        Please enter your unique <strong>Booking Reference Code</strong> (e.g. <code>UPC-2026-XXXX</code>) sent in your confirmation SMS/email, or contact dispatch at <strong>+91 98230 44129</strong>.
+        Please enter your unique <strong>Booking Reference Code</strong> (e.g. <code>UPC-2026-XXXX</code>) sent in your confirmation SMS/email, or contact dispatch at <strong>9270973272</strong>.
       </div>
     `;
     return;
@@ -1517,7 +1517,7 @@ async function searchCustomerBookingTracking() {
           <a href="tel:${escapeHtml(tech.phone)}" class="btn btn-sm btn-primary" style="padding:0.4rem 0.8rem; border-radius:8px; text-decoration:none; flex-shrink:0;">
             📞 Call
           </a>` : `
-          <a href="tel:+919823044129" class="btn btn-sm btn-primary" style="padding:0.4rem 0.8rem; border-radius:8px; text-decoration:none; flex-shrink:0;">
+          <a href="tel:9270973272" class="btn btn-sm btn-primary" style="padding:0.4rem 0.8rem; border-radius:8px; text-decoration:none; flex-shrink:0;">
             📞 Dispatch
           </a>`}
         </div>
