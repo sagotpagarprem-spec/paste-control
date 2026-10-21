@@ -210,7 +210,7 @@ const whatsappModel = {
     const latestIds = convRows.map(r => r.latest_message_id);
     const messages = await query(
       `SELECT m.*, c.name AS customer_name, c.email AS customer_email,
-              l.name AS lead_name, l.service AS lead_service, l.lead_code
+              l.name AS lead_name, l.service_name AS lead_service, l.lead_code
        FROM whatsapp_messages m
        LEFT JOIN customers c ON m.customer_id = c.id
        LEFT JOIN leads l ON m.lead_id = l.id

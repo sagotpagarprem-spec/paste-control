@@ -42,7 +42,13 @@ async function runMasterTestSuite() {
   }
 
   // Admin authentication token
-  const adminToken = generateToken({ id: 1, email: 'admin@universalpestcontrol.com', role: 'admin', roles: ['admin'] });
+  const adminToken = generateToken({
+    id: 1,
+    email: 'admin@universalpestcontrol.com',
+    role: 'admin',
+    roles: ['admin'],
+    permissions: ['admin:*', 'whatsapp:read', 'whatsapp:manage']
+  });
   const authHeaders = { Authorization: `Bearer ${adminToken}` };
 
   const results = [];
@@ -186,6 +192,11 @@ async function runMasterTestSuite() {
   // Meta Webhook Verification Handshake
   const waHandshakeRes = await req('GET', '/api/whatsapp/webhook?hub.mode=subscribe&hub.verify_token=upc_secure_webhook_verify_token_2026&hub.challenge=test_challenge_12345');
   record('Phase F', 'WhatsApp Webhook Handshake Verification', waHandshakeRes.status === 200 && waHandshakeRes.body === 'test_challenge_12345', `Handshake response: ${waHandshakeRes.body}`);
+
+  // WhatsApp Conversations Query & Lead Schema Join (Regression test for l.service_name mismatch)
+  const waConvosRes = await req('GET', '/api/whatsapp/conversations', null, authHeaders);
+  const waConvosOk = waConvosRes.status === 200 && Array.isArray(waConvosRes.body?.data);
+  record('Phase F', 'WhatsApp Conversations Query & Lead Schema Join (l.service_name)', waConvosOk, `Status: ${waConvosRes.status}, Conversations: ${waConvosRes.body?.data?.length || 0}`);
 
   // =====================================================================
   // PHASE G & H: META PIXEL & META LEAD ADS INTEGRATION
