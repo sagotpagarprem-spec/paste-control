@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initOfferCouponCopy();
   initMobileBottomBar();
   initPublicCmsHydration();
+  initTrackBookingModalHandlers();
 });
 
 /* 1. NAVIGATION & VIEW ROUTING */
@@ -1386,19 +1387,41 @@ function openTrackBookingModal(defaultCode = '') {
   const modal = document.getElementById('modalTrackBooking');
   if (!modal) return;
   modal.style.display = 'flex';
+  document.body.classList.add('drawer-scroll-locked');
   const input = document.getElementById('trackBookingInput');
   if (input) {
     if (defaultCode) {
       input.value = defaultCode;
       searchCustomerBookingTracking();
     }
-    input.focus();
+    setTimeout(() => input.focus(), 60);
   }
 }
 
 function closeTrackBookingModal() {
   const modal = document.getElementById('modalTrackBooking');
   if (modal) modal.style.display = 'none';
+  document.body.classList.remove('drawer-scroll-locked');
+}
+
+function initTrackBookingModalHandlers() {
+  const modal = document.getElementById('modalTrackBooking');
+  if (modal) {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        closeTrackBookingModal();
+      }
+    });
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      const m = document.getElementById('modalTrackBooking');
+      if (m && m.style.display === 'flex') {
+        closeTrackBookingModal();
+      }
+    }
+  });
 }
 
 function escapeHtml(str) {
@@ -1463,17 +1486,17 @@ async function searchCustomerBookingTracking() {
     const stages = data.stages || [];
 
     resultArea.innerHTML = `
-      <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:12px; padding:1.25rem; margin-bottom:1.25rem;">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.75rem;">
-          <div>
+      <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:12px; padding:1.25rem; margin-bottom:1.25rem; box-sizing:border-box;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
+          <div style="min-width:0;">
             <div style="font-size:0.75rem; color:#64748B; font-weight:700;">BOOKING REFERENCE</div>
-            <strong style="font-size:1.15rem; color:#0F172A;">${escapeHtml(data.bookingCode)}</strong>
+            <strong style="font-size:1.15rem; color:#0F172A; word-break:break-all;">${escapeHtml(data.bookingCode)}</strong>
           </div>
-          <span class="badge ${data.currentStatus === 'COMPLETED' ? 'badge-success' : 'badge-primary'}" style="font-size:0.8rem; padding:0.35rem 0.65rem;">
+          <span class="badge ${data.currentStatus === 'COMPLETED' ? 'badge-success' : 'badge-primary'}" style="font-size:0.8rem; padding:0.35rem 0.65rem; flex-shrink:0;">
             ${data.currentStatus}
           </span>
         </div>
-        <div style="font-size:0.88rem; color:#334155; line-height:1.5;">
+        <div style="font-size:0.88rem; color:#334155; line-height:1.5; word-break:break-word;">
           <div><strong>Service:</strong> ${escapeHtml(data.serviceName)} (${escapeHtml(data.propertyType || 'Residential')})</div>
           <div><strong>Appointment:</strong> 📅 ${data.scheduledDate} • ⏰ ${escapeHtml(data.timeSlot)}</div>
           <div><strong>Service Location:</strong> 📍 ${escapeHtml(data.city || 'Pune')} (Confirmed on file)</div>
@@ -1482,32 +1505,32 @@ async function searchCustomerBookingTracking() {
 
       <!-- Assigned Technician Card -->
       ${tech ? `
-        <div style="background:#ECFDF5; border:1px solid #A7F3D0; border-radius:12px; padding:1rem; margin-bottom:1.5rem; display:flex; align-items:center; gap:0.85rem;">
+        <div style="background:#ECFDF5; border:1px solid #A7F3D0; border-radius:12px; padding:1rem; margin-bottom:1.5rem; display:flex; align-items:center; gap:0.85rem; flex-wrap:wrap; box-sizing:border-box;">
           <img src="${escapeHtml(tech.profileImage)}" alt="${escapeHtml(tech.name)}"
-               style="width:52px; height:52px; border-radius:50%; object-fit:cover; border:2px solid #10B981;">
-          <div style="flex-grow:1;">
+               style="width:48px; height:48px; border-radius:50%; object-fit:cover; border:2px solid #10B981; flex-shrink:0;">
+          <div style="flex-grow:1; min-width:140px;">
             <div style="font-size:0.72rem; color:#065F46; font-weight:700; text-transform:uppercase;">Assigned Certified Technician</div>
             <div style="font-size:1.05rem; font-weight:800; color:#064E3B;">${escapeHtml(tech.name)}</div>
             <div style="font-size:0.8rem; color:#047857;">⭐ ${tech.rating || 4.9} Verified Specialist${tech.phone ? ` • <a href="tel:${escapeHtml(tech.phone)}" style="color:#065F46; font-weight:700; text-decoration:underline;">${escapeHtml(tech.phone)}</a>` : ''}</div>
           </div>
           ${tech.phone ? `
-          <a href="tel:${escapeHtml(tech.phone)}" class="btn btn-sm btn-primary" style="padding:0.4rem 0.8rem; border-radius:8px; text-decoration:none;">
+          <a href="tel:${escapeHtml(tech.phone)}" class="btn btn-sm btn-primary" style="padding:0.4rem 0.8rem; border-radius:8px; text-decoration:none; flex-shrink:0;">
             📞 Call
           </a>` : `
-          <a href="tel:+919823044129" class="btn btn-sm btn-primary" style="padding:0.4rem 0.8rem; border-radius:8px; text-decoration:none;">
+          <a href="tel:+919823044129" class="btn btn-sm btn-primary" style="padding:0.4rem 0.8rem; border-radius:8px; text-decoration:none; flex-shrink:0;">
             📞 Dispatch
           </a>`}
         </div>
       ` : `
-        <div style="background:#FFFBEB; border:1px solid #FDE68A; border-radius:10px; padding:0.85rem; margin-bottom:1.5rem; font-size:0.85rem; color:#92400E;">
+        <div style="background:#FFFBEB; border:1px solid #FDE68A; border-radius:10px; padding:0.85rem; margin-bottom:1.5rem; font-size:0.85rem; color:#92400E; word-break:break-word;">
           ⏳ <strong>Technician Dispatch:</strong> Our operations manager is currently assigning the nearest certified specialist in your zone.
         </div>
       `}
 
       <!-- Milestones Timeline -->
-      <div style="margin-top:1rem;">
+      <div style="margin-top:1rem; min-width:0;">
         <div style="font-size:0.75rem; text-transform:uppercase; font-weight:700; color:#64748B; margin-bottom:0.75rem; letter-spacing:0.04em;">SERVICE PROGRESS MILESTONES</div>
-        <div style="display:flex; flex-direction:column; gap:0.85rem; position:relative; padding-left:1.75rem;">
+        <div style="display:flex; flex-direction:column; gap:0.85rem; position:relative; padding-left:1.75rem; min-width:0;">
           <div style="position:absolute; left:9px; top:8px; bottom:8px; width:2px; background:#E2E8F0;"></div>
           ${stages.map((st, i) => {
             const isCompleted = st.completed;
@@ -1515,17 +1538,17 @@ async function searchCustomerBookingTracking() {
             const dotColor = isCompleted ? '#10B981' : (isActive ? '#0284C7' : '#CBD5E1');
             const icon = isCompleted ? '✓' : (isActive ? '●' : (i + 1));
             return `
-              <div style="position:relative;">
+              <div style="position:relative; min-width:0;">
                 <div style="position:absolute; left:-1.75rem; top:2px; width:20px; height:20px; border-radius:50%; background:${dotColor}; color:#FFFFFF; font-size:0.7rem; font-weight:800; display:flex; align-items:center; justify-content:center; box-shadow:0 0 0 3px #FFFFFF;">
                   ${icon}
                 </div>
-                <div style="display:flex; justify-content:space-between; align-items:baseline;">
-                  <strong style="font-size:0.92rem; color:${isCompleted || isActive ? '#0F172A' : '#94A3B8'};">
+                <div style="display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:0.25rem;">
+                  <strong style="font-size:0.92rem; color:${isCompleted || isActive ? '#0F172A' : '#94A3B8'}; word-break:break-word;">
                     ${escapeHtml(st.label)}
                   </strong>
-                  ${st.timestamp ? `<span style="font-size:0.75rem; color:#64748B;">${new Date(st.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>` : ''}
+                  ${st.timestamp ? `<span style="font-size:0.75rem; color:#64748B; flex-shrink:0;">${new Date(st.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>` : ''}
                 </div>
-                <div style="font-size:0.8rem; color:#64748B; margin-top:0.15rem;">
+                <div style="font-size:0.8rem; color:#64748B; margin-top:0.15rem; word-break:break-word;">
                   ${escapeHtml(st.description)}
                 </div>
               </div>

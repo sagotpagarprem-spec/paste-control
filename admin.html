@@ -1119,7 +1119,7 @@
 
         <!-- ==================== SECTION 7: WHATSAPP BUSINESS HUB ==================== -->
         <section id="admin-sec-whatsapp" class="admin-view-section" style="display:none;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
+          <div class="wa-hub-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
             <div>
               <h2 style="font-size:1.75rem; margin-bottom:0.25rem;">WhatsApp Business Communications Hub</h2>
               <p style="color:#64748B; font-size:0.875rem; margin:0;">Official Meta Cloud API conversation hub with automated lifecycle triggers & approved templates.</p>
@@ -1133,7 +1133,7 @@
 
           <div class="whatsapp-hub-container">
             <!-- Sidebar Threads -->
-            <div class="wa-threads-sidebar" style="border-right:1px solid #E2E8F0; display:flex; flex-direction:column; background:#F8FAFC;">
+            <div class="wa-threads-sidebar" style="border-right:1px solid #E2E8F0; background:#F8FAFC;">
               <div style="padding:1rem; border-bottom:1px solid #E2E8F0; background:#fff;">
                 <div style="font-weight:700; font-size:0.95rem; margin-bottom:0.5rem; display:flex; justify-content:space-between; align-items:center;">
                   <span>Customer Chats</span>
@@ -1155,7 +1155,7 @@
             <div class="wa-chat-window">
               <div class="wa-chat-header">
                 <div class="wa-chat-header-user">
-                  <button type="button" class="btn btn-white btn-sm wa-mobile-back-btn" id="btnWaMobileBack" aria-label="Back to conversations list" title="Back to conversations">← Back</button>
+                  <button type="button" class="btn btn-white btn-sm wa-mobile-back-btn" id="btnWaMobileBack" onclick="closeWhatsAppMobileChat()" aria-label="Back to conversations list" title="Back to conversations">← Back</button>
                   <div class="wa-chat-customer-info">
                     <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
                       <strong id="waActiveCustomer" style="font-size:1rem; color:#0F172A;">Select a Conversation</strong>
@@ -1180,9 +1180,9 @@
                 </div>
               </div>
 
-              <div class="wa-chat-input-bar" style="padding:0.75rem 1.25rem; background:#F8FAFC; border-top:1px solid #E2E8F0; display:flex; gap:0.75rem; align-items:center;">
+              <div class="wa-chat-input-bar">
                 <input type="text" id="waMessageInput" class="form-control" placeholder="Type direct reply (inbound 24h window) or select template above..." style="background:#fff;">
-                <button id="btnWaSendMessage" class="btn btn-whatsapp" style="display:flex; align-items:center; gap:0.35rem;">
+                <button id="btnWaSendMessage" class="btn btn-whatsapp" style="display:flex; align-items:center; gap:0.35rem; flex-shrink:0;">
                   <span>Send</span>
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                 </button>

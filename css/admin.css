@@ -670,12 +670,14 @@
   grid-template-columns: 340px 1fr;
   height: 720px;
   max-height: calc(100vh - 160px);
+  max-height: calc(100dvh - 160px);
   background: #FFFFFF;
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-subtle);
   overflow: hidden;
   box-shadow: var(--shadow-md);
   position: relative;
+  box-sizing: border-box;
 }
 
 .wa-threads-sidebar {

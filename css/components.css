@@ -924,7 +924,8 @@
   visibility: visible;
 }
 
-.modal-box {
+.modal-box,
+.modal-card {
   background: var(--bg-surface, #FFFFFF);
   border-radius: var(--radius-xl, 20px);
   box-shadow: var(--shadow-xl);
@@ -932,10 +933,12 @@
   width: 100%;
   max-width: 640px;
   max-height: calc(100vh - 2.5rem);
+  max-height: calc(100dvh - 2.5rem);
   display: flex;
   flex-direction: column;
   position: relative;
   overflow: hidden;
+  box-sizing: border-box;
   transform: translateY(14px) scale(0.98);
   transition: transform var(--transition-smooth);
   margin: auto;
@@ -943,7 +946,10 @@
 
 .modal-overlay.active .modal-box,
 .modal-overlay[style*="display: flex"] .modal-box,
-.modal-overlay[style*="display: block"] .modal-box {
+.modal-overlay[style*="display: block"] .modal-box,
+.modal-overlay.active .modal-card,
+.modal-overlay[style*="display: flex"] .modal-card,
+.modal-overlay[style*="display: block"] .modal-card {
   transform: translateY(0) scale(1);
 }
 
